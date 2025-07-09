@@ -1,0 +1,107 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  background-color: var(--card-background);
+  padding: var(--space-6);
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  max-width: 800px;
+  width: 100%;
+  height: calc(100vh - 75px);
+  overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: var(--background-color);
+  border-radius: var(--radius-full);
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: var(--radius-full);
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-primary);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  width: 100%;
+  transition: all var(--transition-base);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-8);
+}
+
+.banner_img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.pfp {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-full);
+  border: 4px solid var(--card-background);
+  background-color: var(--background-color);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+}
+
+.names {
+  text-align: center;
+  padding: 0 var(--space-4);
+}
+
+.name {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.username {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.body {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-color);
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: var(--space-4);
+}
+
+/* Loading and empty states */
+.body p {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-base);
+  padding: var(--space-4);
+}

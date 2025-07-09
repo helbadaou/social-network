@@ -1,0 +1,67 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.container:hover {
+  background-color: #f8f9fa;
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.nickname {
+  font-size: 13px;
+  color: #65676b;
+  margin-top: 2px;
+}
+
+.invite_button {
+  background-color: #1877f2;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.invite_button:hover {
+  background-color: #166fe5;
+}
+
+.invite_button:disabled {
+  background-color: #e4e6eb;
+  color: #bec3c9;
+  cursor: not-allowed;
+}

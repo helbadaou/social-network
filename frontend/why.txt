@@ -1,0 +1,7 @@
+/lib/api/client.js – Fetch API Wrapper: Avoids repeating fetch() with headers, error handling, and token injection.
+
+/hooks/useApi.js – useCallBack: Prevents unnecessary re-fetches when dependencies don’t change.
+
+/providers/AuthProvider.js – Avoids passing auth state through many components. Provides login/logout functions globally.
+
+/hooks/useAuth.js – Simplifies accessing AuthContext in components.

@@ -1,0 +1,350 @@
+.container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  background: var(--card-background);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  min-height: 100vh;
+}
+
+.collapsed {
+  width: 80px !important;
+  min-width: 80px !important;
+  padding: 20px 12px;
+  transform: translateX(0);
+}
+
+.collapseBtn {
+  background: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  margin-bottom: 16px;
+  align-self: flex-start;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  position: relative;
+  overflow: hidden;
+  animation: pulse 2s infinite;
+}
+
+.collapseBtn:hover {
+  background: var(--primary-hover);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.collapseBtn:active {
+  transform: scale(0.95);
+}
+
+.collapseBtn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
+}
+
+.collapseBtn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.header .search_container {
+  position: relative;
+  display: inline-block;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapsed .header .search_container {
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+}
+
+.header input {
+  padding: 16px 16px 10px 40px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  background-color: #f6f7fb;
+  width: 300px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 20px;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.content {
+  flex: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapsed .content {
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+}
+
+.sugestions {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: 100%;
+  gap: 8px;
+  padding: 16px;
+  background-color: #fefefe;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sugestions h2 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: black;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sugestions .element {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  color: black;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sugestions .element::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: var(--primary-color);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.sugestions .element:hover::before {
+  width: 4px;
+}
+
+.sugestions .element:hover {
+  background-color: var(--hover-color);
+  transform: translateX(-4px);
+}
+
+.sugestions .element .details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sugestions .element .name h3 {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0;
+  color: #353542;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.sugestions .element .name p {
+  font-size: 14px;
+  font-weight: bold;
+  color: #abacb0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.sugestions .element button {
+  background-color: black;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.sugestions .element button:hover:not(:disabled) {
+  background-color: #333;
+  transform: scale(1.05);
+}
+
+.sugestions .element button.following {
+  background-color: #e4e6eb;
+  color: #65676b;
+  cursor: default;
+}
+
+.sugestions .element button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sugestions span {
+  font-size: 16px;
+  font-weight: bold;
+  color: #79a8c4;
+  padding-left: 10px;
+  padding-top: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avatar {
+  border-radius: 50%;
+  border: 2px solid #e0e7ef;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  object-fit: cover;
+  width: 50px;
+  height: 50px;
+  background: #f1f5f9;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button {
+  background-color: black;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button:hover:not(:disabled) {
+  background-color: #333;
+  transform: scale(1.05);
+}
+
+.following {
+  background-color: #e4e6eb !important;
+  color: #65676b !important;
+  cursor: default !important;
+}
+
+/* Animation d'entrée pour les éléments */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+/* Effet de pulsation pour le bouton collapse */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .right_sidebar {
+    display: none;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1200px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .header input {
+    width: 280px;
+    padding: 14px 14px 8px 36px;
+    font-size: 15px;
+  }
+  
+  .sugestions {
+    padding: 14px;
+  }
+  
+  .sugestions h2 {
+    font-size: 16px;
+  }
+  
+  .sugestions .element .name h3 {
+    font-size: 15px;
+  }
+  
+  .sugestions .element .name p {
+    font-size: 13px;
+  }
+  
+  .collapsed {
+    width: 70px !important;
+    min-width: 70px !important;
+    padding: 16px 8px;
+  }
+}
+
+@media (min-width: 1201px) {
+  .container {
+    padding: 20px;
+  }
+  
+  .header input {
+    width: 320px;
+  }
+  
+  .collapsed {
+    width: 80px !important;
+    min-width: 80px !important;
+  }
+}

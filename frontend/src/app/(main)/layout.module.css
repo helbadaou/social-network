@@ -1,0 +1,14 @@
+.app_container {
+  display: flex;
+  justify-content: space-between;
+  max-height: 100vh;
+  background-color: var(--background-color);
+  position: relative;
+}
+
+.main_wrapper {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}

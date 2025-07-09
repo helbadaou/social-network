@@ -1,0 +1,170 @@
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal_content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+}
+
+.modal_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal_title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.close_button {
+  background: none;
+  border: none;
+  color: #65676b;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close_button:hover {
+  color: #1a1a1a;
+  background-color: #f0f2f5;
+}
+
+.modal_body {
+  padding: 24px;
+}
+
+.create_input {
+  width: 100%;
+  min-height: 100px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #1a1a1a;
+  resize: vertical;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+
+.create_input:focus {
+  outline: none;
+  border-color: #1877f2;
+}
+
+
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.post_options {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.image_button {
+  background: none;
+  border: none;
+  color: #1877f2;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image_button:hover {
+  background-color: #e7f3ff;
+}
+
+.action_buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.post_button {
+  background-color: #1877f2;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.post_button:hover {
+  background-color: #166fe5;
+}
+
+.post_button:disabled {
+  background-color: #e4e6eb;
+  color: #bec3c9;
+  cursor: not-allowed;
+}
+
+.cancel_button {
+  background-color: #e4e6eb;
+  color: #1a1a1a;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel_button:hover {
+  background-color: #dcdfe3;
+}
+
+.error_message {
+  color: #dc3545;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.selected_image {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+

@@ -1,0 +1,120 @@
+.emoji_picker_container {
+  position: relative;
+  display: inline-block;
+}
+
+.emoji_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--background-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: 20px;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+
+.emoji_button:hover {
+  background: var(--background-muted);
+  transform: scale(1.05);
+}
+
+.picker_popup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 320px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.category_tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-subtle);
+  padding: 4px;
+  gap: 4px;
+}
+
+.category_tabs::-webkit-scrollbar {
+  height: 0;
+  width: 0;
+}
+
+.category_tab {
+  flex: 0 0 auto;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  font-size: 16px;
+}
+
+.category_tab:hover {
+  background: var(--background-muted);
+}
+
+.category_tab.active {
+  background: var(--background-muted);
+}
+
+.emoji_grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.emoji_grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.emoji_grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.emoji_grid::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: var(--radius-full);
+}
+
+.emoji_grid::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.emoji_item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  font-size: 20px;
+  padding: 0;
+}
+
+.emoji_item:hover {
+  background: var(--background-subtle);
+  transform: scale(1.2);
+}

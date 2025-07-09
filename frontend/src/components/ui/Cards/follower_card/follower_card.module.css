@@ -1,0 +1,108 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  background-color: var(--card-background);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  gap: var(--space-4);
+}
+
+.container:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0; /* Prevents text overflow issues */
+}
+
+.detail img {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.detail img:hover {
+  transform: scale(1.05);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0; /* Prevents text overflow issues */
+}
+
+.name {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.at {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.container button {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  transition: all var(--transition-base);
+}
+
+.container button:first-of-type {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.container button:first-of-type:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.container button:last-of-type {
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  margin-left: var(--space-2);
+}
+
+.container button:last-of-type:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-1px);
+}
+
+.container button:active {
+  transform: translateY(0);
+}
+
+/* Error message styling */
+.error {
+  color: #dc3545;
+  font-size: var(--font-sm);
+  margin-top: var(--space-2);
+}
+
+/* Request buttons container */
+.request_buttons {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+
