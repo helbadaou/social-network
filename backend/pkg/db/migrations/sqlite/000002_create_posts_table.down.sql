@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS post_likes;
+DROP TABLE IF EXISTS post_privacy_settings;
+DROP TABLE IF EXISTS posts;
