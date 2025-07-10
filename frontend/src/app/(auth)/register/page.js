@@ -1,312 +1,115 @@
-"use client";
+'use client'
 
-import styles from "./register.module.css";
-import Image from "next/image";
-import bg from "../../../../public/register_bg.png";
-import { useState } from "react";
-import {
-  isStrongPassword,
-  isValidAvatar,
-  isValidDate,
-  isValidEmail,
-  isValidNames,
-  isValidNickName,
-  isValidBio,
-} from "@/lib/validate";
-import fetchClient from "@/lib/api/client";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function Register() {
-  const [fileInputRef, setFileInputRef] = useState(null);
-  const [formState, setFormState] = useState({
-    values: {
-      firstname: "",
-      lastname: "",
-      nickname: "",
-      dob: "",
-      email: "",
-      password: "",
-      avatar: "",
-      bio: "",
-    },
-    errors: {
-      firstname: "",
-      lastname: "",
-      nickname: "",
-      dob: "",
-      email: "",
-      password: "",
-      avatar: "",
-      bio: "",
-    },
-    isValid: false,
-  });
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+export default function RegisterPage() {
+  const router = useRouter()
 
-  const validateField = (name, value) => {
-    let error = "";
-    switch (name) {
-      case "firstname":
-      case "lastname":
-        error =
-          isValidNames(value) && value?.length > 0
-            ? ""
-            : "Lastname and Firstname must be at least 2 characters and contain only letters.";
-        break;
-      case "nickname":
-        error = isValidNickName(value)
-          ? ""
-          : "Nickname must be at least 2 characters and contain only letters, numbers and underscore";
-        break;
-      case "dob":
-        error = value && isValidDate(value) ? "" : "Invalid date";
-        break;
-      case "email":
-        error = value.length > 0 && isValidEmail(value) ? "" : "Invalid email";
-        break;
-      case "password":
-        error =
-          value.length > 0 && isStrongPassword(value)
-            ? ""
-            : "Password must be at least 8 characters, contain at least one uppercase letter, one lowercase letter, one number and one special character";
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    date_of_birth: '',
+    nickname: '',
+    about: '',
+    avatar: '',
+  })
 
-        break;
-      case "bio":
-        error = isValidBio(value) ? "" : "Maximum length is 100 characters";
-        break;
-      case "avatar":
-        error = isValidAvatar(value)
-          ? ""
-          : "Avatar must be a valid image format and also size must be less than 5MB";
-        break;
-    }
-
-    setFormState((prev) => ({
-      ...prev,
-      errors: {
-        ...prev.errors,
-        [name]: error,
-      },
-    }));
-  };
+  const [message, setMessage] = useState({ type: '', text: '' })
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormState((prev) => ({
-      ...prev,
-      values: {
-        ...prev.values,
-        [name]: files ? files[0] : value,
-      },
-    }));
-
-    if (e.target.type === "file") {
-      validateField(name, files[0]);
-    } else {
-      validateField(name, value);
-    }
-
-    const isValid = Object.values(formState.errors).every((err) => err === "");
-
-    setFormState((prev) => ({ ...prev, isValid }));
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    let error = "";
-
-    if (file && !isValidAvatar(file)) {
-      error = "Avatar must be an jpg|jpeg|png|gif image and less than 5MB";
-    }
-
-    setFormState((prev) => ({
-      values: {
-        ...prev.values,
-        avatar: file,
-      },
-      errors: {
-        ...prev.errors,
-        avatar: error,
-      },
-      isValid: prev.isValid && !error,
-    }));
-  };
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const { values, isValid, errors } = formState;
-
-    // if (!isValid) return;
-
-    // create form from values
-    const formData = new FormData();
-    Object.keys(values).forEach((key) => {
-      if (key == "dob") {
-        formData.append("date_of_birth", values[key]);
-      } else {
-        formData.append(key, values[key]);
-      }
-    });
-
+    e.preventDefault()
     try {
-      await fetchClient("/api/register", {
-        method: "POST",
-        body: formData,
-      });
-      router.push("/login?n=user_created");
-    } catch (e) {
-      setErr(e.message);
-      setTimeout(() => {
-        setErr("");
-      }, 3000);
+      const res = await fetch('http://localhost:8080/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: '✅ Registered successfully!' })
+        setForm({
+          email: '',
+          password: '',
+          first_name: '',
+          last_name: '',
+          date_of_birth: '',
+          nickname: '',
+          about: '',
+          avatar: '',
+        })
+        setTimeout(() => router.push('/login'), 1000)
+      } else {
+        const errText = await res.text()
+        setMessage({ type: 'error', text: `❌ ${errText}` })
+      }
+    } catch (err) {
+      console.error(err)
+      setMessage({ type: 'error', text: '❌ Network error' })
     }
-  };
+  }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.register_container}>
-        <div className={styles.register_form}>
-          <div className={styles.header}>
-            <h5>START FOR FREE</h5>
-            <h1>Create new account.</h1>
-            <p>
-              Already a member? <Link href={"/login"}>Login</Link>
-            </p>
-          </div>
+    <main className="max-w-xl mx-auto px-6 py-8">
+      <h1 className="text-4xl font-bold mb-6 text-center">Create your account</h1>
 
-          <div className={styles.inputs_container}>
-            {/* First row: First name & Last name side by side */}
-            <div className={`${styles.input_row} ${styles.first_row}`}>
-              <div className={styles.inputs}>
-                <div className={styles.input_field}>
-                  <input
-                    type="text"
-                    name="firstname"
-                    placeholder="first name"
-                    value={formState.values.firstname}
-                    onChange={handleChange}
-                  />
-                </div>
+      <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-xl shadow-md">
+        <Input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+        <Input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
+        <Input name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required />
+        <Input name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} required />
+        <Input name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} required />
+        <Input name="nickname" placeholder="Nickname (optional)" value={form.nickname} onChange={handleChange} />
+        <Textarea name="about" placeholder="About Me (optional)" value={form.about} onChange={handleChange} />
+        <Input name="avatar" placeholder="Avatar (image name, optional)" value={form.avatar} onChange={handleChange} />
 
-                <div className={styles.input_field}>
-                  <input
-                    type="text"
-                    name="lastname"
-                    placeholder="last name"
-                    value={formState.values.lastname}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-              {formState.errors.firstname?.length !== 0 && (
-                <p className={styles.error}>{formState.errors.firstname}</p>
-              )}
-            </div>
+        <button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+        >
+          Register
+        </button>
+      </form>
 
-            {/* Second row: Nickname & DOB side by side */}
-            <div className={styles.input_row}>
-              <div className={styles.input_field}>
-                <input
-                  type="text"
-                  name="nickname"
-                  placeholder="nickname(optional)"
-                  value={formState.values.nickname}
-                  onChange={handleChange}
-                />
-                {formState.errors.nickname?.length !== 0 && (
-                  <p className={styles.error}>{formState.errors.nickname}</p>
-                )}
-              </div>
-
-              <div className={styles.input_field}>
-                <input
-                  type="date"
-                  name="dob"
-                  placeholder="date of birth"
-                  value={formState.values.dob}
-                  onChange={handleChange}
-                />
-                {formState.errors.dob?.length !== 0 && (
-                  <p className={styles.error}>{formState.errors.dob}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Single column inputs below */}
-            <div className={styles.input_field}>
-              <input
-                type="email"
-                name="email"
-                placeholder="email"
-                value={formState.values.email}
-                onChange={handleChange}
-              />
-              {formState.errors.email?.length !== 0 && (
-                <p className={styles.error}>{formState.errors.email}</p>
-              )}
-            </div>
-
-            <div className={styles.input_field}>
-              <input
-                type="password"
-                name="password"
-                placeholder="password"
-                value={formState.values.password}
-                onChange={handleChange}
-              />
-              {formState.errors.password?.length !== 0 && (
-                <p className={styles.error}>{formState.errors.password}</p>
-              )}
-            </div>
-
-            <div className={styles.input_field}>
-              <input
-                type="file"
-                name="avatar"
-                accept="image/jpg, image/jpeg, image/png, image/gif"
-                onChange={handleFileChange}
-                ref={fileInputRef}
-              />
-              {formState.errors.avatar?.length !== 0 && (
-                <p className={styles.error}>{formState.errors.avatar}</p>
-              )}
-            </div>
-
-            <div className={styles.input_field}>
-              <textarea
-                name="bio"
-                placeholder="about me (optional)"
-                className={styles.bio_input}
-                value={formState.values.bio}
-                onChange={handleChange}
-              ></textarea>
-              {formState.errors.bio?.length !== 0 && (
-                <p className={styles.error}>{formState.errors.bio}</p>
-              )}
-            </div>
-            {err && <p className={styles.error}>{err}</p>}
-            <div className={styles.actions}>
-              <button className={styles.register_button} onClick={handleSubmit}>
-                Sign-up
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className={styles.image_container}>
-          <div className={styles.image_overlay}></div>
-          <img
-            src={bg.src}
-            alt="People around campfire"
-            style={{ objectFit: "cover", width: "100%", height: "100%" }}
-            value={formState.values.firstname}
-            onChange={handleChange}
-          />
-        </div>
-      </div>
-    </div>
-  );
+      {message.text && (
+        <p
+          className={`mt-4 text-center font-medium ${
+            message.type === 'success' ? 'text-green-600' : 'text-red-600'
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
+    </main>
+  )
 }
+
+function Input({ name, type = 'text', ...props }) {
+  return (
+    <input
+      name={name}
+      type={type}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {...props}
+    />
+  )
+}
+
+function Textarea({ name, ...props }) {
+  return (
+    <textarea
+      name={name}
+      rows="4"
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {...props}
+    />
+  )
+}
+

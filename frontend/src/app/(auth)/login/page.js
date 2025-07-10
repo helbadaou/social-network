@@ -1,145 +1,70 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import styles from "./login.module.css";
-import bg from "../../../../public/register_bg.png";
-import Image from "next/image";
-import { isValidEmail, isStrongPassword } from "@/lib/validate";
-import fetchClient from "@/lib/api/client";
-import Link from "next/link";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [emailErr, setEmailErr] = useState("");
-  const [passwordErr, setPasswordErr] = useState("");
-  const [error, setError] = useState("");
-  const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+  const router = useRouter()
 
-  const router = useRouter();
-
-
-  async function Login() {
-    if (emailErr.length) {
-      setEmailErr("Type a valid email");
-      return;
-    }
-    if (passwordErr.length) {
-      setPasswordErr(
-        "Password should be at least 8 characters, 1 uppercase, 1 lowercase and 1 number"
-      );
-      return;
-    }
+  const handleLogin = async (e) => {
+    e.preventDefault()
 
     try {
-      const res = await fetchClient("/api/login", {
-        method: "POST",
-        body: { email, password },
-      });
-      localStorage.setItem("token", res.data.session_id);
-      const setCookie = (name, value, days) => {
-        let expires = "";
+      const res = await fetch('http://localhost:8080/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      })
 
-        if (days) {
-          const date = new Date();
-          date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-          expires = `; expires=${date.toUTCString()}`;
-        }
-
-        document.cookie = `${name}=${encodeURIComponent(
-          value
-        )}${expires}; path=/`;
-      };
-      setCookie("token", res.data.session_id, 30);
-      router.push("/");
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
-  function handleTyping(e) {
-    switch (e?.currentTarget?.type) {
-      case "email":
-        {
-          let content = e.target.value;
-          if (!isValidEmail(content)) {
-            setEmailErr("Type a valid email");
-          } else {
-            setEmailErr("");
-          }
-          setEmail(content);
-        }
-        break;
-      case "password": {
-        let content = e.target.value;
-        if (!isStrongPassword(content)) {
-          setPasswordErr(
-            "Password should be at least 8 characters, 1 uppercase, 1 lowercase and 1 number"
-          );
-        } else {
-          setPasswordErr("");
-        }
-        setPassword(content);
+      if (res.ok) {
+        setMessage('✅ Login successful!')
+        router.push('/home')
+      } else {
+        const text = await res.text()
+        setMessage(`❌ ${text}`)
       }
+    } catch (err) {
+      console.error(err)
+      setMessage('❌ Network error')
     }
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.login_container}>
-        <div className={styles.login_form}>
-          <div className={styles.header}>
-            <h5>WELCOME BACK</h5>
-            <h1>Login.</h1>
-            <p>
-              Not a member? <Link href={"/register"}>Register</Link>
-            </p>
-            {note && <p className={styles.note}>{note}</p>}
-          </div>
-          <div className={styles.inputs_container}>
-            <div className={styles.input_field}>
-              <input
-                type="email"
-                placeholder="Type your email here"
-                value={email}
-                onChange={handleTyping}
-              />
-              {emailErr?.length > 0 && (
-                <p className={styles.error}>{emailErr}</p>
-              )}
-            </div>
-
-            <div className={styles.input_field}>
-              <input
-                type="password"
-                placeholder="Your Password"
-                value={password}
-                onChange={handleTyping}
-              />
-              {passwordErr?.length > 0 && (
-                <p className={styles.error}>{passwordErr}</p>
-              )}
-            </div>
-
-            <div className={styles.actions}>
-              <button onClick={Login} className={styles.login_button}>
-                Login
-              </button>
-            </div>
-
-            {error?.length !== 0 && <p>{error}</p>}
-          </div>
-        </div>
-        <div className={styles.image_container}>
-          <img
-            src={bg.src}
-            style={{ objectFit: "cover", width: "100%", height: "100%" }}
-            alt="People around campfire"
+    <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-sm bg-white p-6 rounded-xl shadow-md">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Login</h1>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
           />
-        </div>
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition duration-200"
+          >
+            Login
+          </button>
+        </form>
+        {message && (
+          <p className="mt-4 text-sm text-center text-red-600">{message}</p>
+        )}
       </div>
-    </div>
-  );
+    </main>
+  )
 }
