@@ -19,7 +19,12 @@ func main() {
 	mux.HandleFunc("/api/login", auth.LoginHandler)
 	mux.HandleFunc("/api/register", auth.RegisterHandler)
 	mux.HandleFunc("/api/logout", auth.LogoutHandler)
-	mux.HandleFunc("/api/profile", auth.ProfileHandler)
+	mux.HandleFunc("/api/profile/", auth.ProfileHandler)
+	mux.HandleFunc("/api/users/", auth.GetUserByIDHandler)
+	mux.HandleFunc("/api/search", auth.SearchUsersHandler)
+	mux.HandleFunc("/api/follow", auth.SendFollowRequest)
+	http.HandleFunc("/api/follow/status/", auth.GetFollowStatus)
+
 	mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
 
 	handlerWithCors := auth.CorsMiddleware(mux)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function HomePage() {
   const [posts, setPosts] = useState([])
@@ -13,10 +14,22 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  //// AVATAR ET DROPDOWN
   const [user, setUser] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
+
+  ///// FENETRE POPUP
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [showPopup, setShowPopup] = useState(false)
+
+  //// BOUTON FOLLOW/UNFOLLOW
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followStatus, setFollowStatus] = useState('') // '', 'accepted', 'pending'
+
+
+
 
   const router = useRouter()
 
@@ -113,6 +126,7 @@ export default function HomePage() {
         })
         const data = await res.json()
         setResults(data)
+        console.log(data);
       } catch (err) {
         console.error('Error searching users:', err)
       }
@@ -143,18 +157,109 @@ export default function HomePage() {
     return <p>Erreur lors du chargement des posts.</p>
   }
 
+  const handleUserClick = async (userId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Erreur chargement profil')
+      const data = await res.json()
+      setSelectedUser(data)
+
+      // 👇 Vérifie le statut de follow
+      const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
+        credentials: 'include',
+      })
+      if (followRes.ok) {
+        const { status } = await followRes.json()
+        setFollowStatus(status) // 'accepted' | 'pending' | '' (non suivi)
+      } else {
+        setFollowStatus('')
+      }
+      setShowPopup(true)
+    } catch (err) {
+      console.error('Erreur chargement profil :', err.message)
+    }
+  }
+
+
+
+  const fetchUserById = async (userId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Erreur chargement profil')
+      const data = await res.json()
+      setSelectedUser(data)
+      setIsFollowing(data.is_following || false)
+      setFollowStatus(data.follow_status || '')
+      setShowPopup(true)
+    } catch (err) {
+      console.error('Erreur chargement profil utilisateur:', err)
+    }
+  }
+
+  //// FOLLOW/ UNFOLLOW
+  const handleFollowToggle = async () => {
+    if (!selectedUser || followStatus !== '') return
+
+    try {
+      const res = await fetch('http://localhost:8080/api/follow', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ followed_id: selectedUser.id }),
+      })
+
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'Erreur lors de la requête follow')
+      }
+
+      if (selectedUser.is_private) {
+        setFollowStatus('pending')
+      } else {
+        setFollowStatus('accepted')
+      }
+    } catch (err) {
+      console.error('Erreur follow :', err?.message || err)
+      // alert(`⛔ ${err.message}`)
+    }
+  }
+
+//   const closePopup = () => {
+//     setShowPopup(false)
+//     setSelectedUser(null)
+//     setFollowStatus('')
+//   }
+
+//   const PopupProfil = ({ user, followStatus, setFollowStatus, onClose }) => {
+//   return (
+//     <div className="popup">
+//       <button onClick={onClose}>Fermer</button>
+//       <h2>{user.nickname}</h2>
+//       {/* Suivre / suivre déjà, etc. */}
+//     </div>
+//   )
+// }
+
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 🌐 NAVBAR */}
       <nav className="bg-white shadow flex justify-between items-center px-6 py-4">
         {/* 🔍 Search */}
-        <div className="flex-1 max-w-lg">
+        <div className="max-w-xl mx-auto mt-8 px-4">
           <input
             type="text"
-            placeholder="🔍 Rechercher des utilisateurs..."
+            placeholder="🔍 Search users..."
             value={search}
             onChange={handleSearch}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none"
           />
           {results.length > 0 && (
             <div className="bg-white mt-2 rounded-md shadow-md">
@@ -162,12 +267,15 @@ export default function HomePage() {
                 <div
                   key={u.id}
                   className="p-3 hover:bg-gray-100 cursor-pointer border-b"
-                  onClick={() => router.push(`/profile/${u.id}`)}
+                  onClick={() => handleUserClick(u.id)}
                 >
+
                   <p className="font-medium">
-                    {u.first_name} {u.last_name}
+
+                    {u.first_name}{u.last_name}
                   </p>
                   <p className="text-sm text-gray-500">@{u.nickname}</p>
+
                 </div>
               ))}
             </div>
@@ -177,7 +285,7 @@ export default function HomePage() {
         {/* 👤 Avatar + Dropdown */}
         <div className="relative ml-4">
           <img
-            src={user?.Avatar && user.Avatar.trim() !== '' ? user.Avatar : '/avatar.png'}
+            src={user?.author_avatar && user.author_avatar.trim() !== '' ? user.author_avatar : '/avatar.png'}
             alt="Avatar"
             onClick={toggleProfile}
             className="w-10 h-10 rounded-full border cursor-pointer"
@@ -248,28 +356,26 @@ export default function HomePage() {
               key={i}
               className="bg-white shadow rounded-xl p-4 mb-4 border"
             >
-              <div className="flex items-center gap-3 mb-2">
-                <a href={`/profile/${post.author_id}`}>
-                  <img
-                    src={post.author_avatar || '/avatar.png'}
-                    alt={post.author_name}
-                    className="w-10 h-10 rounded-full object-cover border"
-                  />
-                </a>
+              <div
+                onClick={() => fetchUserById(post.author_id)}
+                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+              >
+                <img
+                  src={post.author_avatar || '/avatar.png'}
+                  alt={post.author_name}
+                  className="w-10 h-10 rounded-full object-cover border"
+                />
                 <div>
-                  <a
-                    href={`/profile/${post.author_id}`}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
+                  <div className="font-medium text-blue-600 hover:underline">
                     {post.author_name}
-                  </a>
+                  </div>
                   <div className="text-sm text-gray-500">
                     Publié le {new Date(post.created_at).toLocaleString()}
                   </div>
                 </div>
               </div>
 
-              <div className="text-sm text-gray-500">{post.content}</div>
+              <div className="text-sm text-gray-700">{post.content}</div>
               {post.image_url && (
                 <img
                   src={post.image_url}
@@ -279,6 +385,62 @@ export default function HomePage() {
               )}
             </div>
           ))
+        )}
+
+        {showPopup && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 relative animate-fade-in">
+              {/* ❌ Bouton fermer */}
+              <button
+                onClick={() => setShowPopup(false)}
+                className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl"
+              >
+                ×
+              </button>
+
+              {/* 👤 Avatar */}
+              <div className="flex flex-col items-center">
+                <img
+                  src={selectedUser.author_avatar || '/avatar.png'}
+                  alt="Avatar"
+                  className="w-20 h-20 rounded-full border object-cover mb-3"
+                />
+                <h2 className="text-lg font-semibold text-center text-gray-500">
+                  {selectedUser.first_name} {selectedUser.last_name}
+                </h2>
+                <p className="text-gray-500 text-sm">{selectedUser.nickname || 'anonymous'}</p>
+                {selectedUser.About && (
+                  <p className="mt-2 text-sm text-blue-600 text-center text-gray-500">
+                    {selectedUser.About || 'Vide'}
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-gray-600 text-center">{selectedUser.email}</p>
+                {selectedUser.date_of_birth && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    🎂 Né(e) le {selectedUser.date_of_birth}
+                  </p>
+                )}
+                {selectedUser.id !== user?.ID && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={followStatus !== ''}
+                    className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${followStatus === 'accepted'
+                      ? 'bg-gray-300 text-gray-700 cursor-default'
+                      : followStatus === 'pending'
+                        ? 'bg-yellow-400 text-white cursor-default'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                  >
+                    {followStatus === 'accepted'
+                      ? '✔ Abonné'
+                      : followStatus === 'pending'
+                        ? '🕓 En attente'
+                        : '+ Suivre'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
