@@ -1,29 +1,27 @@
 package main
 
 import (
-"fmt"
+	"fmt"
 	"net/http"
 
-	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/auth"
-
+	"social-network/backend/pkg/db/sqlite"
 )
 
 func main() {
-	
 	sqlite.InitDB()
 
+	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "pong")
+	})
 	mux := http.NewServeMux()
-
 
 	mux.HandleFunc("/api/login", auth.LoginHandler)
 	mux.HandleFunc("/api/register", auth.RegisterHandler)
 	mux.HandleFunc("/api/logout", auth.LogoutHandler)
 	mux.HandleFunc("/api/profile", auth.ProfileHandler)
-	// mux.HandleFunc("/search", auth.SearchUsers)
-	// mux.HandleFunc("/follow", handlers.SendFollowRequest)
+	mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
 
-	// Wrap entire mux with CORS middleware once
 	handlerWithCors := auth.CorsMiddleware(mux)
 
 	fmt.Println("✅ Server started at :8080")

@@ -16,13 +16,13 @@ export default function LoginPage() {
       const res = await fetch('http://localhost:8080/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // this is important to receive the cookie!
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
       if (res.ok) {
         setMessage('✅ Login successful!')
-        router.push('/home') // redirect to home or profile
+        router.push('/home')
       } else {
         const text = await res.text()
         setMessage(`❌ ${text}`)
@@ -34,14 +34,37 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Login</h1>
-      <form onSubmit={handleLogin} className="space-y-4">
-        <input className="input" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input className="input" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-        <button className="bg-blue-600 text-white px-4 py-2 rounded">Login</button>
-      </form>
-      {message && <p className="mt-4 text-red-600 text-sm">{message}</p>}
+    <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-sm bg-white p-6 rounded-xl shadow-md">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Login</h1>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition duration-200"
+          >
+            Login
+          </button>
+        </form>
+        {message && (
+          <p className="mt-4 text-sm text-center text-red-600">{message}</p>
+        )}
+      </div>
     </main>
   )
 }

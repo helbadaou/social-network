@@ -31,17 +31,15 @@ export default function ProfilePage() {
     return <p>Loading...</p>
   }
 
-  console.log("Profile data:", profile)
-
   return (
     <main className="max-w-xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Your Profile</h1>
-      <p><strong>Email:</strong> {profile.Email}</p>
-      <p><strong>Name:</strong> {profile.FirstName} {profile.LastName}</p>
-      <p><strong>Date of Birth:</strong> {profile.DateOfBirth}</p>
-      <p><strong>Nickname:</strong> {profile.Nickname || 'N/A'}</p>
-      <p><strong>About Me:</strong> {profile.About || 'N/A'}</p>
-      <p><strong>Avatar:</strong> {profile.Avatar || 'N/A'}</p>
+      <p><strong>Email:</strong> {profile.email}</p>
+      <p><strong>Name:</strong> {profile.first_name} {profile.last_name}</p>
+      <p><strong>Date of Birth:</strong> {profile.date_of_birth}</p>
+      <p><strong>Nickname:</strong> {profile.nickname || 'N/A'}</p>
+      <p><strong>About Me:</strong> {profile.about || 'N/A'}</p>
+      <p><strong>Avatar:</strong> {profile.avatar || 'N/A'}</p>
 
       <button
   className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
