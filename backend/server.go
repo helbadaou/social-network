@@ -10,20 +10,22 @@ import (
 )
 
 func main() {
-
+	
 	sqlite.InitDB()
 
-	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "pong")
-	})
+	mux := http.NewServeMux()
 
-    http.Handle("/api/login", auth.CorsMiddleware(http.HandlerFunc(auth.LoginHandler)))
-    http.Handle("/api/register", auth.CorsMiddleware(http.HandlerFunc(auth.RegisterHandler)))
-    http.Handle("/api/logout",  auth.CorsMiddleware(http.HandlerFunc(auth.LogoutHandler)))
-    http.Handle("/api/profile", auth.CorsMiddleware(auth.AuthMiddleware(auth.ProfileHandler)))
-    //http.HandleFunc("/follow", handlers.SendFollowRequest)
 
+	mux.HandleFunc("/api/login", auth.LoginHandler)
+	mux.HandleFunc("/api/register", auth.RegisterHandler)
+	mux.HandleFunc("/api/logout", auth.LogoutHandler)
+	mux.HandleFunc("/api/profile", auth.ProfileHandler)
+	// mux.HandleFunc("/search", auth.SearchUsers)
+	// mux.HandleFunc("/follow", handlers.SendFollowRequest)
+
+	// Wrap entire mux with CORS middleware once
+	handlerWithCors := auth.CorsMiddleware(mux)
 
 	fmt.Println("✅ Server started at :8080")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", handlerWithCors)
 }

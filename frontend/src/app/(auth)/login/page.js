@@ -22,7 +22,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         setMessage('✅ Login successful!')
-        router.push('/profile') // redirect to home or profile
+        router.push('/home') // redirect to home or profile
       } else {
         const text = await res.text()
         setMessage(`❌ ${text}`)

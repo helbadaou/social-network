@@ -4,10 +4,25 @@ import (
 	 
 	"encoding/json"
 	"net/http"
-     "fmt"
+    "fmt"
 	"golang.org/x/crypto/bcrypt"
 	"social-network/backend/pkg/db/sqlite"
+	"strings"
+
 )
+
+type User struct {
+	ID           int
+	Email        string
+	Password     string
+	FirstName    string
+	LastName     string
+	DateOfBirth  string
+	Nickname     string
+	About        string
+	Avatar       string
+}
+
 
 type RegisterRequest struct {
 	Email       string `json:"email"`
@@ -77,12 +92,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req LoginRequest
+
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -105,6 +122,22 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var user User
+
+    query2 := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE email = ?`
+
+	err = sqlite.DB.QueryRow(query2, req.Email).Scan(
+    &user.ID, &user.Email, &user.FirstName, &user.LastName,
+    &user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar,
+)
+if err != nil {
+    http.Error(w, "User not found", http.StatusNotFound)
+	fmt.Println("user not found")
+    return
+}
+
+
+
 	// Set a simple cookie with user ID
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
@@ -115,6 +148,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Write([]byte("✅ Logged in successfully"))
+	json.NewEncoder(w).Encode(user)
 }
 
 
@@ -139,6 +173,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
+	
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -147,32 +182,63 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID := cookie.Value
 
-	query := `SELECT email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE id = ?`
-	var email, firstName, lastName, dob, nickname, about, avatar string
+	var user User
 
-	err = sqlite.DB.QueryRow(query, userID).Scan(&email, &firstName, &lastName, &dob, &nickname, &about, &avatar)
+	query := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE id = ?`
+
+	
+    err = sqlite.DB.QueryRow(query, userID).Scan(
+    &user.ID, &user.Email, &user.FirstName, &user.LastName,
+    &user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar,)
+
+
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	resp := map[string]string{
-		"email":      email,
-		"first_name": firstName,
-		"last_name":  lastName,
-		"date_of_birth": dob,
-		"nickname":   nickname,
-		"about":      about,
-		"avatar":     avatar,
-	}
+	 
 
-	jsonResp, _ := json.Marshal(resp)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonResp)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(user)
+
 }
 
 
+func SearchUsers(w http.ResponseWriter, r *http.Request) {
+	query := strings.ToLower(r.URL.Query().Get("query"))
+	if query == "" {
+		http.Error(w, "Missing query", http.StatusBadRequest)
+		return
+	}
 
+	rows, err := sqlite.DB.Query(`
+		SELECT id, first_name, last_name, nickname
+		FROM users
+		WHERE LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR LOWER(nickname) LIKE ?
+	`, "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var users []map[string]string
+	for rows.Next() {
+		var id int
+		var first, last, nick string
+		rows.Scan(&id, &first, &last, &nick)
+		users = append(users, map[string]string{
+			"id":         string(rune(id)),
+			"first_name": first,
+			"last_name":  last,
+			"nickname":   nick,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
  
 
 func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
