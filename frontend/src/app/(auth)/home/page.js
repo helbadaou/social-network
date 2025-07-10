@@ -20,6 +20,8 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
 
+  const [showMessages, setShowMessages] = useState(false)
+  
   ///// FENETRE POPUP
   const [selectedUser, setSelectedUser] = useState(null)
   const [showPopup, setShowPopup] = useState(false)
@@ -32,6 +34,41 @@ export default function HomePage() {
 
 
   const router = useRouter()
+
+   const [chatUsers, setChatUsers] = useState([])
+
+
+  const [openChats, setOpenChats] = useState([])
+
+const openChat = (user) => {
+  if (!openChats.some((c) => c.id === user.id)) {
+    setOpenChats((prev) => [...prev, user])
+  }
+}
+
+  
+
+
+  useEffect(() => {
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/api/users2', {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to fetch users')
+      const data = await res.json()
+      setChatUsers(data)
+
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    }
+  }
+
+  fetchUsers()
+}, [])
+
+
 
   // Charger utilisateur
   useEffect(() => {
@@ -282,6 +319,13 @@ export default function HomePage() {
           )}
         </div>
 
+          {/*💬 Message Icon */}
+    <button onClick={() => setShowMessages(true)} className="relative">
+      <img src='/message-icon.png' alt="Messages" className="w-6 h-6" />
+    </button>
+        
+
+
         {/* 👤 Avatar + Dropdown */}
         <div className="relative ml-4">
           <img
@@ -309,6 +353,72 @@ export default function HomePage() {
           )}
         </div>
       </nav>
+
+
+{/* 💬 Slide-out Message Sidebar */}
+<div
+  className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg transform transition-transform duration-300 z-40 ${
+    showMessages ? 'translate-x-0' : '-translate-x-full'
+  }`}
+>
+  <div className="flex justify-between items-center p-4 border-b">
+    <h2 className="text-lg font-semibold text-gray-800">📨 Messages</h2>
+    <button onClick={() => setShowMessages(false)} className="text-gray-500 hover:text-gray-800">
+      ✖
+    </button>
+  </div>
+
+  {/* Placeholder content */}
+
+ {chatUsers.map((u) => (
+    <div
+      key={u.id}
+      className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+      onClick={() => openChat(u)}
+    >
+      <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" />
+      <span className="text-sm font-medium text-gray-800">{u.full_name}</span>
+    </div>
+  ))}
+
+
+</div>
+
+
+{/* 🧩 Floating Chat Boxes */}
+<div className="fixed bottom-4 right-72 flex gap-4 z-40">
+  {openChats.map((u) => (
+    <div key={u.id} className="w-64 bg-white rounded-lg shadow-lg border p-3">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-medium text-gray-500">{u.full_name}</span>
+        <button
+          className="text-red-500 text-xs"
+          onClick={() =>
+            setOpenChats(openChats.filter((c) => c.id !== u.id))
+          }
+        >
+          ✖
+        </button>
+      </div>
+      <div className="h-32 overflow-y-auto bg-gray-50 rounded p-2 text-sm text-gray-700">
+        {/* 💬 Message history will go here */}
+        <p className="text-gray-400 italic">No messages yet...</p>
+      </div>
+      <div className="mt-2 flex">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          className="flex-1 border rounded-l px-2 py-1 text-sm"
+        />
+        <button className="bg-blue-500 text-white px-2 rounded-r text-sm">
+          Send
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
+
+
 
       {/* 💬 FORMULAIRE DE POST */}
       <div className="max-w-xl mx-auto mt-6 px-4">
