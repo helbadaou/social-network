@@ -108,6 +108,15 @@ func (u *User) Create(db *sql.DB) error {
     return nil
 }
 
+func (f *Follow) CreateFollow(db *sql.DB) error {
+	_, err := db.Exec(`
+		INSERT INTO follows (user_id, followed_id, created_at)
+		VALUES (?, ?, ?)
+	`, f.FollowerID, f.FollowingID, time.Now())
+	return err
+}
+
+
 func (u *User) Update(db *sql.DB) error {
     query := `
         UPDATE users 

@@ -212,7 +212,7 @@ func (h *UserHandler) FollowUser(w http.ResponseWriter, r *http.Request) {
 		follow.Status = "accepted"
 	}
 
-	if err := follow.Create(h.db); err != nil {
+	if err := follow.CreateFollow(h.db); err != nil {
 		utils.SendErrorResponse(w, "Error creating follow request", http.StatusInternalServerError)
 		return
 	}
@@ -223,7 +223,7 @@ func (h *UserHandler) FollowUser(w http.ResponseWriter, r *http.Request) {
 			UserID:        followData.UserID,
 			Type:          "follow_request",
 			Message:       "You have a new follow request",
-			RelatedUserID: &currentUserID,
+			// RelatedUserID: &currentUserID,
 		}
 		notification.Create(h.db)
 	}
@@ -418,37 +418,37 @@ func (h *UserHandler) getFollowRequests(userID int) ([]models.FollowRequest, err
 
 // Add this to your existing models/user.go file
 
-func (f *Follow) Create(db *sql.DB) error {
-	query := `
-        INSERT INTO follows (follower_id, following_id, status)
-        VALUES (?, ?, ?)
-    `
-	result, err := db.Exec(query, f.FollowerID, f.FollowingID, f.Status)
-	if err != nil {
-		return err
-	}
+// func (f *Follow) Create(db *sql.DB) error {
+// 	query := `
+//         INSERT INTO follows (follower_id, following_id, status)
+//         VALUES (?, ?, ?)
+//     `
+// 	result, err := db.Exec(query, f.FollowerID, f.FollowingID, f.Status)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return err
-	}
+// 	id, err := result.LastInsertId()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	f.ID = int(id)
-	return nil
-}
+// 	f.ID = int(id)
+// 	return nil
+// }
 
-func (f *Follow) Update(db *sql.DB) error {
-	query := `
-        UPDATE follows 
-        SET status = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    `
-	_, err := db.Exec(query, f.Status, f.ID)
-	return err
-}
+// func (f *Follow) Update(db *sql.DB) error {
+// 	query := `
+//         UPDATE follows 
+//         SET status = ?, updated_at = CURRENT_TIMESTAMP
+//         WHERE id = ?
+//     `
+// 	_, err := db.Exec(query, f.Status, f.ID)
+// 	return err
+// }
 
-func (f *Follow) Delete(db *sql.DB) error {
-	query := `DELETE FROM follows WHERE id = ?`
-	_, err := db.Exec(query, f.ID)
-	return err
-}
+// func (f *Follow) Delete(db *sql.DB) error {
+// 	query := `DELETE FROM follows WHERE id = ?`
+// 	_, err := db.Exec(query, f.ID)
+// 	return err
+// }

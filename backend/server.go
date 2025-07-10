@@ -7,7 +7,7 @@ import (
     "social-network/pkg/db/sqlite"
     "social-network/pkg/handlers"
     "social-network/pkg/middleware"
-    // "social-network/pkg/websocket"
+    "social-network/pkg/websocket"
 )
 
 func main() {
@@ -28,17 +28,17 @@ func main() {
     os.MkdirAll("uploads/posts", 0755)
 
     // Initialize WebSocket hub
-    // hub := websocket.NewHub()
-    // go hub.Run()
+    hub := websocket.NewHub()
+    go hub.Run()
 
     // Initialize handlers
     authHandler := handlers.NewAuthHandler(db)
     userHandler := handlers.NewUserHandler(db)
-    postHandler := handlers.NewPostHandler(db)
-    groupHandler := handlers.NewGroupHandler(db)
-    messageHandler := handlers.NewMessageHandler(db)
-    notificationHandler := handlers.NewNotificationHandler(db)
-    wsHandler := handlers.NewWebSocketHandler(hub)
+    // postHandler := handlers.NewPostHandler(db)
+    // groupHandler := handlers.NewGroupHandler(db)
+    // messageHandler := handlers.NewMessageHandler(db)
+    // notificationHandler := handlers.NewNotificationHandler(db)
+    // wsHandler := handlers.NewWebSocketHandler(hub)
 
     // Setup routes
     mux := http.NewServeMux()
@@ -62,33 +62,33 @@ func main() {
     mux.HandleFunc("/api/users/follow-requests/respond", middleware.CORS(middleware.AuthMiddleware(userHandler.RespondToFollowRequest)))
 
     // Post routes
-    mux.HandleFunc("/api/posts", middleware.CORS(middleware.AuthMiddleware(postHandler.GetPosts)))
-    mux.HandleFunc("/api/posts/create", middleware.CORS(middleware.AuthMiddleware(postHandler.CreatePost)))
-    mux.HandleFunc("/api/posts/comment", middleware.CORS(middleware.AuthMiddleware(postHandler.CreateComment)))
-    mux.HandleFunc("/api/posts/like", middleware.CORS(middleware.AuthMiddleware(postHandler.LikePost)))
+    // mux.HandleFunc("/api/posts", middleware.CORS(middleware.AuthMiddleware(postHandler.GetPosts)))
+    // mux.HandleFunc("/api/posts/create", middleware.CORS(middleware.AuthMiddleware(postHandler.CreatePost)))
+    // mux.HandleFunc("/api/posts/comment", middleware.CORS(middleware.AuthMiddleware(postHandler.CreateComment)))
+    // mux.HandleFunc("/api/posts/like", middleware.CORS(middleware.AuthMiddleware(postHandler.LikePost)))
 
-    // Group routes
-    mux.HandleFunc("/api/groups", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroups)))
-    mux.HandleFunc("/api/groups/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateGroup)))
-    mux.HandleFunc("/api/groups/join", middleware.CORS(middleware.AuthMiddleware(groupHandler.JoinGroup)))
-    mux.HandleFunc("/api/groups/invite", middleware.CORS(middleware.AuthMiddleware(groupHandler.InviteToGroup)))
-    mux.HandleFunc("/api/groups/posts", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroupPosts)))
-    mux.HandleFunc("/api/groups/posts/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateGroupPost)))
-    mux.HandleFunc("/api/groups/events", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroupEvents)))
-    mux.HandleFunc("/api/groups/events/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateEvent)))
-    mux.HandleFunc("/api/groups/events/respond", middleware.CORS(middleware.AuthMiddleware(groupHandler.RespondToEvent)))
+    // // Group routes
+    // mux.HandleFunc("/api/groups", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroups)))
+    // mux.HandleFunc("/api/groups/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateGroup)))
+    // mux.HandleFunc("/api/groups/join", middleware.CORS(middleware.AuthMiddleware(groupHandler.JoinGroup)))
+    // mux.HandleFunc("/api/groups/invite", middleware.CORS(middleware.AuthMiddleware(groupHandler.InviteToGroup)))
+    // mux.HandleFunc("/api/groups/posts", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroupPosts)))
+    // mux.HandleFunc("/api/groups/posts/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateGroupPost)))
+    // mux.HandleFunc("/api/groups/events", middleware.CORS(middleware.AuthMiddleware(groupHandler.GetGroupEvents)))
+    // mux.HandleFunc("/api/groups/events/create", middleware.CORS(middleware.AuthMiddleware(groupHandler.CreateEvent)))
+    // mux.HandleFunc("/api/groups/events/respond", middleware.CORS(middleware.AuthMiddleware(groupHandler.RespondToEvent)))
 
-    // Message routes
-    mux.HandleFunc("/api/messages", middleware.CORS(middleware.AuthMiddleware(messageHandler.GetMessages)))
-    mux.HandleFunc("/api/messages/send", middleware.CORS(middleware.AuthMiddleware(messageHandler.SendMessage)))
-    mux.HandleFunc("/api/messages/group", middleware.CORS(middleware.AuthMiddleware(messageHandler.GetGroupMessages)))
+    // // Message routes
+    // mux.HandleFunc("/api/messages", middleware.CORS(middleware.AuthMiddleware(messageHandler.GetMessages)))
+    // mux.HandleFunc("/api/messages/send", middleware.CORS(middleware.AuthMiddleware(messageHandler.SendMessage)))
+    // mux.HandleFunc("/api/messages/group", middleware.CORS(middleware.AuthMiddleware(messageHandler.GetGroupMessages)))
 
-    // Notification routes
-    mux.HandleFunc("/api/notifications", middleware.CORS(middleware.AuthMiddleware(notificationHandler.GetNotifications)))
-    mux.HandleFunc("/api/notifications/mark-read", middleware.CORS(middleware.AuthMiddleware(notificationHandler.MarkAsRead)))
+    // // Notification routes
+    // mux.HandleFunc("/api/notifications", middleware.CORS(middleware.AuthMiddleware(notificationHandler.GetNotifications)))
+    // mux.HandleFunc("/api/notifications/mark-read", middleware.CORS(middleware.AuthMiddleware(notificationHandler.MarkAsRead)))
 
     // WebSocket
-    mux.HandleFunc("/ws", middleware.CORS(wsHandler.HandleWebSocket))
+    // mux.HandleFunc("/ws", middleware.CORS(wsHandler.HandleWebSocket))
 
     // Add logging middleware
     handler := middleware.LoggingMiddleware(mux)
