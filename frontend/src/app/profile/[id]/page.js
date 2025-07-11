@@ -62,7 +62,7 @@ export default function PublicProfilePage() {
     <main className="min-h-screen bg-black text-gray-100 px-4 py-6">
       <button
         onClick={() => router.push('/home')}
-        className="mb-4 text-sm text-blue-400 hover:text-blue-300 underline"
+        className="mb-4 text-sm text-blue-400 hover:text-blue-300 underline cursor-pointer"
       >
         ← Retour à l’accueil
       </button>
@@ -79,7 +79,7 @@ export default function PublicProfilePage() {
             alt="Avatar"
             className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
           />
-          <p><strong className="text-blue-400">Nom d'utilisateur :</strong> @{profile.nickname}</p>
+          <p><strong className="text-blue-400">Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}</p>
           <p><strong className="text-blue-400">Email :</strong> {profile.email}</p>
           <p><strong className="text-blue-400">À propos :</strong> {profile.about || 'N/A'}</p>
           <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>

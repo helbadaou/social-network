@@ -286,63 +286,58 @@ export default function HomePage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black text-gray-100">
       {/* 🌐 NAVBAR */}
-      <nav className="bg-white shadow flex justify-between items-center px-6 py-4">
+      <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800">
         {/* 🔍 Search */}
-        <div className="max-w-xl mx-auto mt-8 px-4">
+        <div className="max-w-xl w-full relative">
           <input
             type="text"
-            placeholder="🔍 Search users..."
+            placeholder="🔍 Rechercher un utilisateur..."
             value={search}
             onChange={handleSearch}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none"
+            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none"
           />
           {results.length > 0 && (
-            <div className="bg-white mt-2 rounded-md shadow-md">
+            <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700">
               {results.map((u) => (
                 <div
                   key={u.id}
-                  className="p-3 hover:bg-gray-100 cursor-pointer border-b"
+                  className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
                   onClick={() => handleUserClick(u.id)}
                 >
-
-                  <p className="font-medium">
-
-                    {u.first_name}{u.last_name}
+                  <p className="font-medium text-white">
+                    {u.first_name} {u.last_name}
                   </p>
-                  <p className="text-sm text-gray-500">@{u.nickname}</p>
-
+                  <p className="text-sm text-gray-400">@{u.nickname}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/*💬 Message Icon */}
+        {/* 💬 Message Icon */}
         <button onClick={() => setShowMessages(true)} className="relative">
-          <img src='/message-icon.png' alt="Messages" className="w-6 h-6" />
+          <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
         </button>
 
-
-
         {/* 👤 Avatar + Dropdown */}
-        <div className="relative ml-4">
+        <div className="relative ml-6">
           <img
             src={user?.author_avatar && user.author_avatar.trim() !== '' ? user.author_avatar : '/avatar.png'}
             alt="Avatar"
             onClick={toggleProfile}
-            className="w-10 h-10 rounded-full border cursor-pointer"
+            className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
           />
 
           {showProfile && user && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg p-4 z-20">
-              <h2 className="font-semibold">
+            <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-20">
+              <h2 className="font-semibold text-white">
                 {user.FirstName} {user.LastName}
               </h2>
-              <p className="text-sm text-gray-500">@{user.Nickname || 'anonymous'}</p>
-              {user.About && <p className="text-sm text-blue-600 mt-2">{user.About}</p>}
-              <p className="text-sm text-blue-600 mt-2">{user.Email}</p>
+              <p className="text-sm text-gray-400">@{user.Nickname || 'anonymous'}</p>
+              {user.About && <p className="text-sm text-blue-400 mt-2">{user.About}</p>}
+              <p className="text-sm text-blue-400 mt-2">{user.Email}</p>
               <button
                 onClick={handleLogout}
                 className="mt-3 text-sm text-red-500 hover:underline"
@@ -354,90 +349,82 @@ export default function HomePage() {
         </div>
       </nav>
 
-
-      {/* 💬 Slide-out Message Sidebar */}
+      {/* 💬 Message Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg transform transition-transform duration-300 z-40 ${showMessages ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 left-0 h-full w-72 bg-gray-900 shadow-lg transform transition-transform duration-300 z-40 ${showMessages ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">📨 Messages</h2>
-          <button onClick={() => setShowMessages(false)} className="text-gray-500 hover:text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-400">📨 Messages</h2>
+          <button onClick={() => setShowMessages(false)} className="text-gray-400 hover:text-white">
             ✖
           </button>
         </div>
 
-        {/* Placeholder content */}
-
         {chatUsers.map((u) => (
           <div
             key={u.id}
-            className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+            className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
             onClick={() => openChat(u)}
           >
             <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" />
-            <span className="text-sm font-medium text-gray-800">{u.full_name}</span>
+            <span className="text-sm font-medium text-white">{u.full_name}</span>
           </div>
         ))}
-
-
       </div>
 
-
-      {/* 🧩 Floating Chat Boxes */}
+      {/* 💬 Chats flottants */}
       <div className="fixed bottom-4 right-72 flex gap-4 z-40">
         {openChats.map((u) => (
-          <div key={u.id} className="w-64 bg-white rounded-lg shadow-lg border p-3">
+          <div key={u.id} className="w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-medium text-gray-500">{u.full_name}</span>
+              <span className="font-medium text-white">{u.full_name}</span>
               <button
-                className="text-red-500 text-xs"
-                onClick={() =>
-                  setOpenChats(openChats.filter((c) => c.id !== u.id))
-                }
+                className="text-red-400 text-xs"
+                onClick={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
               >
                 ✖
               </button>
             </div>
-            <div className="h-32 overflow-y-auto bg-gray-50 rounded p-2 text-sm text-gray-700">
-              {/* 💬 Message history will go here */}
-              <p className="text-gray-400 italic">No messages yet...</p>
+            <div className="h-32 overflow-y-auto bg-gray-900 rounded p-2 text-sm text-gray-300">
+              <p className="text-gray-500 italic">Aucun message pour le moment...</p>
             </div>
             <div className="mt-2 flex">
               <input
                 type="text"
-                placeholder="Type a message..."
-                className="flex-1 border rounded-l px-2 py-1 text-sm"
+                placeholder="Écrire un message..."
+                className="flex-1 bg-gray-700 border border-gray-600 text-white rounded-l px-2 py-1 text-sm"
               />
-              <button className="bg-blue-500 text-white px-2 rounded-r text-sm">
-                Send
+              <button className="bg-blue-600 text-white px-2 rounded-r text-sm">
+                Envoyer
               </button>
             </div>
           </div>
         ))}
       </div>
 
-
-
-      {/* 💬 FORMULAIRE DE POST */}
+      {/* 📝 Post Form + Posts */}
       <div className="max-w-xl mx-auto mt-6 px-4">
-        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow mb-6 flex flex-col gap-4">
+        {/* 📝 Formulaire */}
+        <form onSubmit={handleSubmit} className="bg-gray-900 p-4 rounded-xl shadow mb-6 flex flex-col gap-4 border border-gray-700">
           <textarea
             placeholder="Exprimez-vous..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="border p-2 rounded resize-none text-sm text-gray-500"
+            className="bg-gray-800 border border-gray-700 p-2 rounded resize-none text-sm text-white"
             rows={3}
             required
           />
-          <input type="file" accept="image/*"
-            className="border p-2 rounded text-sm text-gray-500"
+          <input
+            type="file"
+            accept="image/*"
+            className="bg-gray-800 border border-gray-700 p-2 rounded text-sm text-white"
             onChange={(e) => setImage(e.target.files[0])}
           />
           <select
             value={privacy}
             onChange={(e) => setPrivacy(e.target.value)}
-            className="border p-2 rounded text-sm text-gray-500"
+            className="bg-gray-800 border border-gray-700 p-2 rounded text-sm text-white"
           >
             <option value="public">Public</option>
             <option value="followers">Abonnés</option>
@@ -450,120 +437,118 @@ export default function HomePage() {
           >
             {creating ? 'Publication...' : 'Publier'}
           </button>
-          {error && <p className="text-red-600">{error}</p>}
-          {success && <p className="text-green-600">{success}</p>}
+          {error && <p className="text-red-400">{error}</p>}
+          {success && <p className="text-green-400">{success}</p>}
         </form>
 
-        {/* 📄 AFFICHAGE DES POSTS */}
+        {/* 📄 Affichage des posts */}
         {loading ? (
-          <p>Chargement...</p>
+          <p className="text-gray-400">Chargement...</p>
         ) : posts.length === 0 ? (
-          <p>Aucun post pour le moment.</p>
+          <p className="text-gray-400">Aucun post pour le moment.</p>
         ) : (
           posts.map((post, i) => (
             <div
               key={i}
-              className="bg-white shadow rounded-xl p-4 mb-4 border"
+              className="bg-gray-800 shadow rounded-xl p-4 mb-4 border border-gray-700"
             >
               <div
                 onClick={() => fetchUserById(post.author_id)}
-                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
               >
                 <img
                   src={post.author_avatar || '/avatar.png'}
                   alt={post.author_name}
-                  className="w-10 h-10 rounded-full object-cover border"
+                  className="w-10 h-10 rounded-full object-cover border border-gray-600"
                 />
                 <div>
-                  <div className="font-medium text-blue-600 hover:underline">
+                  <div className="font-medium text-blue-400 hover:underline">
                     {post.author_name}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-400">
                     Publié le {new Date(post.created_at).toLocaleString()}
                   </div>
                 </div>
               </div>
 
-              <div className="text-sm text-gray-700">{post.content}</div>
+              <div className="text-sm text-gray-200 whitespace-pre-wrap">{post.content}</div>
               {post.image_url && (
                 <img
                   src={post.image_url}
                   alt="post"
-                  className="mt-2 max-h-60 object-contain rounded"
+                  className="mt-2 max-h-60 object-contain rounded border border-gray-700"
                 />
               )}
             </div>
           ))
         )}
+      </div>
 
-        {showPopup && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 relative animate-fade-in">
-              {/* ❌ Bouton fermer */}
-              <button
-                onClick={() => setShowPopup(false)}
-                className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl"
-              >
-                ×
-              </button>
+      {/* 👤 Popup utilisateur */}
+      {showPopup && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-gray-700">
+            <button
+              onClick={() => setShowPopup(false)}
+              className="absolute top-2 right-3 text-gray-400 hover:text-white text-xl"
+            >
+              ×
+            </button>
 
-              {/* 👤 Avatar */}
-              <div className="flex flex-col items-center">
-                <img
-                  src={selectedUser.author_avatar || '/avatar.png'}
-                  alt="Avatar"
-                  className="w-20 h-20 rounded-full border object-cover mb-3"
-                />
-                <h2 className="text-lg font-semibold text-center text-gray-500">
-                  {selectedUser.first_name} {selectedUser.last_name}
-                </h2>
-                <p className="text-gray-500 text-sm">{selectedUser.nickname || ''}</p>
-                {selectedUser.About && (
-                  <p className="mt-2 text-sm text-blue-600 text-center text-gray-500">
-                    {selectedUser.About || ''}
-                  </p>
-                )}
-                <p className="mt-1 text-sm text-gray-600 text-center">{selectedUser.email}</p>
-                {selectedUser.date_of_birth && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    🎂 Né(e) le {selectedUser.date_of_birth}
-                  </p>
-                )}
-                {/* 👉 Bouton suivre (seulement si ce n'est pas mon profil) */}
-                {selectedUser.id !== user?.ID && (
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={followStatus !== ''}
-                    className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${followStatus === 'accepted'
-                      ? 'bg-gray-300 text-gray-700 cursor-default'
-                      : followStatus === 'pending'
-                        ? 'bg-yellow-400 text-white cursor-default'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                  >
-                    {followStatus === 'accepted'
-                      ? '✔ Abonné'
-                      : followStatus === 'pending'
-                        ? '🕓 En attente'
-                        : '+ Suivre'}
-                  </button>
-                )}
-
-                {/* 👉 Bouton vers le profil complet : toujours affiché */}
+            <div className="flex flex-col items-center">
+              <img
+                src={selectedUser.author_avatar || '/avatar.png'}
+                alt="Avatar"
+                className="w-20 h-20 rounded-full border border-gray-600 object-cover mb-3"
+              />
+              <h2 className="text-lg font-semibold text-center text-white">
+                {selectedUser.first_name} {selectedUser.last_name}
+              </h2>
+              <p className="text-gray-400 text-sm">@{selectedUser.nickname || ''}</p>
+              {selectedUser.About && (
+                <p className="mt-2 text-sm text-blue-400 text-center">
+                  {selectedUser.About}
+                </p>
+              )}
+              <p className="mt-1 text-sm text-gray-400 text-center">{selectedUser.email}</p>
+              {selectedUser.date_of_birth && (
+                <p className="text-sm text-gray-500 mt-2">
+                  🎂 Né(e) le {selectedUser.date_of_birth}
+                </p>
+              )}
+              {selectedUser.id !== user?.ID && (
                 <button
-                  className="mt-3 text-blue-600 text-sm hover:underline"
-                  onClick={() => {
-                    setShowPopup(false)
-                    router.push(`/profile/${selectedUser.id}`)
-                  }}
+                  onClick={handleFollowToggle}
+                  disabled={followStatus !== ''}
+                  className={`mt-4 px-4 py-2 rounded-full text-sm font-medium cursor-pointer ${followStatus === 'accepted'
+                    ? 'bg-gray-500 text-white cursor-default'
+                    : followStatus === 'pending'
+                      ? 'bg-yellow-500 text-white cursor-default'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
-                  Voir le profil complet →
+                  {followStatus === 'accepted'
+                    ? '✔ Abonné'
+                    : followStatus === 'pending'
+                      ? '🕓 En attente'
+                      : '+ Suivre'}
                 </button>
-              </div>
+              )}
+
+              <button
+                className="mt-3 text-blue-400 text-sm hover:underline cursor-pointer"
+                onClick={() => {
+                  setShowPopup(false)
+                  router.push(`/profile/${selectedUser.id}`)
+                }}
+              >
+                Voir le profil complet →
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
+
 }
