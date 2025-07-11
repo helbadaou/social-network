@@ -24,6 +24,10 @@ func InitDB() {
 	applyMigrations()
 }
 
+func GetDB() *sql.DB {
+    return DB
+}
+
 func applyMigrations() {
 	driver, err := sqlite3.WithInstance(DB, &sqlite3.Config{})
 	if err != nil {

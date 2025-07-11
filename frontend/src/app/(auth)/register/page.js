@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -26,11 +28,17 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    const formData = new FormData()
+    Object.entries(form).forEach(([key, value]) => {
+      if (value) formData.append(key, value)
+    })
+
     try {
       const res = await fetch('http://localhost:8080/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        // headers: { 'Content-Type': 'application/json' },
+        body: formData,
       })
 
       if (res.ok) {
@@ -68,7 +76,14 @@ export default function RegisterPage() {
         <Input name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} required />
         <Input name="nickname" placeholder="Nickname (optional)" value={form.nickname} onChange={handleChange} />
         <Textarea name="about" placeholder="About Me (optional)" value={form.about} onChange={handleChange} />
-        <Input name="avatar" placeholder="Avatar (image name, optional)" value={form.avatar} onChange={handleChange} />
+        <input
+          type="file"
+          name="avatar"
+          accept="image/*"
+          onChange={(e) => setForm(prev => ({ ...prev, avatar: e.target.files[0] }))}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-400"
+        />
+
 
         <button
           type="submit"
@@ -76,13 +91,20 @@ export default function RegisterPage() {
         >
           Register
         </button>
+
+        {/* 👉 Lien vers le login */}
+        <p className="text-center text-sm mt-4 text-gray-600">
+          Vous avez déjà un compte ?{' '}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Connectez-vous ici
+          </Link>
+        </p>
       </form>
 
       {message.text && (
         <p
-          className={`mt-4 text-center font-medium ${
-            message.type === 'success' ? 'text-green-600' : 'text-red-600'
-          }`}
+          className={`mt-4 text-center font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'
+            }`}
         >
           {message.text}
         </p>
@@ -112,4 +134,3 @@ function Textarea({ name, ...props }) {
     />
   )
 }
-
