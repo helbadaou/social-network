@@ -3,7 +3,10 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"social-network/backend/pkg/db/sqlite"
@@ -94,4 +97,50 @@ func PostsHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// GET /api/users/{id}/posts
+func GetUserPostsHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/user-posts/")
+	userID, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := sqlite.DB.Query(`
+		SELECT id, content, image_url, created_at 
+		FROM posts 
+		WHERE author_id = ? 
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		log.Println("⛔ Erreur SQL GetUserPostsHandler:", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var posts []struct {
+		ID        int    `json:"id"`
+		Content   string `json:"content"`
+		Image     string `json:"image_url"`
+		CreatedAt string `json:"created_at"`
+	}
+
+	for rows.Next() {
+		var post struct {
+			ID        int    `json:"id"`
+			Content   string `json:"content"`
+			Image     string `json:"image_url"`
+			CreatedAt string `json:"created_at"`
+		}
+		if err := rows.Scan(&post.ID, &post.Content, &post.Image, &post.CreatedAt); err != nil {
+			continue
+		}
+		posts = append(posts, post)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts) // ✅ pas de WriteHeader manuelle si tout va bien
 }

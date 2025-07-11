@@ -1,0 +1,11 @@
+# Fichiers générés par Go
+*.exe
+*.out
+*.test
+
+# Uploads utilisateur (avatars/images)
+uploads/avatars/*
+!uploads/avatars/.gitkeep
+
+# Fichiers temporaires
+*.log

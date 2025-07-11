@@ -21,7 +21,7 @@ export default function HomePage() {
   const [results, setResults] = useState([])
 
   const [showMessages, setShowMessages] = useState(false)
-  
+
   ///// FENETRE POPUP
   const [selectedUser, setSelectedUser] = useState(null)
   const [showPopup, setShowPopup] = useState(false)
@@ -35,38 +35,38 @@ export default function HomePage() {
 
   const router = useRouter()
 
-   const [chatUsers, setChatUsers] = useState([])
+  const [chatUsers, setChatUsers] = useState([])
 
 
   const [openChats, setOpenChats] = useState([])
 
-const openChat = (user) => {
-  if (!openChats.some((c) => c.id === user.id)) {
-    setOpenChats((prev) => [...prev, user])
+  const openChat = (user) => {
+    if (!openChats.some((c) => c.id === user.id)) {
+      setOpenChats((prev) => [...prev, user])
+    }
   }
-}
 
-  
+
 
 
   useEffect(() => {
 
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/api/users2', {
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Failed to fetch users')
-      const data = await res.json()
-      setChatUsers(data)
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/chat-users', {
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error('Failed to fetch users')
+        const data = await res.json()
+        setChatUsers(data)
 
-    } catch (err) {
-      console.error('Error fetching users:', err)
+      } catch (err) {
+        console.error('Error fetching users:', err)
+      }
     }
-  }
 
-  fetchUsers()
-}, [])
+    fetchUsers()
+  }, [])
 
 
 
@@ -267,21 +267,21 @@ const openChat = (user) => {
     }
   }
 
-//   const closePopup = () => {
-//     setShowPopup(false)
-//     setSelectedUser(null)
-//     setFollowStatus('')
-//   }
+  //   const closePopup = () => {
+  //     setShowPopup(false)
+  //     setSelectedUser(null)
+  //     setFollowStatus('')
+  //   }
 
-//   const PopupProfil = ({ user, followStatus, setFollowStatus, onClose }) => {
-//   return (
-//     <div className="popup">
-//       <button onClick={onClose}>Fermer</button>
-//       <h2>{user.nickname}</h2>
-//       {/* Suivre / suivre déjà, etc. */}
-//     </div>
-//   )
-// }
+  //   const PopupProfil = ({ user, followStatus, setFollowStatus, onClose }) => {
+  //   return (
+  //     <div className="popup">
+  //       <button onClick={onClose}>Fermer</button>
+  //       <h2>{user.nickname}</h2>
+  //       {/* Suivre / suivre déjà, etc. */}
+  //     </div>
+  //   )
+  // }
 
 
 
@@ -319,11 +319,11 @@ const openChat = (user) => {
           )}
         </div>
 
-          {/*💬 Message Icon */}
-    <button onClick={() => setShowMessages(true)} className="relative">
-      <img src='/message-icon.png' alt="Messages" className="w-6 h-6" />
-    </button>
-        
+        {/*💬 Message Icon */}
+        <button onClick={() => setShowMessages(true)} className="relative">
+          <img src='/message-icon.png' alt="Messages" className="w-6 h-6" />
+        </button>
+
 
 
         {/* 👤 Avatar + Dropdown */}
@@ -355,68 +355,67 @@ const openChat = (user) => {
       </nav>
 
 
-{/* 💬 Slide-out Message Sidebar */}
-<div
-  className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg transform transition-transform duration-300 z-40 ${
-    showMessages ? 'translate-x-0' : '-translate-x-full'
-  }`}
->
-  <div className="flex justify-between items-center p-4 border-b">
-    <h2 className="text-lg font-semibold text-gray-800">📨 Messages</h2>
-    <button onClick={() => setShowMessages(false)} className="text-gray-500 hover:text-gray-800">
-      ✖
-    </button>
-  </div>
+      {/* 💬 Slide-out Message Sidebar */}
+      <div
+        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg transform transition-transform duration-300 z-40 ${showMessages ? 'translate-x-0' : '-translate-x-full'
+          }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-lg font-semibold text-gray-800">📨 Messages</h2>
+          <button onClick={() => setShowMessages(false)} className="text-gray-500 hover:text-gray-800">
+            ✖
+          </button>
+        </div>
 
-  {/* Placeholder content */}
+        {/* Placeholder content */}
 
- {chatUsers.map((u) => (
-    <div
-      key={u.id}
-      className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-100 p-2 rounded-md"
-      onClick={() => openChat(u)}
-    >
-      <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" />
-      <span className="text-sm font-medium text-gray-800">{u.full_name}</span>
-    </div>
-  ))}
-
-
-</div>
+        {chatUsers.map((u) => (
+          <div
+            key={u.id}
+            className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+            onClick={() => openChat(u)}
+          >
+            <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" />
+            <span className="text-sm font-medium text-gray-800">{u.full_name}</span>
+          </div>
+        ))}
 
 
-{/* 🧩 Floating Chat Boxes */}
-<div className="fixed bottom-4 right-72 flex gap-4 z-40">
-  {openChats.map((u) => (
-    <div key={u.id} className="w-64 bg-white rounded-lg shadow-lg border p-3">
-      <div className="flex justify-between items-center mb-2">
-        <span className="font-medium text-gray-500">{u.full_name}</span>
-        <button
-          className="text-red-500 text-xs"
-          onClick={() =>
-            setOpenChats(openChats.filter((c) => c.id !== u.id))
-          }
-        >
-          ✖
-        </button>
       </div>
-      <div className="h-32 overflow-y-auto bg-gray-50 rounded p-2 text-sm text-gray-700">
-        {/* 💬 Message history will go here */}
-        <p className="text-gray-400 italic">No messages yet...</p>
+
+
+      {/* 🧩 Floating Chat Boxes */}
+      <div className="fixed bottom-4 right-72 flex gap-4 z-40">
+        {openChats.map((u) => (
+          <div key={u.id} className="w-64 bg-white rounded-lg shadow-lg border p-3">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium text-gray-500">{u.full_name}</span>
+              <button
+                className="text-red-500 text-xs"
+                onClick={() =>
+                  setOpenChats(openChats.filter((c) => c.id !== u.id))
+                }
+              >
+                ✖
+              </button>
+            </div>
+            <div className="h-32 overflow-y-auto bg-gray-50 rounded p-2 text-sm text-gray-700">
+              {/* 💬 Message history will go here */}
+              <p className="text-gray-400 italic">No messages yet...</p>
+            </div>
+            <div className="mt-2 flex">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                className="flex-1 border rounded-l px-2 py-1 text-sm"
+              />
+              <button className="bg-blue-500 text-white px-2 rounded-r text-sm">
+                Send
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="mt-2 flex">
-        <input
-          type="text"
-          placeholder="Type a message..."
-          className="flex-1 border rounded-l px-2 py-1 text-sm"
-        />
-        <button className="bg-blue-500 text-white px-2 rounded-r text-sm">
-          Send
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
 
 
 
@@ -518,10 +517,10 @@ const openChat = (user) => {
                 <h2 className="text-lg font-semibold text-center text-gray-500">
                   {selectedUser.first_name} {selectedUser.last_name}
                 </h2>
-                <p className="text-gray-500 text-sm">{selectedUser.nickname || 'anonymous'}</p>
+                <p className="text-gray-500 text-sm">{selectedUser.nickname || ''}</p>
                 {selectedUser.About && (
                   <p className="mt-2 text-sm text-blue-600 text-center text-gray-500">
-                    {selectedUser.About || 'Vide'}
+                    {selectedUser.About || ''}
                   </p>
                 )}
                 <p className="mt-1 text-sm text-gray-600 text-center">{selectedUser.email}</p>
@@ -530,6 +529,7 @@ const openChat = (user) => {
                     🎂 Né(e) le {selectedUser.date_of_birth}
                   </p>
                 )}
+                {/* 👉 Bouton suivre (seulement si ce n'est pas mon profil) */}
                 {selectedUser.id !== user?.ID && (
                   <button
                     onClick={handleFollowToggle}
@@ -548,6 +548,17 @@ const openChat = (user) => {
                         : '+ Suivre'}
                   </button>
                 )}
+
+                {/* 👉 Bouton vers le profil complet : toujours affiché */}
+                <button
+                  className="mt-3 text-blue-600 text-sm hover:underline"
+                  onClick={() => {
+                    setShowPopup(false)
+                    router.push(`/profile/${selectedUser.id}`)
+                  }}
+                >
+                  Voir le profil complet →
+                </button>
               </div>
             </div>
           </div>

@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -60,41 +62,73 @@ type ChatUser struct {
 	Avatar   string `json:"avatar"`
 }
 
-
-
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req RegisterRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err := r.ParseMultipartForm(10 << 20) // max 10MB
 	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// Lire les champs du formulaire
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	firstName := r.FormValue("first_name")
+	lastName := r.FormValue("last_name")
+	dateOfBirth := r.FormValue("date_of_birth")
+	nickname := r.FormValue("nickname")
+	about := r.FormValue("about")
+
+	// Gérer l'image (optionnelle)
+	var avatarPath string
+	file, header, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+		// Crée un nom unique (optionnel : hash, timestamp, etc.)
+		avatarPath = "uploads/avatars/" + header.Filename
+
+		out, err := os.Create(avatarPath)
+		if err != nil {
+			http.Error(w, "Unable to save file", http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, file)
+		if err != nil {
+			http.Error(w, "Failed to write file", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Aucun fichier envoyé = avatar vide
+		avatarPath = ""
+	}
+
+	// Hash du mot de passe
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 		return
 	}
 
+	// Insertion dans la DB
 	stmt := `
 	INSERT INTO users (email, password, first_name, last_name, date_of_birth, nickname, about, avatar)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
 
 	_, err = sqlite.DB.Exec(stmt,
-		req.Email,
+		email,
 		string(hashedPassword),
-		req.FirstName,
-		req.LastName,
-		req.DateOfBirth,
-		req.Nickname,
-		req.About,
-		req.Avatar,
+		firstName,
+		lastName,
+		dateOfBirth,
+		nickname,
+		about,
+		avatarPath,
 	)
 	if err != nil {
 		http.Error(w, "Email already registered or DB error", http.StatusConflict)
@@ -392,10 +426,9 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
-
-
 
 func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := sqlite.DB.Query(`SELECT id, first_name, last_name, avatar FROM users`)
@@ -424,10 +457,10 @@ func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(users) > 0 {
-	fmt.Println("users are" , users)
-}else {
-fmt.Println("no users available")
-}
+		fmt.Println("users are", users)
+	} else {
+		fmt.Println("no users available")
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }

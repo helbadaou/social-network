@@ -26,11 +26,13 @@ func main() {
 
 
 	mux.HandleFunc("/api/users/", auth.GetUserByIDHandler)
+	mux.HandleFunc("/api/user-posts/", auth.GetUserPostsHandler)
+
 	mux.HandleFunc("/api/search", auth.SearchUsersHandler)
 	mux.HandleFunc("/api/follow", auth.SendFollowRequest)
 	http.HandleFunc("/api/follow/status/", auth.GetFollowStatus)
 
-		mux.HandleFunc("/api/users2", auth.GetAllChatUsers)
+	mux.HandleFunc("/api/chat-users", auth.GetAllChatUsers)
 
 
 
