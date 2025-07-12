@@ -220,12 +220,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := cookie.Value
-
-	// query := `SELECT email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE id = ?`
-	// var email, firstName, lastName, dob, nickname, about, avatar string
-
-	// err = sqlite.DB.QueryRow(query, userID).Scan(&email, &firstName, &lastName, &dob, &nickname, &about, &avatar)
-
+ 
 	var user User
 
 	query := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE id = ?`
@@ -237,20 +232,9 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-
-	// resp := map[string]string{
-	// 	"email":         email,
-	// 	"first_name":    firstName,
-	// 	"last_name":     lastName,
-	// 	"date_of_birth": dob,
-	// 	"nickname":      nickname,
-	// 	"about":         about,
-	// 	"avatar":        avatar,
-	// }
-
-	// jsonResp, _ := json.Marshal(resp)
+ 
 	w.Header().Set("Content-Type", "application/json")
-	// w.Write(jsonResp)
+	 
 	json.NewEncoder(w).Encode(user)
 }
 
@@ -464,3 +448,5 @@ func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
+
+

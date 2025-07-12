@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
 export default function HomePage() {
   const [posts, setPosts] = useState([])
@@ -13,45 +12,43 @@ export default function HomePage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  //// AVATAR ET DROPDOWN
+ 
+  // Avatar and dropdown
   const [user, setUser] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
 
+  // Messages sidebar
   const [showMessages, setShowMessages] = useState(false)
-
-  ///// FENETRE POPUP
+  // Popup user profile
   const [selectedUser, setSelectedUser] = useState(null)
   const [showPopup, setShowPopup] = useState(false)
 
-  //// BOUTON FOLLOW/UNFOLLOW
-  const [isFollowing, setIsFollowing] = useState(false)
+  // Follow status
   const [followStatus, setFollowStatus] = useState('') // '', 'accepted', 'pending'
 
+  // Chat users & open chat windows
+  const [chatUsers, setChatUsers] = useState([])
+  const [openChats, setOpenChats] = useState([])
 
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const ws = useRef(null)
 
 
   const router = useRouter()
 
-  const [chatUsers, setChatUsers] = useState([])
-
-
-  const [openChats, setOpenChats] = useState([])
-
+  // Open a chat window if not already opened
   const openChat = (user) => {
     if (!openChats.some((c) => c.id === user.id)) {
       setOpenChats((prev) => [...prev, user])
     }
   }
 
-
-
-
+  // Fetch chat users on mount
   useEffect(() => {
-
-    const fetchUsers = async () => {
+    (async () => {
       try {
         const res = await fetch('http://localhost:8080/api/chat-users', {
           credentials: 'include',
@@ -59,18 +56,13 @@ export default function HomePage() {
         if (!res.ok) throw new Error('Failed to fetch users')
         const data = await res.json()
         setChatUsers(data)
-
       } catch (err) {
         console.error('Error fetching users:', err)
       }
-    }
-
-    fetchUsers()
+    })();
   }, [])
 
-
-
-  // Charger utilisateur
+  // Fetch logged-in user profile on mount
   useEffect(() => {
     fetchUser()
   }, [])
@@ -88,7 +80,7 @@ export default function HomePage() {
     }
   }
 
-  // Charger posts
+  // Fetch posts
   const fetchPosts = () => {
     setLoading(true)
     fetch('http://localhost:8080/api/posts', {
@@ -115,7 +107,7 @@ export default function HomePage() {
     fetchPosts()
   }, [])
 
-  // Publication d’un post
+  // Handle new post submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -148,10 +140,12 @@ export default function HomePage() {
     }
   }
 
+  // Toggle profile dropdown visibility
   const toggleProfile = () => {
     setShowProfile(!showProfile)
   }
 
+  // Search users on input
   const handleSearch = async (e) => {
     const value = e.target.value
     setSearch(value)
@@ -161,9 +155,9 @@ export default function HomePage() {
         const res = await fetch(`http://localhost:8080/search?query=${value}`, {
           credentials: 'include',
         })
+        if (!res.ok) throw new Error('Failed to search users')
         const data = await res.json()
         setResults(data)
-        console.log(data);
       } catch (err) {
         console.error('Error searching users:', err)
       }
@@ -172,6 +166,7 @@ export default function HomePage() {
     }
   }
 
+  // Logout handler
   const handleLogout = async () => {
     try {
       const res = await fetch('http://localhost:8080/api/logout', {
@@ -194,6 +189,7 @@ export default function HomePage() {
     return <p>Erreur lors du chargement des posts.</p>
   }
 
+  // Open user popup and check follow status
   const handleUserClick = async (userId) => {
     try {
       const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
@@ -203,13 +199,12 @@ export default function HomePage() {
       const data = await res.json()
       setSelectedUser(data)
 
-      // 👇 Vérifie le statut de follow
       const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
         credentials: 'include',
       })
       if (followRes.ok) {
         const { status } = await followRes.json()
-        setFollowStatus(status) // 'accepted' | 'pending' | '' (non suivi)
+        setFollowStatus(status)
       } else {
         setFollowStatus('')
       }
@@ -219,8 +214,7 @@ export default function HomePage() {
     }
   }
 
-
-
+  // Fetch user by id to show profile popup (alternative)
   const fetchUserById = async (userId) => {
     try {
       const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
@@ -229,7 +223,6 @@ export default function HomePage() {
       if (!res.ok) throw new Error('Erreur chargement profil')
       const data = await res.json()
       setSelectedUser(data)
-      setIsFollowing(data.is_following || false)
       setFollowStatus(data.follow_status || '')
       setShowPopup(true)
     } catch (err) {
@@ -237,7 +230,7 @@ export default function HomePage() {
     }
   }
 
-  //// FOLLOW/ UNFOLLOW
+  // Follow / unfollow toggle
   const handleFollowToggle = async () => {
     if (!selectedUser || followStatus !== '') return
 
@@ -263,33 +256,115 @@ export default function HomePage() {
       }
     } catch (err) {
       console.error('Erreur follow :', err?.message || err)
-      // alert(`⛔ ${err.message}`)
     }
   }
 
-  //   const closePopup = () => {
-  //     setShowPopup(false)
-  //     setSelectedUser(null)
-  //     setFollowStatus('')
-  //   }
-
-  //   const PopupProfil = ({ user, followStatus, setFollowStatus, onClose }) => {
-  //   return (
-  //     <div className="popup">
-  //       <button onClick={onClose}>Fermer</button>
-  //       <h2>{user.nickname}</h2>
-  //       {/* Suivre / suivre déjà, etc. */}
-  //     </div>
-  //   )
-  // }
+  // ChatBox component inside HomePage
+  function ChatBox({ currentUser, recipient, onClose }) {
 
 
+
+    useEffect(() => {
+      ws.current = new WebSocket('ws://localhost:8080/ws');
+
+      ws.current.onopen = () => {
+        console.log('✅ WebSocket connected')
+      }
+
+      ws.current.onmessage = (event) => {
+        const msg = JSON.parse(event.data)
+
+        if (
+          (msg.from === currentUser.ID && msg.to === recipient.ID) ||
+          (msg.from === recipient.ID && msg.to === currentUser.ID)
+        ) {
+          setMessages((prev) => [...prev, msg])
+        }
+      }
+
+      ws.current.onclose = () => {
+        console.log('❌ WebSocket disconnected')
+      };
+
+      ws.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+
+      return () => {
+        if (ws.current) {
+          ws.current.close();
+        }
+      };
+    }, [recipient.ID, currentUser.ID]);
+
+
+    const sendMessage = () => {
+      if (input.trim()) {
+        //if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          const messageObj = {
+            from: currentUser.ID,
+            to: recipient.ID,
+            content: input,
+            type: 'private',
+          };
+
+          ws.current.send(JSON.stringify(messageObj));
+          setMessages((prev) => [...prev, messageObj]);
+          setInput('');
+       // } else {
+        //  console.warn('WebSocket not open. Cannot send message.');
+       // }
+      }
+    }
+
+    return (
+      <div className="w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3 flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <span className="font-medium text-white">{recipient.full_name}</span>
+          <button
+            className="text-red-400 text-xs"
+            onClick={onClose}
+          >
+            ✖
+          </button>
+        </div>
+        <div className="h-32 overflow-y-auto bg-gray-900 rounded p-2 text-sm text-gray-300 flex-1 mb-2">
+          {messages.length === 0 ? (
+            <p className="text-gray-500 italic">Aucun message pour le moment...</p>
+          ) : (
+            messages.map((m, idx) => (
+              <p key={idx} className={`mb-1 ${m.from === currentUser.ID ? 'text-right text-blue-400' : 'text-left text-gray-300'}`}>
+                {m.content}
+              </p>
+            ))
+          )}
+        </div>
+        <div className="flex">
+          <input
+            type="text"
+            placeholder="Écrire un message..."
+            className="flex-1 bg-gray-700 border border-gray-600 text-white rounded-l px-2 py-1 text-sm"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage() } }}
+          />
+          <button
+            className="bg-blue-600 text-white px-2 rounded-r text-sm"
+            onClick={sendMessage}
+          >
+            Envoyer
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
-      {/* 🌐 NAVBAR */}
+      {/* NAVBAR */}
       <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800">
-        {/* 🔍 Search */}
+        {/* SEARCH */}
         <div className="max-w-xl w-full relative">
           <input
             type="text"
@@ -299,7 +374,7 @@ export default function HomePage() {
             className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none"
           />
           {results.length > 0 && (
-            <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700">
+            <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
               {results.map((u) => (
                 <div
                   key={u.id}
@@ -316,15 +391,15 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 💬 Message Icon */}
+        {/* MESSAGE ICON */}
         <button onClick={() => setShowMessages(true)} className="relative">
           <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
         </button>
 
-        {/* 👤 Avatar + Dropdown */}
+        {/* AVATAR + DROPDOWN */}
         <div className="relative ml-6">
           <img
-            src={user?.author_avatar && user.author_avatar.trim() !== '' ? user.author_avatar : '/avatar.png'}
+            src={user?.author_avatar?.trim() ? user.author_avatar : '/avatar.png'}
             alt="Avatar"
             onClick={toggleProfile}
             className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
@@ -349,64 +424,53 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* 💬 Message Sidebar */}
+      {/* MESSAGES SIDEBAR */}
       <div
         className={`fixed top-0 left-0 h-full w-72 bg-gray-900 shadow-lg transform transition-transform duration-300 z-40 ${showMessages ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-400">📨 Messages</h2>
-          <button onClick={() => setShowMessages(false)} className="text-gray-400 hover:text-white">
+          <button
+            onClick={() => setShowMessages(false)}
+            className="text-gray-400 hover:text-white"
+          >
             ✖
           </button>
         </div>
 
-        {chatUsers.map((u) => (
-          <div
-            key={u.id}
-            className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
-            onClick={() => openChat(u)}
-          >
-            <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" />
-            <span className="text-sm font-medium text-white">{u.full_name}</span>
-          </div>
-        ))}
+        <div className="overflow-y-auto max-h-[calc(100%-56px)]">
+          {chatUsers.map((u) => (
+            <div
+              key={u.id}
+              className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
+              onClick={() => openChat(u)}
+            >
+              <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" alt="avatar" />
+              <span className="text-sm font-medium text-white">{u.full_name}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* 💬 Chats flottants */}
+      {/* OPEN CHAT BOXES */}
       <div className="fixed bottom-4 right-72 flex gap-4 z-40">
         {openChats.map((u) => (
-          <div key={u.id} className="w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium text-white">{u.full_name}</span>
-              <button
-                className="text-red-400 text-xs"
-                onClick={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
-              >
-                ✖
-              </button>
-            </div>
-            <div className="h-32 overflow-y-auto bg-gray-900 rounded p-2 text-sm text-gray-300">
-              <p className="text-gray-500 italic">Aucun message pour le moment...</p>
-            </div>
-            <div className="mt-2 flex">
-              <input
-                type="text"
-                placeholder="Écrire un message..."
-                className="flex-1 bg-gray-700 border border-gray-600 text-white rounded-l px-2 py-1 text-sm"
-              />
-              <button className="bg-blue-600 text-white px-2 rounded-r text-sm">
-                Envoyer
-              </button>
-            </div>
-          </div>
+          <ChatBox
+            key={u.id}
+            recipient={u}
+            currentUser={user}
+            onClose={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
+          />
         ))}
       </div>
 
-      {/* 📝 Post Form + Posts */}
+      {/* POST FORM + POSTS */}
       <div className="max-w-xl mx-auto mt-6 px-4">
-        {/* 📝 Formulaire */}
-        <form onSubmit={handleSubmit} className="bg-gray-900 p-4 rounded-xl shadow mb-6 flex flex-col gap-4 border border-gray-700">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-gray-900 p-4 rounded-xl shadow mb-6 flex flex-col gap-4 border border-gray-700"
+        >
           <textarea
             placeholder="Exprimez-vous..."
             value={content}
@@ -441,7 +505,6 @@ export default function HomePage() {
           {success && <p className="text-green-400">{success}</p>}
         </form>
 
-        {/* 📄 Affichage des posts */}
         {loading ? (
           <p className="text-gray-400">Chargement...</p>
         ) : posts.length === 0 ? (
@@ -484,7 +547,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* 👤 Popup utilisateur */}
+      {/* USER PROFILE POPUP */}
       {showPopup && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-gray-700">
@@ -506,9 +569,7 @@ export default function HomePage() {
               </h2>
               <p className="text-gray-400 text-sm">@{selectedUser.nickname || ''}</p>
               {selectedUser.About && (
-                <p className="mt-2 text-sm text-blue-400 text-center">
-                  {selectedUser.About}
-                </p>
+                <p className="mt-2 text-sm text-blue-400 text-center">{selectedUser.About}</p>
               )}
               <p className="mt-1 text-sm text-gray-400 text-center">{selectedUser.email}</p>
               {selectedUser.date_of_birth && (
@@ -521,10 +582,10 @@ export default function HomePage() {
                   onClick={handleFollowToggle}
                   disabled={followStatus !== ''}
                   className={`mt-4 px-4 py-2 rounded-full text-sm font-medium cursor-pointer ${followStatus === 'accepted'
-                    ? 'bg-gray-500 text-white cursor-default'
-                    : followStatus === 'pending'
-                      ? 'bg-yellow-500 text-white cursor-default'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-gray-500 text-white cursor-default'
+                      : followStatus === 'pending'
+                        ? 'bg-yellow-500 text-white cursor-default'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
                   {followStatus === 'accepted'
@@ -550,5 +611,4 @@ export default function HomePage() {
       )}
     </div>
   )
-
 }

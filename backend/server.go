@@ -6,9 +6,15 @@ import (
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
+	"social-network/backend/pkg/websocket"
 )
 
 func main() {
+
+	hub := websocket.NewHub()
+
+	go hub.Run()
+
 	sqlite.InitDB()
 
 
@@ -22,9 +28,6 @@ func main() {
 	mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
 
 
-
-
-
 	mux.HandleFunc("/api/users/", auth.GetUserByIDHandler)
 	mux.HandleFunc("/api/user-posts/", auth.GetUserPostsHandler)
 
@@ -33,6 +36,22 @@ func main() {
 	http.HandleFunc("/api/follow/status/", auth.GetFollowStatus)
 
 	mux.HandleFunc("/api/chat-users", auth.GetAllChatUsers)
+
+
+   mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		
+		cookie, err := r.Cookie("session_id")
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		websocket.ServeWS(hub, w, r, cookie.Value)
+	})
+
+
+
+
+
 
 
 
