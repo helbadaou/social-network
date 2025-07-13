@@ -5,7 +5,11 @@ import (
 	"net/http"
 
 	"social-network/backend/pkg/auth"
+	"social-network/backend/pkg/chat"
 	"social-network/backend/pkg/db/sqlite"
+	"social-network/backend/pkg/follow"
+	"social-network/backend/pkg/profile"
+	"social-network/backend/pkg/search"
 	"social-network/backend/pkg/websocket"
 )
 
@@ -17,29 +21,26 @@ func main() {
 
 	sqlite.InitDB()
 
-
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/login", auth.LoginHandler)
 	mux.HandleFunc("/api/register", auth.RegisterHandler)
 	mux.HandleFunc("/api/logout", auth.LogoutHandler)
-	mux.HandleFunc("/api/profile/", auth.ProfileHandler)
+	mux.HandleFunc("/api/profile/", profile.ProfileHandler)
 
 	mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
 
-
-	mux.HandleFunc("/api/users/", auth.GetUserByIDHandler)
+	mux.HandleFunc("/api/users/", profile.GetUserByIDHandler)
 	mux.HandleFunc("/api/user-posts/", auth.GetUserPostsHandler)
 
-	mux.HandleFunc("/api/search", auth.SearchUsersHandler)
-	mux.HandleFunc("/api/follow", auth.SendFollowRequest)
-	http.HandleFunc("/api/follow/status/", auth.GetFollowStatus)
+	mux.HandleFunc("/api/search", search.SearchUsersHandler)
+	mux.HandleFunc("/api/follow", follow.SendFollowRequest)
+	http.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
 
-	mux.HandleFunc("/api/chat-users", auth.GetAllChatUsers)
+	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 
-   mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -47,13 +48,6 @@ func main() {
 		}
 		websocket.ServeWS(hub, w, r, cookie.Value)
 	})
-
-
-
-
-
-
-
 
 	handlerWithCors := auth.CorsMiddleware(mux)
 
