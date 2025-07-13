@@ -88,6 +88,61 @@ export default function HomePage() {
     }
   };
 
+  const fetchUserById = async (userId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Erreur chargement profil')
+      const data = await res.json()
+      setSelectedUser(data)
+
+      const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
+        credentials: 'include',
+      })
+      if (followRes.ok) {
+        const { status } = await followRes.json()
+        setFollowStatus(status)
+      } else {
+        setFollowStatus('')
+      }
+
+      setShowPopup(true)
+    } catch (err) {
+      console.error('Erreur chargement profil utilisateur:', err)
+    }
+  }
+
+  const handleFollowToggle = async () => {
+    if (!selectedUser || followStatus !== '') return;
+
+    try {
+      const res = await fetch('http://localhost:8080/api/follow', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ followed_id: selectedUser.id }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Erreur lors de la requête follow');
+      }
+
+      if (selectedUser.is_private) {
+        setFollowStatus('pending');
+      } else {
+        setFollowStatus('accepted');
+      }
+    } catch (err) {
+      console.error('Erreur follow :', err?.message || err);
+    }
+  };
+
+
+
   const fetchPosts = () => {
     setLoading(true);
     fetch("http://localhost:8080/api/posts", { credentials: "include" })
@@ -208,67 +263,77 @@ export default function HomePage() {
         handleSearch={handleSearch}
         handleLogout={handleLogout}
         results={results}
+        openMessages={openMessages}
       />
-
-      {/* MESSAGE ICON */}
-      <button onClick={openMessages} className="relative">
-        <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
-      </button>
 
       {/* MESSAGES SIDEBAR */}
       {showMessages && (
-        <MessageSidebar chatUsers={chatUsers} setShowMessages={closeMessages} />
+        <MessageSidebar
+          chatUsers={chatUsers}
+          showMessages={showMessages}
+          setShowMessages={setShowMessages}
+          openChat={openChat}
+        />
       )}
 
-      <PostForm
-        content={content}
-        setContent={setContent}
-        image={image}
-        setImage={setImage}
-        privacy={privacy}
-        setPrivacy={setPrivacy}
-        handleSubmit={handleSubmit}
-        creating={creating}
-      />
+      <div className="max-w-2xl mx-auto px-4 mt-6">
+        <PostForm
+          content={content}
+          setContent={setContent}
+          image={image}
+          setImage={setImage}
+          privacy={privacy}
+          setPrivacy={setPrivacy}
+          handleSubmit={handleSubmit}
+          creating={creating}
+        />
+      </div>
+
       {/* Affichage des posts */}
-      {loading ? (
-        <p className="text-gray-400">Chargement...</p>
-      ) : posts.length === 0 ? (
-        <p className="text-gray-400">Aucun post pour le moment.</p>
-      ) : (
-        posts.map((post, i) => (
-          <div
-            key={i}
-            className="bg-gray-800 shadow rounded-xl p-4 mb-4 border border-gray-700"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <img
-                src={post.author_avatar || "/avatar.png"}
-                alt={post.author_name}
-                className="w-10 h-10 rounded-full object-cover border border-gray-600"
-              />
-              <div>
-                <div className="font-medium text-blue-400 hover:underline">
-                  {post.author_name}
-                </div>
-                <div className="text-sm text-gray-400">
-                  Publié le {new Date(post.created_at).toLocaleString()}
+      <div className="max-w-2xl mx-auto px-4 mt-6">
+        {loading ? (
+          <p className="text-gray-400">Chargement...</p>
+        ) : posts.length === 0 ? (
+          <p className="text-gray-400">Aucun post pour le moment.</p>
+        ) : (
+          posts.map((post, i) => (
+            <div
+              key={i}
+              className="bg-gray-800 shadow rounded-xl p-4 mb-4 border border-gray-700"
+            >
+              <div
+                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
+                onClick={() => fetchUserById(post.author_id)}
+              >
+                <img
+                  src={post.author_avatar || "/avatar.png"}
+                  alt={post.author_name}
+                  className="w-10 h-10 rounded-full object-cover border border-gray-600"
+                />
+                <div>
+                  <div className="font-medium text-blue-400 hover:underline">
+                    {post.author_name}
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    Publié le {new Date(post.created_at).toLocaleString()}
+                  </div>
                 </div>
               </div>
+
+              <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                {post.content}
+              </div>
+              {post.image_url && (
+                <img
+                  src={post.image_url}
+                  alt="post"
+                  className="mt-2 max-h-60 object-contain rounded border border-gray-700"
+                />
+              )}
             </div>
-            <div className="text-sm text-gray-200 whitespace-pre-wrap">
-              {post.content}
-            </div>
-            {post.image_url && (
-              <img
-                src={post.image_url}
-                alt="post"
-                className="mt-2 max-h-60 object-contain rounded border border-gray-700"
-              />
-            )}
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
 
       {/* OPEN CHAT BOXES */}
       <div className="fixed bottom-4 right-72 flex gap-4 z-40">
@@ -282,15 +347,16 @@ export default function HomePage() {
         ))}
       </div>
 
-
+      {/* USER PROFILE POPUP */}
       {showPopup && selectedUser && (
         <UserProfilePopup
           selectedUser={selectedUser}
+          currentUser={user}
           setShowPopup={setShowPopup}
           followStatus={followStatus}
           handleFollowToggle={handleFollowToggle}
         />
       )}
     </div>
-  );
+  )
 }

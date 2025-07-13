@@ -3,9 +3,16 @@
 
 import { useState } from 'react'
 
-export default function Navbar({ user, handleSearch, handleLogout, results }) {
+export default function Navbar({ user, handleSearch, handleLogout, results, openMessages }) {
+  const [showProfile, setShowProfile] = useState(false)
+
+  const toggleProfile = () => {
+    setShowProfile(prev => !prev)
+  }
+
   return (
-    <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800">
+    <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800 relative">
+      {/* Champ de recherche */}
       <div className="max-w-xl w-full relative">
         <input
           type="text"
@@ -26,7 +33,43 @@ export default function Navbar({ user, handleSearch, handleLogout, results }) {
           </div>
         )}
       </div>
-      <button onClick={handleLogout} className="text-red-500">Logout</button>
+
+      {/* Section à droite : messages + avatar */}
+      <div className="flex items-center gap-4 ml-4 relative">
+        {/* Icône message */}
+        <button onClick={openMessages} className="relative">
+          <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
+        </button>
+
+        {/* Avatar utilisateur */}
+        {user && (
+          <div className="relative">
+            <img
+              src={user.author_avatar?.trim() ? user.author_avatar : '/avatar.png'}
+              alt="Avatar"
+              onClick={toggleProfile}
+              className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
+            />
+
+            {showProfile && (
+              <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-20">
+                <h2 className="font-semibold text-white">
+                  {user.FirstName} {user.LastName}
+                </h2>
+                {/* <p className="text-sm text-gray-400">@{user.Nickname || 'anonymous'}</p> */}
+                {/* {user.About && <p className="text-sm text-blue-400 mt-2">{user.About}</p>} */}
+                <p className="text-sm text-blue-400 mt-2">{user.Email}</p>
+                <button
+                  onClick={handleLogout}
+                  className="mt-3 text-sm text-red-500 hover:underline"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </nav>
   )
 }
