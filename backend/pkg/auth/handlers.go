@@ -177,6 +177,8 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
+		Secure: false,
 	})
 
 	w.Write([]byte("✅ Logged out successfully"))

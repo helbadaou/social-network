@@ -5,9 +5,25 @@ import { useState } from 'react'
 
 export default function Navbar({ user, handleSearch, handleLogout, results, openMessages }) {
   const [showProfile, setShowProfile] = useState(false)
+  const [isPrivate, setIsPrivate] = useState(user?.is_private || false)
 
   const toggleProfile = () => {
     setShowProfile(prev => !prev)
+  }
+
+  const togglePrivacy = async () => {
+    try {
+      const res = await fetch('/api/user/toggle-privacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_private: !isPrivate })
+      })
+      if (res.ok) {
+        setIsPrivate(!isPrivate)
+      }
+    } catch (err) {
+      console.error('Erreur modification confidentialité', err)
+    }
   }
 
   return (
@@ -56,12 +72,28 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
                 <h2 className="font-semibold text-white">
                   {user.FirstName} {user.LastName}
                 </h2>
-                {/* <p className="text-sm text-gray-400">@{user.Nickname || 'anonymous'}</p> */}
-                {/* {user.About && <p className="text-sm text-blue-400 mt-2">{user.About}</p>} */}
-                <p className="text-sm text-blue-400 mt-2">{user.Email}</p>
+                <p className="text-sm text-blue-400 mt-1">{user.Email}</p>
+
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-300">
+                    {isPrivate ? '🔒 Profil privé' : '🌍 Profil public'}
+                  </span>
+                  <button
+                    onClick={togglePrivacy}
+                    className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out 
+      ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
+                  >
+                    <div
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out 
+        ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
+                    ></div>
+                  </button>
+                </div>
+
+
                 <button
                   onClick={handleLogout}
-                  className="mt-3 text-sm text-red-500 hover:underline"
+                  className="mt-3 w-full text-sm text-red-500 hover:underline"
                 >
                   Logout
                 </button>

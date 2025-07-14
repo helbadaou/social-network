@@ -3,8 +3,10 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +22,7 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 🔽 Limite de taille (ex: 10 Mo)
-	err := r.ParseMultipartForm(10 << 20)
+	err := r.ParseMultipartForm(10 << 20) // 10MB
 	if err != nil {
 		http.Error(w, "Could not parse multipart form", http.StatusBadRequest)
 		return
@@ -29,29 +30,41 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
-	fmt.Println("Content:", content)
-	fmt.Println("Privacy:", privacy)
-	// fmt.Println("Image header:", header)
 
 	if content == "" || privacy == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
 		return
 	}
 
-	// (Optionnel) Récupérer le fichier image
-	// file, header, err := r.FormFile("image")
-	// var imageURL string
-	// if err == nil && header != nil {
-	// 	// ⚠️ Pour le moment on ne sauvegarde pas le fichier
-	// 	// Tu peux mettre un placeholder ou log pour debug
-	// 	defer file.Close()
-	// 	imageURL = "placeholder.jpg" // ou vide pour l’instant
-	// }
+	var imageURL string
+	file, header, err := r.FormFile("image")
+	if err == nil && header != nil {
+		defer file.Close()
+
+		// 🔥 Sauvegarde le fichier dans /uploads/
+		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), header.Filename)
+		dstPath := fmt.Sprintf("uploads/%s", filename)
+
+		dstFile, err := os.Create(dstPath)
+		if err != nil {
+			http.Error(w, "Failed to save file", http.StatusInternalServerError)
+			return
+		}
+		defer dstFile.Close()
+
+		_, err = io.Copy(dstFile, file)
+		if err != nil {
+			http.Error(w, "Failed to copy file", http.StatusInternalServerError)
+			return
+		}
+
+		imageURL = "/uploads/" + filename
+	}
 
 	post := models.Post{
-		AuthorID: userID,
-		Content:  content,
-		// ImageURL:  imageURL,
+		AuthorID:  userID,
+		Content:   content,
+		ImageURL:  imageURL,
 		Privacy:   privacy,
 		CreatedAt: time.Now(),
 	}
@@ -64,6 +77,7 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 }
+
 
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	// Vérifie que l'utilisateur est connecté

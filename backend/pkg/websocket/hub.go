@@ -64,9 +64,9 @@ func (h *Hub) Run() {
 			}
 
 			// Optionally send to sender for confirmation
-			if sender, ok := h.Clients[msg.From]; ok {
-				sender.Send <- msgBytes
-			}
+			// if sender, ok := h.Clients[msg.From]; ok {
+			// 	sender.Send <- msgBytes
+			// }
 		}
 	}
 }

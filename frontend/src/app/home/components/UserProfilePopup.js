@@ -1,10 +1,82 @@
 // src/app/home/components/UserProfilePopup.js
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function UserProfilePopup({ selectedUser, currentUser, setShowPopup, followStatus, handleFollowToggle }) {
+export default function UserProfilePopup({
+  selectedUser,
+  currentUser,
+  setShowPopup,
+  followStatus,
+  setFollowStatus,
+}) {
   const router = useRouter()
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    async function fetchFollowStatus() {
+      if (!selectedUser?.id || selectedUser.id === currentUser?.ID) return
+
+      try {
+        const res = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
+          credentials: 'include'
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setFollowStatus(data.status || "")
+        } else {
+          setFollowStatus("")
+        }
+      } catch (err) {
+        console.error("Erreur récupération follow status", err)
+        setFollowStatus("")
+      }
+    }
+
+    fetchFollowStatus()
+  }, [selectedUser])
+
+  const handleFollowToggle = async () => {
+    if (!selectedUser?.id || selectedUser.id === currentUser?.ID) return
+    setLoading(true)
+
+    try {
+      if (followStatus === 'accepted') {
+        // UNFOLLOW
+        const res = await fetch('http://localhost:8080/api/unfollow', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ followed_id: selectedUser.id }),
+        })
+
+        if (res.ok) setFollowStatus("")
+      } else {
+        // FOLLOW
+        const res = await fetch('http://localhost:8080/api/follow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ followed_id: selectedUser.id }),
+        })
+
+        if (res.ok) {
+          const check = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
+            credentials: 'include'
+          })
+          if (check.ok) {
+            const data = await check.json()
+            setFollowStatus(data.status || "")
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erreur follow/unfollow", err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!selectedUser) return null
 
@@ -41,22 +113,23 @@ export default function UserProfilePopup({ selectedUser, currentUser, setShowPop
           {selectedUser.id !== currentUser?.ID && (
             <button
               onClick={handleFollowToggle}
-              disabled={followStatus !== ''}
-              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium cursor-pointer ${
-                followStatus === 'accepted'
-                  ? 'bg-gray-500 text-white cursor-default'
+              disabled={loading}
+              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${followStatus === 'accepted'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
                   : followStatus === 'pending'
-                  ? 'bg-yellow-500 text-white cursor-default'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+                    ? 'bg-yellow-500 text-white cursor-default'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
             >
               {followStatus === 'accepted'
-                ? '✔ Abonné'
+                ? 'Se désabonner'
                 : followStatus === 'pending'
-                ? '🕓 En attente'
-                : '+ Suivre'}
+                  ? '🕓 En attente'
+                  : '+ Suivre'}
             </button>
+
           )}
+
 
           <button
             className="mt-3 text-blue-400 text-sm hover:underline cursor-pointer"
