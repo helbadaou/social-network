@@ -41,12 +41,8 @@ func main() {
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 
-		cookie, err := r.Cookie("session_id")
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		websocket.ServeWS(hub, w, r, cookie.Value)
+	 
+		websocket.ServeWS(hub, w, r)
 	})
 
 	handlerWithCors := auth.CorsMiddleware(mux)

@@ -1,34 +1,37 @@
 package websocket
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/websocket"
 )
 
 type Message struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
+	From    int `json:"from"`
+	To      int `json:"to"`
 	Content string `json:"content"`
 	Type    string `json:"type"` // e.g., "private" or "group"
+	Timestamp string `json:"timestamp"`
 }
 
 type Client struct {
-	ID   string
-	Conn *Connection
-	Send chan Message
+	ID   int
+	Conn *websocket.Conn
+	Send chan []byte
 }
 
 type Hub struct {
-	Clients    map[string]*Client
-	Connected   chan *Client
-	Disconnected chan *Client
+	Clients    map[int]*Client
+	Register   chan *Client
+	Unregister chan *Client
 	Broadcast  chan Message
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Clients:    make(map[string]*Client),
-		Connected:   make(chan *Client),
-		Disconnected: make(chan *Client),
+		Clients:    make(map[int]*Client),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
 		Broadcast:  make(chan Message),
 	}
 }
@@ -36,21 +39,29 @@ func NewHub() *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
-		case client := <-h.Connected:
+		case client := <-h.Register:
 			h.Clients[client.ID] = client
-			log.Println("✅ Connected user:", client.ID)
+			fmt.Println("✅ Registered user", client.ID)
 
-		case client := <-h.Disconnected:
-			if _, ok := h.Clients[client.ID]; ok {
-				delete(h.Clients, client.ID)
-				close(client.Send)
-				log.Println("❌ NOt Connected user:", client.ID)
-			}
+		case client := <-h.Unregister:
+			delete(h.Clients, client.ID)
+			close(client.Send)
 
 		case msg := <-h.Broadcast:
-			if receiver, ok := h.Clients[msg.To]; ok {
-				receiver.Send <- msg
-			}
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			continue
+		}
+
+		// Send to recipient if connected
+		if recipient, ok := h.Clients[msg.To]; ok {
+			recipient.Send <- msgBytes
+		}
+
+		// Optionally send to sender for confirmation
+		if sender, ok := h.Clients[msg.From]; ok {
+			sender.Send <- msgBytes
+		}
 		}
 	}
 }

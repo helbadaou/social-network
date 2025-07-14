@@ -12,6 +12,9 @@ import { useUser } from "./hooks/useUser";
 import { usePosts } from "./hooks/usePosts";
 import useChat from "./hooks/useChat";
 
+import Sidebar from './components/Sidebar'
+
+
 export default function HomePage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,9 +40,24 @@ export default function HomePage() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const ws = useRef(null);
+  //const ws = useRef(null);
+
+  const [ws, setWs] = useState(null)
 
   const router = useRouter();
+
+
+  useEffect(() => {
+  const socket = new WebSocket('ws://localhost:8080/ws')
+  socket.onopen = () => console.log('✅ WS connected')
+  socket.onclose = () => console.log('❌ WS disconnected')
+  socket.onerror = (err) => console.error('WS error:', err)
+
+  setWs(socket)
+  return () => socket.close()
+}, [])
+
+
 
   // Ouverture de la barre latérale des messages
   const openMessages = () => {
@@ -140,7 +158,6 @@ export default function HomePage() {
       console.error('Erreur follow :', err?.message || err);
     }
   };
-
 
 
   const fetchPosts = () => {
@@ -266,15 +283,13 @@ export default function HomePage() {
         openMessages={openMessages}
       />
 
-      {/* MESSAGES SIDEBAR */}
-      {showMessages && (
-        <MessageSidebar
-          chatUsers={chatUsers}
-          showMessages={showMessages}
-          setShowMessages={setShowMessages}
-          openChat={openChat}
-        />
-      )}
+    
+      {/* SIDEBAR */}
+      <Sidebar
+        chatUsers={chatUsers}
+        onOpenChat={(user) => openChat(user)}
+      />
+
 
       <div className="max-w-2xl mx-auto px-4 mt-6">
         <PostForm
@@ -342,6 +357,7 @@ export default function HomePage() {
             key={u.id}
             recipient={u}
             currentUser={user}
+            ws={{ current: ws }}
             onClose={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
           />
         ))}
@@ -360,3 +376,4 @@ export default function HomePage() {
     </div>
   )
 }
+
