@@ -1,5 +1,3 @@
-// follow/handlers.go
-
 package follow
 
 import (
@@ -7,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"social-network/backend/pkg/db/sqlite"
 	"strconv"
 	"strings"
+
+	"social-network/backend/pkg/db/sqlite"
 )
 
 type FollowRequest struct {
@@ -29,13 +28,14 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := strconv.Atoi(cookie.Value)
+	followerIDStr := cookie.Value
+	followerID, err := strconv.Atoi(followerIDStr)
 	if err != nil {
 		http.Error(w, "Invalid session ID", http.StatusBadRequest)
 		return
 	}
 
-	followerID := id
+	// followerID := id
 
 	// Get followed_id from JSON body
 	var req struct {
@@ -62,7 +62,10 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists > 0 {
-		// http.Error(w, "Follow request already sent", http.StatusConflict)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "already_following",
+		})
 		return
 	}
 
@@ -113,7 +116,10 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 	`, followerID, followedID).Scan(&status)
 
 	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "",
+		})
 		return
 	} else if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
@@ -124,4 +130,46 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": status,
 	})
+}
+
+
+func UnfollowUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	followerID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "Invalid session ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		FollowedID int `json:"followed_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	_, err = sqlite.DB.Exec(`
+		DELETE FROM followers 
+		WHERE follower_id = ? AND followed_id = ?
+	`, followerID, req.FollowedID)
+
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Unfollowed successfully"))
 }

@@ -37,6 +37,8 @@ export default function HomePage() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const fileInputRef = useRef()
+
   const ws = useRef(null);
 
   const router = useRouter();
@@ -114,32 +116,56 @@ export default function HomePage() {
   }
 
   const handleFollowToggle = async () => {
-    if (!selectedUser || followStatus !== '') return;
+    if (!selectedUser) return;
 
     try {
-      const res = await fetch('http://localhost:8080/api/follow', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch("http://localhost:8080/api/follow", {
+        method: "POST",
+        credentials: "include", // ← IMPORTANT pour le cookie session
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ followed_id: selectedUser.id }),
       });
 
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Erreur lors de la requête follow');
+      if (res.ok) {
+        // Re-fetch le status
+        const statusRes = await fetch(
+          `http://localhost:8080/api/follow/status/${selectedUser.id}`,
+          { credentials: "include" }
+        );
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          setFollowStatus(data.status);
+        }
       }
-
-      if (selectedUser.is_private) {
-        setFollowStatus('pending');
-      } else {
-        setFollowStatus('accepted');
-      }
-    } catch (err) {
-      console.error('Erreur follow :', err?.message || err);
+    } catch (error) {
+      console.error("Erreur lors du follow :", error);
     }
   };
+
+
+  useEffect(() => {
+    const fetchFollowStatus = async () => {
+      if (!selectedUser) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:8080/api/follow/status/${selectedUser.id}`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setFollowStatus(data.status);
+        } else {
+          setFollowStatus(""); // non abonné
+        }
+      } catch (err) {
+        console.error("Erreur status follow :", err);
+      }
+    };
+
+    fetchFollowStatus();
+  }, [selectedUser]);
+
 
 
 
@@ -166,13 +192,15 @@ export default function HomePage() {
     const formData = new FormData();
     formData.append("content", content);
     formData.append("privacy", privacy);
-    if (image) formData.append("image", image);
+    if (image) {
+      formData.append("image", image);
+    }
 
     try {
-      const res = await fetch("http://localhost:8080/api/posts", {
+      const res = await fetch("/api/posts", {
         method: "POST",
         body: formData,
-        credentials: "include",
+        credentials: "include", // important pour les cookies Go
       });
 
       if (!res.ok) throw new Error("Erreur lors de la publication");
@@ -181,13 +209,19 @@ export default function HomePage() {
       setContent("");
       setImage(null);
       setPrivacy("public");
-      fetchPosts();
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = null;
+      }
+
+      fetchPosts(); // Recharge les posts après publication
     } catch (err) {
       setError(err.message);
     } finally {
       setCreating(false);
     }
   };
+
 
   const toggleProfile = () => {
     setShowProfile(!showProfile);
@@ -286,6 +320,7 @@ export default function HomePage() {
           setPrivacy={setPrivacy}
           handleSubmit={handleSubmit}
           creating={creating}
+          ref={fileInputRef}
         />
       </div>
 
@@ -325,7 +360,7 @@ export default function HomePage() {
               </div>
               {post.image_url && (
                 <img
-                  src={post.image_url}
+                  src={`http://localhost:8080${post.image_url}`}
                   alt="post"
                   className="mt-2 max-h-60 object-contain rounded border border-gray-700"
                 />
@@ -354,7 +389,7 @@ export default function HomePage() {
           currentUser={user}
           setShowPopup={setShowPopup}
           followStatus={followStatus}
-          handleFollowToggle={handleFollowToggle}
+          setFollowStatus={setFollowStatus}
         />
       )}
     </div>

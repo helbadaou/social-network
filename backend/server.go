@@ -10,11 +10,11 @@ import (
 	"social-network/backend/pkg/follow"
 	"social-network/backend/pkg/profile"
 	"social-network/backend/pkg/search"
+	"social-network/backend/pkg/user"
 	"social-network/backend/pkg/websocket"
 )
 
 func main() {
-
 	hub := websocket.NewHub()
 
 	go hub.Run()
@@ -35,12 +35,13 @@ func main() {
 
 	mux.HandleFunc("/api/search", search.SearchUsersHandler)
 	mux.HandleFunc("/api/follow", follow.SendFollowRequest)
-	http.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
+	mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
+	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
+	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -49,9 +50,11 @@ func main() {
 		websocket.ServeWS(hub, w, r, cookie.Value)
 	})
 
+	// ✅ Fichiers images (uploads)
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+
 	handlerWithCors := auth.CorsMiddleware(mux)
 
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handlerWithCors)
-
 }
