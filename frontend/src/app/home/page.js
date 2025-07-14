@@ -37,7 +37,7 @@ export default function HomePage() {
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
 
-  const [messages, setMessages] = useState(null)
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
   const [ws, setWs] = useState(null)
 

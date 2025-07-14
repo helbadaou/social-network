@@ -11,6 +11,7 @@ export default function ChatBox({ currentUser, recipient, ws, messages, input, s
 
   let chatMessages
   console.log("is array",Array.isArray(messages))
+  
   if (Array.isArray(messages)) {
     chatMessages = messages.filter(
       (msg) => {
