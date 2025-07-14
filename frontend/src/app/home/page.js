@@ -51,9 +51,14 @@ export default function HomePage() {
     socket.onerror = (err) => console.error('WS error:', err)
 
     socket.onmessage = (event) => {
+
       const msg = JSON.parse(event.data)
-      console.log("messages", messages)
-      messages != null ? setMessages(prev => { return [...prev, msg] }) : setMessages([msg])
+      
+      //messages != null ? setMessages(prev => { return [...prev, msg] }) : setMessages([msg])
+
+      setMessages(prev => { return [...prev, msg] })
+
+      
     }
 
     setWs(socket)
