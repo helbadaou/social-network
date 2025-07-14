@@ -1,57 +1,50 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
-export default function ChatBox({ currentUser, recipient, ws, onClose }) {
-  const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
-
+export default function ChatBox({ currentUser, recipient, ws, messages, input, setInput, onClose }) {
   const scrollRef = useRef()
 
-  // Listen for incoming messages and filter by sender/receiver
-  useEffect(() => {
-    const handleMessage = (event) => {
-      const msg = JSON.parse(event.data)
+  // Support both recipient.id and recipient.ID for compatibility
+  const recipientId = recipient.id || recipient.ID
+  const userId = currentUser?.ID
 
-      // Show only if it's between currentUser and this recipient
-      if (
-        (msg.from === currentUser.ID && msg.to === recipient.ID) ||
-        (msg.to === currentUser.ID && msg.from === recipient.ID)
-      ) {
-        setMessages(prev => [...prev, msg])
+  let chatMessages
+  console.log("is array",Array.isArray(messages))
+  if (Array.isArray(messages)) {
+    chatMessages = messages.filter(
+      (msg) => {
+        console.log(userId);
+        console.log(recipientId);
+
+        return (msg.from === userId && msg.to === recipientId) ||
+          (msg.to === userId && msg.from === recipientId)
       }
-    }
 
-    if (ws.current) {
-      ws.current.addEventListener('message', handleMessage)
-    }
+    )
+  }
+  console.log("chat message", chatMessages)
+  // Filter messages for this chat
 
-    return () => {
-      if (ws.current) {
-        ws.current.removeEventListener('message', handleMessage)
-      }
-    }
-  }, [ws, currentUser.ID, recipient.ID])
 
   const sendMessage = () => {
     if (!input.trim()) return
+    if (!userId || !recipientId) return
 
     const msg = {
-      from: currentUser.ID,
-      to: recipient.ID,
+      from: userId,
+      to: recipientId,
       content: input,
       type: 'private',
     }
 
     ws.current.send(JSON.stringify(msg))
-  
     setInput('')
   }
 
   useEffect(() => {
-    // Auto scroll to bottom
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [chatMessages])
 
   return (
     <div className="w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3 flex flex-col">
@@ -67,13 +60,13 @@ export default function ChatBox({ currentUser, recipient, ws, onClose }) {
 
       {/* Messages */}
       <div className="h-32 overflow-y-auto bg-gray-900 rounded p-2 text-sm text-gray-300 flex-1 mb-2">
-        {messages.length === 0 ? (
+        {chatMessages?.length === 0 ? (
           <p className="text-gray-500 italic">Aucun message...</p>
         ) : (
-          messages.map((m, i) => (
+          chatMessages && chatMessages.map((m, i) => (
             <p
               key={i}
-              className={`mb-1 ${m.from === currentUser.ID
+              className={`mb-1 ${m.from === userId
                 ? 'text-right text-blue-400'
                 : 'text-left text-gray-300'
                 }`}
