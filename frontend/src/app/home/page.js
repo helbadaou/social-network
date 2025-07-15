@@ -37,7 +37,7 @@ export default function HomePage() {
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
 
-  const [messages, setMessages] = useState(null)
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
   const [ws, setWs] = useState(null)
   const fileInputRef = useRef()
@@ -46,10 +46,15 @@ export default function HomePage() {
 
 
   useEffect(() => {
+    if (!user) return;
+
     const socket = new WebSocket('ws://localhost:8080/ws')
     socket.onopen = () => console.log('✅ WS connected')
     socket.onclose = () => console.log('❌ WS disconnected')
-    socket.onerror = (err) => console.error('WS error:', err)
+    socket.onerror = (err) => {
+      console.error('WS error:', err, JSON.stringify(err));
+    };
+
 
     socket.onmessage = (event) => {
       const msg = JSON.parse(event.data)
@@ -59,7 +64,7 @@ export default function HomePage() {
 
     setWs(socket)
     return () => socket.close()
-  }, [])
+  }, [user])
 
   // Ouverture de la barre latérale des messages
   const openMessages = () => {

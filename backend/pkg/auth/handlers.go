@@ -158,6 +158,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    fmt.Sprintf("%d", userID),
 		Path:     "/",
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 		// Secure: true, // use this when using https
 	})
 

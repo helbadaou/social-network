@@ -42,15 +42,25 @@ func main() {
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		
+		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
 		websocket.ServeWS(hub, w, r)
 	})
 
 	// ✅ Fichiers images (uploads)
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
-	handlerWithCors := auth.CorsMiddleware(mux)
+	// Création du middleware personnalisé qui applique CORS uniquement sur /api/*
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/ws" {
+			// Bypass CORS pour WebSocket
+			mux.ServeHTTP(w, r)
+			return
+		}
+
+		// Toutes les autres routes passent par CORS
+		auth.CorsMiddleware(mux).ServeHTTP(w, r)
+	})
 
 	fmt.Println("✅ Server started at :8080")
-	http.ListenAndServe(":8080", handlerWithCors)
+	http.ListenAndServe(":8080", handler)
 }
