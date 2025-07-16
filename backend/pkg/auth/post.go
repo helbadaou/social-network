@@ -98,7 +98,7 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	// ✅ Encoder le tableau même s'il est vide
-	fmt.Println("Posts récupérés :", posts)
+	// fmt.Println("Posts récupérés :", posts)
 	json.NewEncoder(w).Encode(posts)
 }
 

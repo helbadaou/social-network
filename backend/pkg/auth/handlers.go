@@ -158,7 +158,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    fmt.Sprintf("%d", userID),
 		Path:     "/",
 		HttpOnly: true,
-		// Secure: true, // use this when using https
+		SameSite: http.SameSiteLaxMode,
+		Secure: false, // use true if using https
 	})
 
 	w.Write([]byte("✅ Logged in successfully"))

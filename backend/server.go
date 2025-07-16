@@ -8,6 +8,7 @@ import (
 	"social-network/backend/pkg/chat"
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/follow"
+	"social-network/backend/pkg/notifications"
 	"social-network/backend/pkg/profile"
 	"social-network/backend/pkg/search"
 	"social-network/backend/pkg/user"
@@ -40,21 +41,28 @@ func main() {
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
+	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_id")
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		websocket.ServeWS(hub, w, r, cookie.Value)
+		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
+		websocket.ServeWS(hub, w, r)
 	})
 
 	// ✅ Fichiers images (uploads)
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
-	handlerWithCors := auth.CorsMiddleware(mux)
+	// Création du middleware personnalisé qui applique CORS uniquement sur /api/*
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/ws" {
+			// Bypass CORS pour WebSocket
+			mux.ServeHTTP(w, r)
+			return
+		}
+
+		// Toutes les autres routes passent par CORS
+		auth.CorsMiddleware(mux).ServeHTTP(w, r)
+	})
 
 	fmt.Println("✅ Server started at :8080")
-	http.ListenAndServe(":8080", handlerWithCors)
+	http.ListenAndServe(":8080", handler)
 }

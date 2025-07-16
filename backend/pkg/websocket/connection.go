@@ -1,48 +1,46 @@
 package websocket
 
 import (
-	 
+	"encoding/json"
+	"fmt"
+
 	"github.com/gorilla/websocket"
-	"log"
 )
 
-type Connection struct {
-	Ws *websocket.Conn
-}
+ 
 
-func (c *Connection) ReadPump(hub *Hub, client *Client) {
+func (c *Client) readPump(hub *Hub) {
 	defer func() {
-		hub.Disconnected <- client
-		c.Ws.Close()
+		hub.Unregister <- c
+		c.Conn.Close()
 	}()
 
 	for {
-		var msg Message
-		err := c.Ws.ReadJSON(&msg)
+		_, msgBytes, err := c.Conn.ReadMessage()
 		if err != nil {
+			// handle disconnect...
 			break
 		}
-		msg.From = client.ID
+
+		var msg Message
+		if err := json.Unmarshal(msgBytes, &msg); err != nil {
+    fmt.Println("Invalid message:", err)
+    continue
+}
+
+// 🚨 Override sender on server side to avoid duplicate / fake messages
+msg.From = c.ID
+
+		// Broadcast the message to the recipient
 		hub.Broadcast <- msg
 	}
 }
 
-func (c *Connection) WritePump(client *Client) {
-	
-	defer func() {
-		c.Ws.Close()
-	}()
-
-	/// As long as client.Send channel is open, keep reading messages from it.
-
-
-	for msg := range client.Send {
-
-		if err := c.Ws.WriteJSON(msg); err != nil {
-		
-			log.Println("Write error:", err)
+func (c *Client) writePump() {
+	for msg := range c.Send {
+		err := c.Conn.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
 			break
-			
 		}
 	}
 }
