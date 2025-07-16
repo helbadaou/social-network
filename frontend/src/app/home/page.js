@@ -10,7 +10,9 @@ import ChatBox from "./components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
 import { useUser } from "./hooks/useUser";
 import { usePosts } from "./hooks/usePosts";
-import useChat from "./hooks/useChat";
+
+import Sidebar from './components/Sidebar'
+
 
 export default function HomePage() {
   const [posts, setPosts] = useState([]);
@@ -35,13 +37,34 @@ export default function HomePage() {
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
 
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState({}); // input per chat
+  const [ws, setWs] = useState(null)
   const fileInputRef = useRef()
 
-  const ws = useRef(null);
-
   const router = useRouter();
+
+
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = new WebSocket('ws://localhost:8080/ws')
+    socket.onopen = () => console.log('✅ WS connected')
+    socket.onclose = () => console.log('❌ WS disconnected')
+    socket.onerror = (err) => {
+      console.error('WS error:', err, JSON.stringify(err));
+    };
+
+
+    socket.onmessage = (event) => {
+      const msg = JSON.parse(event.data)
+      console.log("messages", messages)
+      messages != null ? setMessages(prev => { return [...prev, msg] }) : setMessages([msg])
+    }
+
+    setWs(socket)
+    return () => socket.close()
+  }, [user])
 
   // Ouverture de la barre latérale des messages
   const openMessages = () => {
@@ -165,8 +188,6 @@ export default function HomePage() {
 
     fetchFollowStatus();
   }, [selectedUser]);
-
-
 
 
   const fetchPosts = () => {
@@ -300,6 +321,7 @@ export default function HomePage() {
         openMessages={openMessages}
       />
 
+
       {/* MESSAGES SIDEBAR */}
       {showMessages && (
         <MessageSidebar
@@ -309,6 +331,7 @@ export default function HomePage() {
           openChat={openChat}
         />
       )}
+
 
       <div className="max-w-2xl mx-auto px-4 mt-6">
         <PostForm
@@ -371,12 +394,16 @@ export default function HomePage() {
       </div>
 
       {/* OPEN CHAT BOXES */}
-      <div className="fixed bottom-4 right-72 flex gap-4 z-40">
+      <div className="fixed bottom-4 right-4 flex gap-4 z-40">
         {openChats.map((u) => (
           <ChatBox
             key={u.id}
             recipient={u}
             currentUser={user}
+            ws={{ current: ws }}
+            messages={messages}
+            input={input[u.id] || ''}
+            setInput={val => setInput(prev => ({ ...prev, [u.id]: val }))}
             onClose={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
           />
         ))}
@@ -389,9 +416,11 @@ export default function HomePage() {
           currentUser={user}
           setShowPopup={setShowPopup}
           followStatus={followStatus}
+          // handleFollowToggle={handleFollowToggle}
           setFollowStatus={setFollowStatus}
         />
       )}
     </div>
   )
 }
+
