@@ -6,6 +6,7 @@ import (
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
+	"social-network/backend/pkg/comments"
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/follow"
 	"social-network/backend/pkg/notifications"
@@ -42,6 +43,8 @@ func main() {
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
+	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
+	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug

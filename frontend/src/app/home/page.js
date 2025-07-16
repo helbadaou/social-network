@@ -8,6 +8,8 @@ import PostForm from "./components/PostForm";
 import MessageSidebar from "./components/MessageSidebar";
 import ChatBox from "./components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
+import Post from './components/Post'
+
 import { useUser } from "./hooks/useUser";
 import { usePosts } from "./hooks/usePosts";
 
@@ -348,50 +350,10 @@ export default function HomePage() {
       </div>
 
       {/* Affichage des posts */}
-      <div className="max-w-2xl mx-auto px-4 mt-6">
-        {loading ? (
-          <p className="text-gray-400">Chargement...</p>
-        ) : posts.length === 0 ? (
-          <p className="text-gray-400">Aucun post pour le moment.</p>
-        ) : (
-          posts.map((post, i) => (
-            <div
-              key={i}
-              className="bg-gray-800 shadow rounded-xl p-4 mb-4 border border-gray-700"
-            >
-              <div
-                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
-                onClick={() => fetchUserById(post.author_id)}
-              >
-                <img
-                  src={post.author_avatar || "/avatar.png"}
-                  alt={post.author_name}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-600"
-                />
-                <div>
-                  <div className="font-medium text-blue-400 hover:underline">
-                    {post.author_name}
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    Publié le {new Date(post.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
+      {posts.map((post) => (
+        <Post key={post.id} post={post} fetchUserById={fetchUserById} />
+      ))}
 
-              <div className="text-sm text-gray-200 whitespace-pre-wrap">
-                {post.content}
-              </div>
-              {post.image_url && (
-                <img
-                  src={`http://localhost:8080${post.image_url}`}
-                  alt="post"
-                  className="mt-2 max-h-60 object-contain rounded border border-gray-700"
-                />
-              )}
-            </div>
-          ))
-        )}
-      </div>
 
       {/* OPEN CHAT BOXES */}
       <div className="fixed bottom-4 right-4 flex gap-4 z-40">
