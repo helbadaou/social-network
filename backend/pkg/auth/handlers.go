@@ -146,6 +146,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		&user.ID, &user.Email, &user.FirstName, &user.LastName,
 		&user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar,
 	)
+
+	// Après récupération depuis DB
+	if user.Avatar != "" {
+		user.Avatar = "http://localhost:8080/" + user.Avatar
+	}
+
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		fmt.Println("user not found")
@@ -159,10 +165,21 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure: false, // use true if using https
+		Secure:   false, // use true if using https
 	})
 
-	w.Write([]byte("✅ Logged in successfully"))
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":            user.ID,
+		"email":         user.Email,
+		"first_name":    user.FirstName,
+		"last_name":     user.LastName,
+		"date_of_birth": user.DateOfBirth,
+		"nickname":      user.Nickname,
+		"about":         user.About,
+		"avatar":        user.Avatar, // ← IMPORTANT !
+	})
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +196,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
-		Secure: false,
+		Secure:   false,
 	})
 
 	w.Write([]byte("✅ Logged out successfully"))

@@ -96,7 +96,14 @@ export default function UserProfilePopup({
 
         <div className="flex flex-col items-center">
           <img
-            src={selectedUser.author_avatar || '/avatar.png'}
+            // src={selectedUser.author_avatar || '/avatar.png'}
+            src={
+              selectedUser.author_avatar
+                ? selectedUser.author_avatar.startsWith('http')
+                  ? selectedUser.author_avatar
+                  : `http://localhost:8080/${selectedUser.author_avatar}`
+                : '/avatar.png'
+            }
             alt="Avatar"
             className="w-20 h-20 rounded-full border border-gray-600 object-cover mb-3"
           />

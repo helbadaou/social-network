@@ -164,7 +164,13 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
         {user && (
           <div className="relative">
             <img
-              src={user.author_avatar?.trim() ? user.author_avatar : '/avatar.png'}
+              src={
+                user.Avatar
+                  ? user.Avatar.startsWith('http')
+                    ? user.Avatar
+                    : `http://localhost:8080/${user?.Avatar}`
+                  : '/avatar.png'
+              }
               alt="Avatar"
               onClick={toggleProfile}
               className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
@@ -184,15 +190,14 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
                   <button
                     onClick={togglePrivacy}
                     className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out 
-      ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
+              ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
                   >
                     <div
                       className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out 
-        ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
+                ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
                     ></div>
                   </button>
                 </div>
-
 
                 <button
                   onClick={handleLogout}
@@ -204,6 +209,7 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
             )}
           </div>
         )}
+
       </div>
     </nav>
   )

@@ -20,7 +20,13 @@ export default function Post({ post, fetchUserById }) {
         className="flex items-center cursor-pointer mb-3"
       >
         <img
-          src={post.author_avatar || '/avatar.png'}
+          src={
+            post.author_avatar
+              ? post.author_avatar.startsWith('http')
+                ? post.author_avatar
+                : `http://localhost:8080/${post?.author_avatar}`
+              : '/avatar.png'
+          }
           alt="Avatar"
           className="w-10 h-10 rounded-full border border-gray-700 mr-3"
         />

@@ -1,7 +1,7 @@
 // src/app/home/page.js
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "./components/Navbar";
 import PostForm from "./components/PostForm";
@@ -42,32 +42,74 @@ export default function HomePage() {
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
-  const [ws, setWs] = useState(null)
+  // const [ws, setWs] = useState(null)
   const fileInputRef = useRef()
 
   const router = useRouter();
 
+  const ws = useRef(null);
+  const [isWsConnected, setIsWsConnected] = useState(false);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
-  useEffect(() => {
-    if (!user) return;
 
-    const socket = new WebSocket('ws://localhost:8080/ws')
-    socket.onopen = () => console.log('✅ WS connected')
-    socket.onclose = () => console.log('❌ WS disconnected')
+  const setupWebSocket = useCallback(() => {
+    if (!user?.ID) return;
+
+    const socket = new WebSocket('ws://localhost:8080/ws');
+
+    socket.onopen = () => {
+      console.log('✅ WS connected');
+      setIsWsConnected(true);
+      reconnectAttempts.current = 0;
+      ws.current = socket;
+    };
+
+    socket.onclose = (e) => {
+      console.log('❌ WS disconnected', e.code, e.reason);
+      setIsWsConnected(false);
+
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        reconnectAttempts.current += 1;
+        setTimeout(setupWebSocket, delay);
+      }
+    };
+
     socket.onerror = (err) => {
-      console.error('WS error:', err, JSON.stringify(err));
+      console.error('WS error:', err);
+      setIsWsConnected(false);
     };
 
 
     socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data)
-      console.log("messages", messages)
-      messages != null ? setMessages(prev => { return [...prev, msg] }) : setMessages([msg])
-    }
+      try {
+        const msg = JSON.parse(event.data);
+        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+      } catch (err) {
+        console.error('Failed to parse message:', err);
+      }
+    };
 
-    setWs(socket)
-    return () => socket.close()
-  }, [user])
+    return socket;
+  }, [user?.ID]);
+
+  useEffect(() => {
+    const socket = setupWebSocket();
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [setupWebSocket]);
+
+  const sendWsMessage = useCallback((message) => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket not connected');
+    }
+  }, []);
 
   // Ouverture du formulaire de posts
   const togglePostForm = () => {
@@ -294,6 +336,14 @@ export default function HomePage() {
     }
   };
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
+  }, [])
+
+
   // const handleUserClick = async (userId) => {
   //   try {
   //     const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
@@ -374,11 +424,18 @@ export default function HomePage() {
             key={u.id}
             recipient={u}
             currentUser={user}
-            ws={{ current: ws }}
+            // ws={{ current: ws }}
             messages={messages}
             input={input[u.id] || ''}
-            setInput={val => setInput(prev => ({ ...prev, [u.id]: val }))}
-            onClose={() => setOpenChats(openChats.filter((c) => c.id !== u.id))}
+            setInput={(val) => setInput(prev => ({ ...prev, [u.id]: val }))}
+            onSendMessage={(message) => {
+              if (ws.current?.readyState === WebSocket.OPEN) {
+                ws.current.send(JSON.stringify(message));
+              } else {
+                console.error('WebSocket not connected');
+              }
+            }}
+            onClose={() => setOpenChats(prev => prev.filter(c => c.id !== u.id))}
           />
         ))}
       </div>

@@ -85,7 +85,13 @@ export default function CommentSection({ postId }) {
                         <div key={comment.id} className="bg-gray-800 p-3 rounded shadow border border-gray-700">
                             <div className="flex items-center mb-2">
                                 <img
-                                    src={comment.author.avatar || '/avatar.png'}
+                                    src={
+                                        comment.author.avatar
+                                            ? comment.author.avatar.startsWith('http')
+                                                ? comment.author.avatar
+                                                : `http://localhost:8080/${comment.author.avatar}`
+                                            : '/avatar.png'
+                                    }
                                     alt="Avatar"
                                     className="w-8 h-8 rounded-full border border-gray-600 mr-2"
                                 />

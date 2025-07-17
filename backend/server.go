@@ -52,7 +52,7 @@ func main() {
 	})
 
 	// ✅ Fichiers images (uploads)
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 
 	// Création du middleware personnalisé qui applique CORS uniquement sur /api/*
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

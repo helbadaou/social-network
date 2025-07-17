@@ -22,6 +22,9 @@ export default function LoginPage() {
       })
 
       if (res.ok) {
+        const userData = await res.json()
+        localStorage.setItem('user', JSON.stringify(userData))
+
         setMessage('✅ Login successful!')
         router.push('/home')
       } else {

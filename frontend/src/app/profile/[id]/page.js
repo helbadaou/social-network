@@ -75,7 +75,13 @@ export default function PublicProfilePage() {
 
         <div className="bg-gray-900 rounded-xl p-4 shadow-md border border-gray-700">
           <img
-            src={profile.avatar || '/avatar.png'}
+            src={
+              profile.avatar
+                ? profile.avatar.startsWith('http')
+                  ? profile.avatar
+                  : `http://localhost:8080/${profile.avatar}`
+                : '/avatar.png'
+            }
             alt="Avatar"
             className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
           />
