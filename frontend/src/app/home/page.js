@@ -8,6 +8,8 @@ import PostForm from "./components/PostForm";
 import MessageSidebar from "./components/MessageSidebar";
 import ChatBox from "./components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
+import Post from './components/Post'
+
 import { useUser } from "./hooks/useUser";
 import { usePosts } from "./hooks/usePosts";
 
@@ -36,10 +38,11 @@ export default function HomePage() {
   const [followStatus, setFollowStatus] = useState("");
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
+  const [showPostForm, setShowPostForm] = useState(false)
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
-  //const [ws, setWs] = useState(null)
+  // const [ws, setWs] = useState(null)
   const fileInputRef = useRef()
 
   const router = useRouter();
@@ -48,6 +51,7 @@ export default function HomePage() {
   const [isWsConnected, setIsWsConnected] = useState(false);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+
 
   const setupWebSocket = useCallback(() => {
     if (!user?.ID) return;
@@ -76,6 +80,7 @@ export default function HomePage() {
       console.error('WS error:', err);
       setIsWsConnected(false);
     };
+
 
     socket.onmessage = (event) => {
       try {
@@ -106,26 +111,10 @@ export default function HomePage() {
     }
   }, []);
 
-  // useEffect(() => {
-  //   if (!user) return;
-
-  //   const socket = new WebSocket('ws://localhost:8080/ws')
-  //   socket.onopen = () => console.log('✅ WS connected')
-  //   socket.onclose = () => console.log('❌ WS disconnected')
-  //   socket.onerror = (err) => {
-  //     console.error('WS error:', err, JSON.stringify(err));
-  //   };
-
-
-  //   socket.onmessage = (event) => {
-  //     const msg = JSON.parse(event.data)
-  //     console.log("messages", messages)
-  //     messages != null ? setMessages(prev => { return [...prev, msg] }) : setMessages([msg])
-  //   }
-
-  //   setWs(socket)
-  //   return () => socket.close()
-  // }, [user])
+  // Ouverture du formulaire de posts
+  const togglePostForm = () => {
+    setShowPostForm(prev => !prev)
+  }
 
   // Ouverture de la barre latérale des messages
   const openMessages = () => {
@@ -133,9 +122,9 @@ export default function HomePage() {
   };
 
   // Fermeture de la barre latérale des messages
-  const closeMessages = () => {
-    setShowMessages(false);
-  };
+  // const closeMessages = () => {
+  //   setShowMessages(false);
+  // };
 
   const openChat = (user) => {
     if (!openChats.some((c) => c.id === user.id)) {
@@ -199,32 +188,32 @@ export default function HomePage() {
     }
   }
 
-  const handleFollowToggle = async () => {
-    if (!selectedUser) return;
+  // const handleFollowToggle = async () => {
+  //   if (!selectedUser) return;
 
-    try {
-      const res = await fetch("http://localhost:8080/api/follow", {
-        method: "POST",
-        credentials: "include", // ← IMPORTANT pour le cookie session
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ followed_id: selectedUser.id }),
-      });
+  //   try {
+  //     const res = await fetch("http://localhost:8080/api/follow", {
+  //       method: "POST",
+  //       credentials: "include", // ← IMPORTANT pour le cookie session
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ followed_id: selectedUser.id }),
+  //     });
 
-      if (res.ok) {
-        // Re-fetch le status
-        const statusRes = await fetch(
-          `http://localhost:8080/api/follow/status/${selectedUser.id}`,
-          { credentials: "include" }
-        );
-        if (statusRes.ok) {
-          const data = await statusRes.json();
-          setFollowStatus(data.status);
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lors du follow :", error);
-    }
-  };
+  //     if (res.ok) {
+  //       // Re-fetch le status
+  //       const statusRes = await fetch(
+  //         `http://localhost:8080/api/follow/status/${selectedUser.id}`,
+  //         { credentials: "include" }
+  //       );
+  //       if (statusRes.ok) {
+  //         const data = await statusRes.json();
+  //         setFollowStatus(data.status);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Erreur lors du follow :", error);
+  //   }
+  // };
 
 
   useEffect(() => {
@@ -305,9 +294,9 @@ export default function HomePage() {
   };
 
 
-  const toggleProfile = () => {
-    setShowProfile(!showProfile);
-  };
+  // const toggleProfile = () => {
+  //   setShowProfile(!showProfile);
+  // };
 
   const handleSearch = async (e) => {
     const value = e.target.value;
@@ -347,30 +336,38 @@ export default function HomePage() {
     }
   };
 
-  const handleUserClick = async (userId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Error loading user profile");
-      const data = await res.json();
-      setSelectedUser(data);
-
-      const followRes = await fetch(
-        `http://localhost:8080/api/follow/status/${userId}`,
-        { credentials: "include" }
-      );
-      if (followRes.ok) {
-        const { status } = await followRes.json();
-        setFollowStatus(status);
-      } else {
-        setFollowStatus("");
-      }
-      setShowPopup(true);
-    } catch (err) {
-      console.error("Error loading profile:", err);
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
     }
-  };
+  }, [])
+
+
+  // const handleUserClick = async (userId) => {
+  //   try {
+  //     const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+  //       credentials: "include",
+  //     });
+  //     if (!res.ok) throw new Error("Error loading user profile");
+  //     const data = await res.json();
+  //     setSelectedUser(data);
+
+  //     const followRes = await fetch(
+  //       `http://localhost:8080/api/follow/status/${userId}`,
+  //       { credentials: "include" }
+  //     );
+  //     if (followRes.ok) {
+  //       const { status } = await followRes.json();
+  //       setFollowStatus(status);
+  //     } else {
+  //       setFollowStatus("");
+  //     }
+  //     setShowPopup(true);
+  //   } catch (err) {
+  //     console.error("Error loading profile:", err);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
@@ -380,6 +377,7 @@ export default function HomePage() {
         handleLogout={handleLogout}
         results={results}
         openMessages={openMessages}
+        togglePostForm={togglePostForm}
       />
 
 
@@ -395,64 +393,29 @@ export default function HomePage() {
 
 
       <div className="max-w-2xl mx-auto px-4 mt-6">
-        <PostForm
-          content={content}
-          setContent={setContent}
-          image={image}
-          setImage={setImage}
-          privacy={privacy}
-          setPrivacy={setPrivacy}
-          handleSubmit={handleSubmit}
-          creating={creating}
-          ref={fileInputRef}
-        />
+        {showPostForm && (
+          <div className="max-w-2xl mx-auto px-4 mt-6">
+            <PostForm
+              content={content}
+              setContent={setContent}
+              image={image}
+              setImage={setImage}
+              privacy={privacy}
+              setPrivacy={setPrivacy}
+              handleSubmit={handleSubmit}
+              creating={creating}
+              ref={fileInputRef}
+            />
+          </div>
+        )}
+
       </div>
 
       {/* Affichage des posts */}
-      <div className="max-w-2xl mx-auto px-4 mt-6">
-        {loading ? (
-          <p className="text-gray-400">Chargement...</p>
-        ) : posts.length === 0 ? (
-          <p className="text-gray-400">Aucun post pour le moment.</p>
-        ) : (
-          posts.map((post, i) => (
-            <div
-              key={i}
-              className="bg-gray-800 shadow rounded-xl p-4 mb-4 border border-gray-700"
-            >
-              <div
-                className="flex items-center gap-3 mb-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
-                onClick={() => fetchUserById(post.author_id)}
-              >
-                <img
-                  src={post.author_avatar || "/avatar.png"}
-                  alt={post.author_name}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-600"
-                />
-                <div>
-                  <div className="font-medium text-blue-400 hover:underline">
-                    {post.author_name}
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    Publié le {new Date(post.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
+      {posts.map((post) => (
+        <Post key={post.id} post={post} fetchUserById={fetchUserById} />
+      ))}
 
-              <div className="text-sm text-gray-200 whitespace-pre-wrap">
-                {post.content}
-              </div>
-              {post.image_url && (
-                <img
-                  src={`http://localhost:8080${post.image_url}`}
-                  alt="post"
-                  className="mt-2 max-h-60 object-contain rounded border border-gray-700"
-                />
-              )}
-            </div>
-          ))
-        )}
-      </div>
 
       {/* OPEN CHAT BOXES */}
       <div className="fixed bottom-4 right-4 flex gap-4 z-40">
@@ -461,6 +424,7 @@ export default function HomePage() {
             key={u.id}
             recipient={u}
             currentUser={user}
+            // ws={{ current: ws }}
             messages={messages}
             input={input[u.id] || ''}
             setInput={(val) => setInput(prev => ({ ...prev, [u.id]: val }))}

@@ -10,4 +10,5 @@ type User struct {
 	Nickname    string
 	About       string
 	Avatar      string
+	IsPrivate   bool
 }

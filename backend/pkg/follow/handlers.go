@@ -35,32 +35,24 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// followerID := id
-
-	// Get followed_id from JSON body
 	var req struct {
 		FollowedID int `json:"followed_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 		return
 	}
-	// fmt.Printf("🔍 Body reçu: %+v\n", req)
-	// fmt.Println("▶ Followed ID reçu:", req.FollowedID)
-	// fmt.Println("▶ Follower ID (depuis cookie):", followerID)
 
-	// Check if follow already exists
+	// Vérifie s’il existe déjà une relation
 	var exists int
-
-	err = sqlite.DB.QueryRow(
-		`SELECT COUNT(*) FROM followers WHERE follower_id = ? AND followed_id = ?`,
-		followerID, req.FollowedID,
-	).Scan(&exists)
+	err = sqlite.DB.QueryRow(`
+		SELECT COUNT(*) FROM followers
+		WHERE follower_id = ? AND followed_id = ?
+	`, followerID, req.FollowedID).Scan(&exists)
 	if err != nil {
-		http.Error(w, "DB error", http.StatusInternalServerError)
+		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-
 	if exists > 0 {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -69,12 +61,13 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if followed user is public or private
+	// Vérifie si le profil suivi est privé
 	var isPrivate bool
-	err = sqlite.DB.QueryRow(`SELECT is_private FROM users WHERE id = ?`, req.FollowedID).Scan(&isPrivate)
+	err = sqlite.DB.QueryRow(`
+		SELECT is_private FROM users WHERE id = ?
+	`, req.FollowedID).Scan(&isPrivate)
 	if err != nil {
-		// fmt.Println("❌ Erreur SQL SELECT is_private:", err)
-		http.Error(w, "User not found", http.StatusNotFound)
+		http.Error(w, "Followed user not found", http.StatusNotFound)
 		return
 	}
 
@@ -83,13 +76,38 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		status = "accepted"
 	}
 
+	// Insertion dans la table followers
 	_, err = sqlite.DB.Exec(`
 		INSERT INTO followers (follower_id, followed_id, status)
 		VALUES (?, ?, ?)`, followerID, req.FollowedID, status)
 	if err != nil {
-		http.Error(w, "Insert error", http.StatusInternalServerError)
+		http.Error(w, "Failed to insert follow", http.StatusInternalServerError)
 		return
 	}
+
+	// // Si le profil est privé, créer une notification
+	// if isPrivate {
+	// 	status = "pending"
+
+	// 	// 🔔 Créer la notification
+	// 	_, err := sqlite.DB.Exec(`
+	// 		INSERT INTO notifications (user_id, sender_id, type, message)
+	// 		VALUES (?, ?, 'follow_request', ?)
+	// 	`, req.FollowedID, followerID, "Nouvelle demande d'abonnement")
+	// 	if err != nil {
+	// 		fmt.Println("Erreur création notification:", err)
+	// 	}
+	// }
+
+	// // Enregistrement dans la table followers
+	// _, err = sqlite.DB.Exec(`
+	// 	INSERT OR REPLACE INTO followers (follower_id, followed_id, status)
+	// 	VALUES (?, ?, ?)
+	// `, followerID, req.FollowedID, status)
+	// if err != nil {
+	// 	http.Error(w, "Erreur DB", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, "Follow request sent")
@@ -132,7 +150,6 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -164,7 +181,6 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 		DELETE FROM followers 
 		WHERE follower_id = ? AND followed_id = ?
 	`, followerID, req.FollowedID)
-
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return

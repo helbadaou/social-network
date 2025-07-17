@@ -23,11 +23,11 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 
-	query := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar FROM users WHERE id = ?`
+	query := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar, is_private FROM users WHERE id = ?`
 
 	err = sqlite.DB.QueryRow(query, userID).Scan(
 		&user.ID, &user.Email, &user.FirstName, &user.LastName,
-		&user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar)
+		&user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar, &user.IsPrivate)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return

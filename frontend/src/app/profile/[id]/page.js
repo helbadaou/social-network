@@ -75,7 +75,13 @@ export default function PublicProfilePage() {
 
         <div className="bg-gray-900 rounded-xl p-4 shadow-md border border-gray-700">
           <img
-            src={profile.avatar || '/avatar.png'}
+            src={
+              profile.avatar
+                ? profile.avatar.startsWith('http')
+                  ? profile.avatar
+                  : `http://localhost:8080/${profile.avatar}`
+                : '/avatar.png'
+            }
             alt="Avatar"
             className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
           />
@@ -103,11 +109,15 @@ export default function PublicProfilePage() {
                   </div>
                   <p className="text-gray-100 mb-3 whitespace-pre-wrap">{post.content}</p>
 
-                  {post.image && (
+                  {post.image_url && (
                     <img
-                      src={post.image}
-                      alt="Image du post"
-                      className="w-full rounded-lg object-cover max-h-96 border border-gray-700"
+                      src={
+                        post.image_url.startsWith('http')
+                          ? post.image_url
+                          : `http://localhost:8080${post.image_url}`
+                      }
+                      alt="Post"
+                      className="w-full max-w-md rounded border border-gray-700 mb-2"
                     />
                   )}
                 </div>

@@ -6,8 +6,10 @@ import (
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
+	"social-network/backend/pkg/comments"
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/follow"
+	"social-network/backend/pkg/notifications"
 	"social-network/backend/pkg/profile"
 	"social-network/backend/pkg/search"
 	"social-network/backend/pkg/user"
@@ -40,6 +42,9 @@ func main() {
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
+	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
+	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
+	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
@@ -47,7 +52,7 @@ func main() {
 	})
 
 	// ✅ Fichiers images (uploads)
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 
 	// Création du middleware personnalisé qui applique CORS uniquement sur /api/*
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -1,27 +1,22 @@
 'use client'
+
 import { useEffect, useRef } from 'react'
 
-export default function ChatBox({ 
-  currentUser, 
-  recipient, 
-  messages, 
-  input, 
-  setInput, 
-  onSendMessage, 
-  onClose 
-}) {
+export default function ChatBox({ currentUser, recipient, onSendMessage, messages, input, setInput, onClose }) {
   const scrollRef = useRef()
+
+  // Support both recipient.id and recipient.ID for compatibility
   const recipientId = recipient.id || recipient.ID
   const userId = currentUser?.ID
 
-  // Filter messages for this chat
-  const chatMessages = Array.isArray(messages) 
-    ? messages.filter(msg => 
-        (msg.from === userId && msg.to === recipientId) ||
-        (msg.to === userId && msg.from === recipientId)
-      )
+  const chatMessages = Array.isArray(messages)
+    ? messages.filter(msg =>
+      (msg.from === userId && msg.to === recipientId) ||
+      (msg.to === userId && msg.from === recipientId)
+    )
     : []
 
+  // Filter messages for this chat
   const handleSend = () => {
     if (!input.trim()) return
     if (!userId || !recipientId) return
@@ -54,18 +49,18 @@ export default function ChatBox({
         </button>
       </div>
 
+      {/* Messages */}
       <div className="h-48 overflow-y-auto bg-gray-900 rounded p-2 text-sm text-gray-300 flex-1 mb-2">
         {chatMessages.length === 0 ? (
           <p className="text-gray-500 italic">No messages yet...</p>
         ) : (
           chatMessages.map((m, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={`mb-2 ${m.from === userId ? 'text-right' : 'text-left'}`}
             >
-              <div className={`inline-block px-3 py-1 rounded-lg ${
-                m.from === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
-              }`}>
+              <div className={`inline-block px-3 py-1 rounded-lg ${m.from === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
+                }`}>
                 {m.content}
                 <div className="text-xs opacity-70 mt-1">
                   {new Date(m.timestamp).toLocaleTimeString()}
@@ -77,6 +72,7 @@ export default function ChatBox({
         <div ref={scrollRef} />
       </div>
 
+      {/* Input */}
       <div className="flex">
         <input
           type="text"
@@ -91,7 +87,7 @@ export default function ChatBox({
           onClick={handleSend}
           disabled={!input.trim()}
         >
-          Send
+          Envoyer
         </button>
       </div>
     </div>

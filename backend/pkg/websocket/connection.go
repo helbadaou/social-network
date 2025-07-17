@@ -2,13 +2,12 @@ package websocket
 
 import (
 	"encoding/json"
-	 
-"log"
+	"log"
 	"time"
+
 	"github.com/gorilla/websocket"
 )
 
- 
 const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
@@ -53,7 +52,6 @@ func (c *Client) readPump(hub *Hub) {
 		hub.Broadcast <- msg
 	}
 }
-
 
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)

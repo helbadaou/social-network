@@ -13,6 +13,8 @@ export default function UserProfilePopup({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [isHovered, setIsHovered] = useState(false);
+
 
   useEffect(() => {
     async function fetchFollowStatus() {
@@ -42,7 +44,7 @@ export default function UserProfilePopup({
     setLoading(true)
 
     try {
-      if (followStatus === 'accepted') {
+      if (followStatus === 'accepted' || followStatus === 'pending') {
         // UNFOLLOW
         const res = await fetch('http://localhost:8080/api/unfollow', {
           method: 'DELETE',
@@ -51,7 +53,9 @@ export default function UserProfilePopup({
           body: JSON.stringify({ followed_id: selectedUser.id }),
         })
 
-        if (res.ok) setFollowStatus("")
+        if (res.ok) {
+          setFollowStatus(""); // remet à l’état initial
+        }
       } else {
         // FOLLOW
         const res = await fetch('http://localhost:8080/api/follow', {
@@ -92,7 +96,14 @@ export default function UserProfilePopup({
 
         <div className="flex flex-col items-center">
           <img
-            src={selectedUser.author_avatar || '/avatar.png'}
+            // src={selectedUser.author_avatar || '/avatar.png'}
+            src={
+              selectedUser.author_avatar
+                ? selectedUser.author_avatar.startsWith('http')
+                  ? selectedUser.author_avatar
+                  : `http://localhost:8080/${selectedUser.author_avatar}`
+                : '/avatar.png'
+            }
             alt="Avatar"
             className="w-20 h-20 rounded-full border border-gray-600 object-cover mb-3"
           />
@@ -114,20 +125,25 @@ export default function UserProfilePopup({
             <button
               onClick={handleFollowToggle}
               disabled={loading}
-              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${followStatus === 'accepted'
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : followStatus === 'pending'
-                    ? 'bg-yellow-500 text-white cursor-default'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${followStatus === 'accepted'
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : followStatus === 'pending'
+                  ? isHovered
+                    ? 'bg-gray-700 text-white hover:bg-gray-800'
+                    : 'bg-yellow-500 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
             >
               {followStatus === 'accepted'
                 ? 'Se désabonner'
                 : followStatus === 'pending'
-                  ? '🕓 En attente'
+                  ? isHovered
+                    ? '❌ Annuler'
+                    : '🕓 En attente'
                   : '+ Suivre'}
             </button>
-
           )}
 
 
