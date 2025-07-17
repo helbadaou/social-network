@@ -20,6 +20,9 @@ func main() {
 	hub := websocket.NewHub()
 
 	go hub.Run()
+	
+	// Ajouter juste après la création du hub :
+	follow.Hub = hub
 
 	sqlite.InitDB()
 
@@ -38,6 +41,9 @@ func main() {
 	mux.HandleFunc("/api/search", search.SearchUsersHandler)
 	mux.HandleFunc("/api/follow", follow.SendFollowRequest)
 	mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
+	mux.HandleFunc("/api/follow/accept", follow.AcceptFollowHandler)
+	mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
+
 	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)

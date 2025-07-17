@@ -39,6 +39,10 @@ export default function HomePage() {
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
   const [showPostForm, setShowPostForm] = useState(false)
+  // const [notifications, setNotifications] = useState([]);
+  const [realtimeNotification, setRealtimeNotification] = useState(null);
+
+
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
@@ -85,7 +89,24 @@ export default function HomePage() {
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+
+        console.log("📨 WS message received:", msg); // Debug
+
+        if (msg.type === 'notification') {
+          console.log("🔔 Processing notification:", msg);
+          setRealtimeNotification({
+            id: msg.id || Date.now(), // Garantit un ID unique
+            sender_id: msg.from,
+            type: msg.type,
+            message: msg.content,
+            created_at: new Date().toISOString()
+          });
+        } else if (msg.type === 'private') {
+          // 💬 Message privé
+          setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+        } else {
+          console.warn('Unknown WS message type:', msg.type);
+        }
       } catch (err) {
         console.error('Failed to parse message:', err);
       }
@@ -378,6 +399,7 @@ export default function HomePage() {
         results={results}
         openMessages={openMessages}
         togglePostForm={togglePostForm}
+        realtimeNotification={realtimeNotification}
       />
 
 

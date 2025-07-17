@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -69,4 +70,15 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+func (h *Hub) SendNotification(fromID, toID int, content string) {
+	msg := Message{
+		From:      fromID,
+		To:        toID,
+		Content:   content,
+		Type:      "notification",
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	h.Broadcast <- msg
 }
