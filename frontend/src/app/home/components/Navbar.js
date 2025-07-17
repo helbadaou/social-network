@@ -10,7 +10,7 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
   const [notifications, setNotifications] = useState([])
   const notificationsRef = useRef(null)
   const notificationButtonRef = useRef(null)
-
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Fermer les notifications quand on clique ailleurs
   useEffect(() => {
@@ -26,41 +26,66 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-
+  // Déclarée ici pour être accessible partout dans le composant
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/notifications", {
-        credentials: "include",
-      });
+      const res = await fetch("/api/notifications");
+      const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+      const uniqueNotifs = [];
+      const seenKeys = new Set();
+
+      for (const notif of data) {
+        const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          uniqueNotifs.push(notif);
+        }
       }
 
-      const data = await res.json();
-      console.log("API Response:", data); // Debug
-
-      // Normalisation des données
-      const normalizedData = Array.isArray(data)
-        ? data.filter(n => n !== null) // Filtre les éventuels null
-        : [];
-
-      console.log("Normalized notifications:", normalizedData); // Debug
-      setNotifications(normalizedData);
-
+      setNotifications(uniqueNotifs);
+      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
     } catch (err) {
-      console.error("Fetch error:", err);
-      setNotifications([]); // Garantit un tableau vide en cas d'erreur
+      console.error("Erreur récupération notifications", err);
     }
   };
 
-  const toggleNotifications = (e) => {
-    e.stopPropagation()
-    if (!showNotifications) {
-      fetchNotifications()
+  // Ensuite dans ton useEffect
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+
+
+  const toggleNotifications = async (e) => {
+    e.stopPropagation();
+    const newState = !showNotifications;
+    setShowNotifications(newState);
+
+    if (newState) {
+      await fetchNotifications();
+
+      // Mise à jour optimiste frontend seulement
+      setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
+      setUnreadCount(0);
+
+
+      // try {
+      //   await fetch('http://localhost:8080/api/notifications/seen', {
+      //     method: 'POST',
+      //     credentials: 'include',
+      //   });
+
+      //   setNotifications(prev =>
+      //     prev.map(n => ({ ...n, seen: true }))
+      //   );
+
+      //   setUnreadCount(0);
+      // } catch (err) {
+      //   console.error('Erreur lors de la mise à jour des notifs vues:', err);
+      // }
     }
-    setShowNotifications(prev => !prev)
-  }
+  };
 
 
   const handleAccept = async (notifId, senderId) => {
@@ -72,8 +97,11 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
         credentials: 'include',
       });
 
-      // Mettre à jour localement les notifications
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
+      setNotifications(prev => {
+        const updated = prev.filter(n => n.id !== notifId);
+        setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
+        return updated;
+      });
     } catch (err) {
       console.error('Erreur acceptation:', err);
     }
@@ -81,20 +109,24 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
   const handleReject = async (notifId, senderId) => {
     try {
-      await fetch('/api/follow/reject', {
+      const res = await fetch('/api/follow/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender_id: senderId }),
         credentials: 'include',
       });
 
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
+      if (res.ok) {
+        setNotifications(prev => {
+          const updated = prev.filter(n => n.id !== notifId);
+          setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
+          return updated;
+        });
+      }
     } catch (err) {
       console.error('Erreur rejet:', err);
     }
   };
-
-
 
   const toggleProfile = () => {
     setShowProfile(prev => !prev)
@@ -122,22 +154,44 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
     }
   }, [user]);
 
+  // ✅ CORRECTION : Éviter les doublons dans les notifications temps réel
   useEffect(() => {
     if (realtimeNotification) {
       console.log("New realtime notification:", realtimeNotification);
+
       setNotifications(prev => {
+        const currentNotifs = prev || [];
+
+        // Vérifier si cette notification existe déjà
+        const exists = currentNotifs.some(n =>
+          n.sender_id === realtimeNotification.sender_id &&
+          n.type === realtimeNotification.type &&
+          n.message === realtimeNotification.message
+        );
+
+        // Si elle existe déjà, ne pas l'ajouter
+        if (exists) {
+          console.log("Notification déjà présente, ignorer");
+          return currentNotifs;
+        }
+
+        // Sinon, l'ajouter
         const newNotif = {
-          id: realtimeNotification.from + '-' + Date.now(), // ID unique
-          sender_id: realtimeNotification.from,
+          id: realtimeNotification.sender_id + '-' + Date.now(),
+          sender_id: realtimeNotification.sender_id,
           type: realtimeNotification.type,
-          message: realtimeNotification.content,
-          created_at: realtimeNotification.timestamp || new Date().toISOString()
+          message: realtimeNotification.message,
+          created_at: realtimeNotification.created_at || new Date().toISOString(),
+          seen: false
         };
-        return [newNotif, ...(prev || [])];
+
+        return [newNotif, ...currentNotifs];
       });
     }
   }, [realtimeNotification]);
 
+  // ✅ Compter seulement les notifications non vues
+  // const unreadCount = notifications.filter(n => !n.seen).length;
 
   return (
     <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800 relative">
@@ -171,17 +225,12 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
           <img src="/plus-icon.png" alt="Créer un post" className="w-6 h-6" />
         </button>
 
-        {/* Icône notifications */}
-        {/* <button onClick={toggleNotifications}>
-          <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
-        </button> */}
-
         {/* Icône message */}
         <button onClick={openMessages} className="relative">
           <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
         </button>
 
-        {/* Remplacer la partie notifications par : */}
+        {/* ✅ CORRECTION : Afficher le badge seulement s'il y a des notifications non vues */}
         <div className="relative">
           <button
             ref={notificationButtonRef}
@@ -189,9 +238,9 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
             className="relative p-1"
           >
             <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
-            {notifications.length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                {notifications.length}
+                {unreadCount}
               </span>
             )}
           </button>
@@ -216,7 +265,8 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
               ) : (
                 <div className="space-y-2">
                   {notifications.map((notif) => (
-                    <div key={notif.id} className="p-3 bg-gray-800 rounded border border-gray-700">
+                    <div key={notif.id} className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'
+                      }`}>
                       <p className="text-sm text-white break-words">
                         {notif.message}
                       </p>

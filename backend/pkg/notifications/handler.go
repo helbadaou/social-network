@@ -10,13 +10,24 @@ import (
 )
 
 func CreateNotification(userID, senderID int, notifType, message string) error {
-	_, err := sqlite.DB.Exec(`
-		INSERT INTO notifications (user_id, sender_id, type, message)
-		VALUES (?, ?, ?, ?)`,
-		userID, senderID, notifType, message)
+	// Vérifie si une notif identique existe déjà
+	var count int
+	err := sqlite.DB.QueryRow(`
+		SELECT COUNT(*) FROM notifications
+		WHERE user_id = ? AND sender_id = ? AND type = ? AND seen = 0
+	`, userID, senderID, notifType).Scan(&count)
 	if err != nil {
-		log.Println("Error inserting notification:", err)
+		return err
 	}
+	if count > 0 {
+		return nil // déjà envoyée, on ne refait rien
+	}
+
+	// Sinon, insère la notif
+	_, err = sqlite.DB.Exec(`
+		INSERT INTO notifications (user_id, sender_id, type, message, seen)
+		VALUES (?, ?, ?, ?, 0)
+	`, userID, senderID, notifType, message)
 	return err
 }
 
@@ -82,3 +93,51 @@ func GetUserNotifications(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
+
+// Dans notifications/handler.go
+// func MarkNotificationSeen(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+// 		return
+// 	}
+
+// 	userID, ok := auth.GetUserIDFromSession(r)
+// 	if !ok {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	var req struct {
+// 		NotificationID int  `json:"notification_id"`
+// 		MarkAll        bool `json:"mark_all"`
+// 	}
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		http.Error(w, "Invalid request", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	if req.MarkAll {
+// 		// Marquer toutes comme vues
+// 		_, err := sqlite.DB.Exec(`
+//             UPDATE notifications SET seen = 1
+//             WHERE user_id = ? AND seen = 0`,
+// 			userID)
+// 		if err != nil {
+// 			http.Error(w, "DB error", http.StatusInternalServerError)
+// 			return
+// 		}
+// 	} else if req.NotificationID > 0 {
+// 		// Marquer une notification spécifique
+// 		_, err := sqlite.DB.Exec(`
+//             UPDATE notifications SET seen = 1
+//             WHERE id = ? AND user_id = ?`,
+// 			req.NotificationID, userID)
+// 		if err != nil {
+// 			http.Error(w, "DB error", http.StatusInternalServerError)
+// 			return
+// 		}
+// 	}
+
+// 	w.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+// }

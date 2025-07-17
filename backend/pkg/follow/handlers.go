@@ -91,13 +91,19 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 🔔 Envoie d'une notification WebSocket si profil privé
-	var senderUsername string
-	err = sqlite.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, followerID).Scan(&senderUsername)
-	if err != nil {
-		senderUsername = "Un utilisateur"
-	}
+	// var senderUsername string
+	// err = sqlite.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, followerID).Scan(&senderUsername)
+	// if err != nil {
+	// 	senderUsername = "Un utilisateur"
+	// }
 
 	if isPrivate && Hub != nil {
+		var senderUsername string
+		err = sqlite.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, followerID).Scan(&senderUsername)
+		if err != nil {
+			senderUsername = "Un utilisateur"
+		}
+		
 		message := fmt.Sprintf("%s vous a envoyé une demande d’abonnement", senderUsername)
 
 		// 🔴 Enregistrer dans la base
@@ -225,9 +231,10 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Marque la notification comme "seen"
 	_, _ = sqlite.DB.Exec(`
-		UPDATE notifications SET seen = 1
-		WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'
-	`, req.SenderID, userID)
+        UPDATE notifications 
+        SET seen = 1, status = 'accepted'
+        WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'`,
+		req.SenderID, userID)
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow accepté")
@@ -265,9 +272,10 @@ func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Marque la notif comme "seen"
 	_, _ = sqlite.DB.Exec(`
-		UPDATE notifications SET seen = 1
-		WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'
-	`, req.SenderID, userID)
+    UPDATE notifications 
+    SET seen = 1, status = 'rejected'
+    WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'`,
+		req.SenderID, userID)
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow refusé")

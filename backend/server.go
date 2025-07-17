@@ -20,7 +20,7 @@ func main() {
 	hub := websocket.NewHub()
 
 	go hub.Run()
-	
+
 	// Ajouter juste après la création du hub :
 	follow.Hub = hub
 
@@ -45,10 +45,14 @@ func main() {
 	mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
 
 	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
+	mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
+	mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
+	// mux.HandleFunc("/api/notifications/seen", notifications.MarkNotificationSeen)
+
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
