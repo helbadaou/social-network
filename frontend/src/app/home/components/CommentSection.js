@@ -80,34 +80,38 @@ export default function CommentSection({ postId }) {
 
             {/* Liste des commentaires */}
             <div className="space-y-4">
-                {comments.map((comment) => (
-                    <div key={comment.id} className="bg-gray-800 p-3 rounded shadow border border-gray-700">
-                        <div className="flex items-center mb-2">
-                            <img
-                                src={comment.author.avatar || '/avatar.png'}
-                                alt="Avatar"
-                                className="w-8 h-8 rounded-full border border-gray-600 mr-2"
-                            />
-                            <div>
-                                <div className="font-medium text-blue-400 hover:underline">
-                                    {comment.author.first_name} {comment.author.last_name}
-                                </div>
-                                <div className="text-sm text-gray-400">
-                                    Publié le {new Date(comment.created_at).toLocaleString()}
+                {comments && comments.length > 0 ? (
+                    comments.map((comment) => (
+                        <div key={comment.id} className="bg-gray-800 p-3 rounded shadow border border-gray-700">
+                            <div className="flex items-center mb-2">
+                                <img
+                                    src={comment.author.avatar || '/avatar.png'}
+                                    alt="Avatar"
+                                    className="w-8 h-8 rounded-full border border-gray-600 mr-2"
+                                />
+                                <div>
+                                    <div className="font-medium text-blue-400 hover:underline">
+                                        {comment.author.first_name} {comment.author.last_name}
+                                    </div>
+                                    <div className="text-sm text-gray-400">
+                                        Publié le {new Date(comment.created_at).toLocaleString()}
+                                    </div>
                                 </div>
                             </div>
+                            <p className="text-white text-sm mb-1">{comment.content}</p>
+                            {comment.image_url && (
+                                <img
+                                    src={`http://localhost:8080${comment.image_url}`}
+                                    alt="Image commentaire"
+                                    className="w-full max-w-xs rounded border border-gray-600 mt-1"
+                                />
+                            )}
                         </div>
-                        <p className="text-white text-sm mb-1">{comment.content}</p>
-                        {comment.image_url && (
-                            <img
-                                src={`http://localhost:8080${comment.image_url}`}
-                                alt="Image commentaire"
-                                className="w-full max-w-xs rounded border border-gray-600 mt-1"
-                            />
-                        )}
+                    ))
+                ) : (
+                    <p className="text-gray-400 text-sm italic">Aucun commentaire pour l’instant. Soyez le premier à en écrire un !</p>
+                )}
 
-                    </div>
-                ))}
 
             </div>
         </div>

@@ -38,6 +38,7 @@ export default function HomePage() {
   const [followStatus, setFollowStatus] = useState("");
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
+  const [showPostForm, setShowPostForm] = useState(false)
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
@@ -68,15 +69,20 @@ export default function HomePage() {
     return () => socket.close()
   }, [user])
 
+  // Ouverture du formulaire de posts
+  const togglePostForm = () => {
+    setShowPostForm(prev => !prev)
+  }
+
   // Ouverture de la barre latérale des messages
   const openMessages = () => {
     setShowMessages(true);
   };
 
   // Fermeture de la barre latérale des messages
-  const closeMessages = () => {
-    setShowMessages(false);
-  };
+  // const closeMessages = () => {
+  //   setShowMessages(false);
+  // };
 
   const openChat = (user) => {
     if (!openChats.some((c) => c.id === user.id)) {
@@ -140,32 +146,32 @@ export default function HomePage() {
     }
   }
 
-  const handleFollowToggle = async () => {
-    if (!selectedUser) return;
+  // const handleFollowToggle = async () => {
+  //   if (!selectedUser) return;
 
-    try {
-      const res = await fetch("http://localhost:8080/api/follow", {
-        method: "POST",
-        credentials: "include", // ← IMPORTANT pour le cookie session
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ followed_id: selectedUser.id }),
-      });
+  //   try {
+  //     const res = await fetch("http://localhost:8080/api/follow", {
+  //       method: "POST",
+  //       credentials: "include", // ← IMPORTANT pour le cookie session
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ followed_id: selectedUser.id }),
+  //     });
 
-      if (res.ok) {
-        // Re-fetch le status
-        const statusRes = await fetch(
-          `http://localhost:8080/api/follow/status/${selectedUser.id}`,
-          { credentials: "include" }
-        );
-        if (statusRes.ok) {
-          const data = await statusRes.json();
-          setFollowStatus(data.status);
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lors du follow :", error);
-    }
-  };
+  //     if (res.ok) {
+  //       // Re-fetch le status
+  //       const statusRes = await fetch(
+  //         `http://localhost:8080/api/follow/status/${selectedUser.id}`,
+  //         { credentials: "include" }
+  //       );
+  //       if (statusRes.ok) {
+  //         const data = await statusRes.json();
+  //         setFollowStatus(data.status);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Erreur lors du follow :", error);
+  //   }
+  // };
 
 
   useEffect(() => {
@@ -246,9 +252,9 @@ export default function HomePage() {
   };
 
 
-  const toggleProfile = () => {
-    setShowProfile(!showProfile);
-  };
+  // const toggleProfile = () => {
+  //   setShowProfile(!showProfile);
+  // };
 
   const handleSearch = async (e) => {
     const value = e.target.value;
@@ -288,30 +294,30 @@ export default function HomePage() {
     }
   };
 
-  const handleUserClick = async (userId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Error loading user profile");
-      const data = await res.json();
-      setSelectedUser(data);
+  // const handleUserClick = async (userId) => {
+  //   try {
+  //     const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+  //       credentials: "include",
+  //     });
+  //     if (!res.ok) throw new Error("Error loading user profile");
+  //     const data = await res.json();
+  //     setSelectedUser(data);
 
-      const followRes = await fetch(
-        `http://localhost:8080/api/follow/status/${userId}`,
-        { credentials: "include" }
-      );
-      if (followRes.ok) {
-        const { status } = await followRes.json();
-        setFollowStatus(status);
-      } else {
-        setFollowStatus("");
-      }
-      setShowPopup(true);
-    } catch (err) {
-      console.error("Error loading profile:", err);
-    }
-  };
+  //     const followRes = await fetch(
+  //       `http://localhost:8080/api/follow/status/${userId}`,
+  //       { credentials: "include" }
+  //     );
+  //     if (followRes.ok) {
+  //       const { status } = await followRes.json();
+  //       setFollowStatus(status);
+  //     } else {
+  //       setFollowStatus("");
+  //     }
+  //     setShowPopup(true);
+  //   } catch (err) {
+  //     console.error("Error loading profile:", err);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
@@ -321,6 +327,7 @@ export default function HomePage() {
         handleLogout={handleLogout}
         results={results}
         openMessages={openMessages}
+        togglePostForm={togglePostForm}
       />
 
 
@@ -336,17 +343,22 @@ export default function HomePage() {
 
 
       <div className="max-w-2xl mx-auto px-4 mt-6">
-        <PostForm
-          content={content}
-          setContent={setContent}
-          image={image}
-          setImage={setImage}
-          privacy={privacy}
-          setPrivacy={setPrivacy}
-          handleSubmit={handleSubmit}
-          creating={creating}
-          ref={fileInputRef}
-        />
+        {showPostForm && (
+          <div className="max-w-2xl mx-auto px-4 mt-6">
+            <PostForm
+              content={content}
+              setContent={setContent}
+              image={image}
+              setImage={setImage}
+              privacy={privacy}
+              setPrivacy={setPrivacy}
+              handleSubmit={handleSubmit}
+              creating={creating}
+              ref={fileInputRef}
+            />
+          </div>
+        )}
+
       </div>
 
       {/* Affichage des posts */}

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 
-export default function Navbar({ user, handleSearch, handleLogout, results, openMessages }) {
+export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm }) {
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
 
@@ -112,6 +112,12 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
       {/* Section à droite : messages + avatar */}
       <div className="flex items-center gap-4 ml-4 relative">
+
+        {/* BOUTON + POUR AJOUTER UN POST */}
+        <button onClick={togglePostForm}>
+          <img src="/plus-icon.png" alt="Créer un post" className="w-6 h-6" />
+        </button>
+
         {/* Icône notifications */}
         <button onClick={toggleNotifications}>
           <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
