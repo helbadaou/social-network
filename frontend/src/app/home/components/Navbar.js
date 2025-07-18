@@ -1,61 +1,114 @@
 // src/app/home/components/Navbar.js
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm }) {
+export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm, realtimeNotification }) {
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const notificationsRef = useRef(null)
+  const notificationButtonRef = useRef(null)
+  const [unreadCount, setUnreadCount] = useState(0);
 
+
+  // Fermer les notifications quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationsRef.current &&
+        !notificationsRef.current.contains(event.target) &&
+        !notificationButtonRef.current.contains(event.target)) {
+        setShowNotifications(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+
+  // Déclarée ici pour être accessible partout dans le composant
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/notifications", {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
+      const res = await fetch("/api/notifications");
+      const data = await res.json();
+
+      const uniqueNotifs = [];
+      const seenKeys = new Set();
+
+      for (const notif of data) {
+        const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          uniqueNotifs.push(notif);
+        }
       }
+
+      setNotifications(uniqueNotifs);
+      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
     } catch (err) {
-      console.error("Erreur chargement notifications", err);
+      console.error("Erreur récupération notifications", err);
     }
   };
 
-  const toggleNotifications = () => {
-    setShowNotifications(!showNotifications);
-    if (!showNotifications) {
-      fetchNotifications();
+  // Ensuite dans ton useEffect
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const toggleNotifications = async (e) => {
+    e.stopPropagation();
+    const newState = !showNotifications;
+    setShowNotifications(newState);
+
+    if (newState) {
+      await fetchNotifications();
+
+      // Mise à jour optimiste frontend seulement
+      setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
+      setUnreadCount(0);
     }
   };
 
   const handleAccept = async (notifId, senderId) => {
     try {
-      await fetch("http://localhost:8080/api/follow/accept", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ follower_id: senderId, notification_id: notifId }),
+      await fetch('/api/follow/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender_id: senderId }),
+        credentials: 'include',
       });
-      fetchNotifications();
+
+      setNotifications(prev => {
+        const updated = prev.filter(n => n.id !== notifId);
+        setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
+        return updated;
+      });
     } catch (err) {
-      console.error("Erreur acceptation :", err);
+      console.error('Erreur acceptation:', err);
     }
   };
 
   const handleReject = async (notifId, senderId) => {
     try {
-      await fetch("http://localhost:8080/api/follow/reject", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ follower_id: senderId, notification_id: notifId }),
+      const res = await fetch('/api/follow/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender_id: senderId }),
+        credentials: 'include',
       });
-      fetchNotifications();
+
+      if (res.ok) {
+        setNotifications(prev => {
+          const updated = prev.filter(n => n.id !== notifId);
+          setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
+          return updated;
+        });
+      }
     } catch (err) {
-      console.error("Erreur refus :", err);
+      console.error('Erreur rejet:', err);
     }
   };
 
@@ -85,6 +138,42 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
       setIsPrivate(user.IsPrivate);
     }
   }, [user]);
+
+  // ✅ CORRECTION : Éviter les doublons dans les notifications temps réel
+  useEffect(() => {
+    if (realtimeNotification) {
+      console.log("New realtime notification:", realtimeNotification);
+
+      setNotifications(prev => {
+        const currentNotifs = prev || [];
+
+        // Vérifier si cette notification existe déjà
+        const exists = currentNotifs.some(n =>
+          n.sender_id === realtimeNotification.sender_id &&
+          n.type === realtimeNotification.type &&
+          n.message === realtimeNotification.message
+        );
+
+        // Si elle existe déjà, ne pas l'ajouter
+        if (exists) {
+          console.log("Notification déjà présente, ignorer");
+          return currentNotifs;
+        }
+
+        // Sinon, l'ajouter
+        const newNotif = {
+          id: realtimeNotification.sender_id + '-' + Date.now(),
+          sender_id: realtimeNotification.sender_id,
+          type: realtimeNotification.type,
+          message: realtimeNotification.message,
+          created_at: realtimeNotification.created_at || new Date().toISOString(),
+          seen: false
+        };
+
+        return [newNotif, ...currentNotifs];
+      });
+    }
+  }, [realtimeNotification]);
 
   return (
     <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800 relative">
@@ -118,46 +207,83 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
           <img src="/plus-icon.png" alt="Créer un post" className="w-6 h-6" />
         </button>
 
-        {/* Icône notifications */}
-        <button onClick={toggleNotifications}>
-          <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
-        </button>
-
         {/* Icône message */}
         <button onClick={openMessages} className="relative">
           <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
         </button>
 
-        {showNotifications && (
-          <div className="absolute top-12 right-20 w-80 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-40 max-h-96 overflow-y-auto">
-            <h3 className="text-lg text-white font-semibold mb-2">Notifications</h3>
-            {notifications.length === 0 ? (
-              <p className="text-gray-400 text-sm">Aucune notification</p>
-            ) : (
-              notifications.map((notif) => (
-                <div key={notif.id} className="mb-3 p-2 border border-gray-700 rounded">
-                  <p className="text-sm text-white mb-1">{notif.message}</p>
-                  {notif.type === 'follow_request' && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAccept(notif.id, notif.sender_id)}
-                        className="text-green-400 text-sm hover:underline"
-                      >
-                        Accepter
-                      </button>
-                      <button
-                        onClick={() => handleReject(notif.id, notif.sender_id)}
-                        className="text-red-400 text-sm hover:underline"
-                      >
-                        Refuser
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
+        {/* ✅ CORRECTION : Afficher le badge seulement s'il y a des notifications non vues */}
+        <div className="relative">
+          <button
+            ref={notificationButtonRef}
+            onClick={toggleNotifications}
+            className="relative p-1"
+          >
+            <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                {unreadCount}
+              </span>
             )}
-          </div>
-        )}
+          </button>
+
+          {showNotifications && (
+            <div
+              ref={notificationsRef}
+              className="absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-50 max-h-96 overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold text-white">Notifications</h3>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+
+              {notifications.length === 0 ? (
+                <p className="text-gray-400 text-sm py-2">Aucune notification</p>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map((notif) => (
+                    <div key={notif.id} className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'
+                      }`}>
+                      <p className="text-sm text-white break-words">
+                        {notif.message}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(notif.created_at).toLocaleString()}
+                      </p>
+                      {notif.type === 'follow_request' && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAccept(notif.id, notif.sender_id)
+                            }}
+                            className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleReject(notif.id, notif.sender_id)
+                            }}
+                            className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
 
         {/* Avatar utilisateur */}

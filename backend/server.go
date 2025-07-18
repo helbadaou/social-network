@@ -21,6 +21,8 @@ func main() {
 
 	go hub.Run()
 
+	follow.Hub = hub
+
 	sqlite.InitDB()
 
 	mux := http.NewServeMux()
@@ -38,7 +40,11 @@ func main() {
 	mux.HandleFunc("/api/search", search.SearchUsersHandler)
 	mux.HandleFunc("/api/follow", follow.SendFollowRequest)
 	mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
+	mux.HandleFunc("/api/follow/accept", follow.AcceptFollowHandler)
+	mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
 	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
+	mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
+	mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/chat/history", chat.GetChatHistory)

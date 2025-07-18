@@ -39,6 +39,7 @@ export default function HomePage() {
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
   const [showPostForm, setShowPostForm] = useState(false)
+  const [notifications, setNotifications] = useState([])
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({}); // input per chat
@@ -85,14 +86,44 @@ export default function HomePage() {
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
-      } catch (err) {
-        console.error('Failed to parse message:', err);
-      }
-    };
+        console.log("📨 WS message received:", msg);
 
-    return socket;
-  }, [user?.ID]);
+        if (msg.type === 'notification') {
+          console.log("🔔 Notification reçue:", msg);
+          setNotifications((prev) => {
+            const alreadyExists = prev.some(
+              (n) =>
+                n.sender_id === msg.from &&
+                n.message === msg.content &&
+                n.type === msg.type
+            );
+
+            if (alreadyExists) return prev;
+
+            return [
+              {
+                id: msg.id || `${msg.from}-${Date.now()}`,
+                sender_id: msg.from,
+                type: msg.type,
+                message: msg.content,
+                created_at: new Date().toISOString(),
+              },
+              ...prev,
+            ];
+          });
+      } else if (msg.type === 'private') {
+        // 💬 Message privé
+        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+      } else {
+        console.warn('Unknown WS message type:', msg.type);
+      }
+    } catch (err) {
+      console.error('Failed to parse message:', err);
+    }
+  };
+
+  return socket;
+}, [user?.ID]);
 
   useEffect(() => {
     const socket = setupWebSocket();

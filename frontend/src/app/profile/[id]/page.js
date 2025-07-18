@@ -10,6 +10,10 @@ export default function PublicProfilePage() {
   const router = useRouter()
 
   const [posts, setPosts] = useState([])
+  const [tab, setTab] = useState('posts'); // 'posts' | 'followers' | 'following'
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+
 
 
   useEffect(() => {
@@ -54,6 +58,61 @@ export default function PublicProfilePage() {
 
   }
 
+  const loadFollowers = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users-followers/${id}`, {
+        credentials: 'include',
+      });
+      console.log("userId utilisé :", id)
+
+
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(text);
+      }
+
+      const data = JSON.parse(text);
+      setFollowers(data);
+    } catch (err) {
+      console.error("Erreur chargement followers:", err.message);
+    }
+  };
+
+
+  const loadFollowing = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users-following/${id}`, {
+        credentials: 'include',
+      });
+
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(text);
+      }
+
+      const data = JSON.parse(text);
+      setFollowing(data);
+    } catch (err) {
+      console.error("Erreur chargement following:", err.message);
+    }
+  };
+
+
+  const handleTabClick = (newTab) => {
+    setTab(newTab);
+
+    if (newTab === 'followers' && (!Array.isArray(followers) || followers.length === 0)) {
+      loadFollowers();
+    }
+
+    if (newTab === 'following' && (!Array.isArray(following) || following.length === 0)) {
+      loadFollowing();
+    }
+  };
+
+
 
   if (error) return <p className="text-red-600">{error}</p>
   if (!profile) return <p>Chargement du profil...</p>
@@ -91,31 +150,42 @@ export default function PublicProfilePage() {
           <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>
         </div>
 
-        {/* 🔵 Publications */}
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold text-blue-400 mb-4">Publications</h2>
+        {/* 🔄 Onglets */}
+        <div className="flex space-x-4 mt-8 mb-4 text-sm font-semibold">
+          <button
+            onClick={() => handleTabClick('posts')}
+            className={`px-4 py-2 rounded ${tab === 'posts' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+          >
+            Publications
+          </button>
+          <button
+            onClick={() => handleTabClick('followers')}
+            className={`px-4 py-2 rounded ${tab === 'followers' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+          >
+            Abonnés
+          </button>
+          <button
+            onClick={() => handleTabClick('following')}
+            className={`px-4 py-2 rounded ${tab === 'following' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+          >
+            Abonnements
+          </button>
+        </div>
 
-          {posts.length === 0 ? (
+        {tab === 'posts' && (
+          posts.length === 0 ? (
             <p className="text-gray-400">Aucune publication pour le moment.</p>
           ) : (
             <div className="space-y-4">
               {posts.map(post => (
-                <div
-                  key={post.id}
-                  className="bg-gray-800 shadow-md rounded-xl p-4 border border-gray-700"
-                >
+                <div key={post.id} className="bg-gray-800 shadow-md rounded-xl p-4 border border-gray-700">
                   <div className="text-sm text-gray-400 mb-2">
                     🕒 {new Date(post.created_at).toLocaleString()}
                   </div>
                   <p className="text-gray-100 mb-3 whitespace-pre-wrap">{post.content}</p>
-
                   {post.image_url && (
                     <img
-                      src={
-                        post.image_url.startsWith('http')
-                          ? post.image_url
-                          : `http://localhost:8080${post.image_url}`
-                      }
+                      src={post.image_url.startsWith('http') ? post.image_url : `http://localhost:8080${post.image_url}`}
                       alt="Post"
                       className="w-full max-w-md rounded border border-gray-700 mb-2"
                     />
@@ -123,8 +193,58 @@ export default function PublicProfilePage() {
                 </div>
               ))}
             </div>
-          )}
-        </section>
+          )
+        )}
+
+        {tab === 'followers' && (
+          <div className="space-y-3">
+            {!Array.isArray(followers) ? (
+              <p className="text-gray-400">Chargement des abonnés...</p>
+            ) : followers.length === 0 ? (
+              <p className="text-gray-400">Aucun abonné pour l’instant.</p>
+            ) : (
+              followers.map(user => (
+                <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                  <img
+                    src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                    className="w-10 h-10 rounded-full object-cover"
+                    alt="avatar"
+                  />
+                  <div>
+                    <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
+                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === 'following' && (
+          <div className="space-y-3">
+            {!Array.isArray(following) ? (
+              <p className="text-gray-400">Chargement des suivis...</p>
+            ) : following.length === 0 ? (
+              <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
+            ) : (
+              following.map(user => (
+                <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                  <img
+                    src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                    className="w-10 h-10 rounded-full object-cover"
+                    alt="avatar"
+                  />
+                  <div>
+                    <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
+                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+
 
       </div>
     </main>
