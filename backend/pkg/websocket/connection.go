@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"social-network/backend/pkg/db/sqlite"
 )
 
 const (
@@ -43,11 +44,28 @@ func (c *Client) readPump(hub *Hub) {
 			continue
 		}
 
+		 // Validate required fields
+        if msg.From == 0 || msg.To == 0 || msg.Content == "" {
+            log.Printf("Missing required message fields")
+            continue
+        }
+		
+
 		// Force correct sender ID and add timestamp
 		msg.From = c.ID
 		if msg.Timestamp == "" {
 			msg.Timestamp = time.Now().Format(time.RFC3339)
 		}
+
+		 // Store message in database
+        _, err = sqlite.DB.Exec(`
+            INSERT INTO messages (from_id, to_id, content, type, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        `, msg.From, msg.To, msg.Content, msg.Type, time.Now())
+        if err != nil {
+            log.Printf("Error storing message: %v", err)
+        }
+
 
 		hub.Broadcast <- msg
 	}
