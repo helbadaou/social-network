@@ -103,13 +103,15 @@ export default function PublicProfilePage() {
   const handleTabClick = (newTab) => {
     setTab(newTab);
 
-    if (newTab === 'followers' && followers.length === 0) {
+    if (newTab === 'followers' && (!Array.isArray(followers) || followers.length === 0)) {
       loadFollowers();
     }
-    if (newTab === 'following' && following.length === 0) {
+
+    if (newTab === 'following' && (!Array.isArray(following) || following.length === 0)) {
       loadFollowing();
     }
   };
+
 
 
   if (error) return <p className="text-red-600">{error}</p>
@@ -196,7 +198,9 @@ export default function PublicProfilePage() {
 
         {tab === 'followers' && (
           <div className="space-y-3">
-            {followers.length === 0 ? (
+            {!Array.isArray(followers) ? (
+              <p className="text-gray-400">Chargement des abonnés...</p>
+            ) : followers.length === 0 ? (
               <p className="text-gray-400">Aucun abonné pour l’instant.</p>
             ) : (
               followers.map(user => (
@@ -208,7 +212,7 @@ export default function PublicProfilePage() {
                   />
                   <div>
                     <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                    <p className="text-gray-400 text-sm">@{user.username}</p>
+                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
                   </div>
                 </div>
               ))
@@ -218,7 +222,9 @@ export default function PublicProfilePage() {
 
         {tab === 'following' && (
           <div className="space-y-3">
-            {following.length === 0 ? (
+            {!Array.isArray(following) ? (
+              <p className="text-gray-400">Chargement des suivis...</p>
+            ) : following.length === 0 ? (
               <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
             ) : (
               following.map(user => (
@@ -230,13 +236,14 @@ export default function PublicProfilePage() {
                   />
                   <div>
                     <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                    <p className="text-gray-400 text-sm">@{user.username}</p>
+                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
                   </div>
                 </div>
               ))
             )}
           </div>
         )}
+
 
 
       </div>
