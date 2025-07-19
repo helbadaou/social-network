@@ -37,7 +37,7 @@ export default function ChatBox({ currentUser, recipient, onSendMessage, message
     if (recipientId && userId) {
       loadChatHistory();
     }
-  }, [recipientId, userId]);
+  }, [recipientId, userId, messages]);
 
   // Handle new real-time messages
   useEffect(() => {

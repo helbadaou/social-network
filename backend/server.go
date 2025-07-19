@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"database/sql"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
@@ -74,6 +75,17 @@ func main() {
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
+
+
+
+
+
+
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
+}
+
+
+func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
+	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
 }

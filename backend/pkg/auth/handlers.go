@@ -1,7 +1,7 @@
 package auth
 
 import (
-	// "database/sql"
+	 "database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +14,7 @@ import (
 
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/models"
+	
 )
 
 type RegisterRequest struct {
@@ -200,4 +201,17 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Write([]byte("✅ Logged out successfully"))
+}
+
+func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		groups, err := sqlite.GetAllGroups(dbConn)
+		if err != nil {
+			http.Error(w, "Failed to fetch groups", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(groups)
+	}
 }
