@@ -98,19 +98,25 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if isPrivate && Hub != nil {
-		var senderUsername string
-		err = sqlite.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, followerID).Scan(&senderUsername)
-		if err != nil {
-			senderUsername = "Un utilisateur"
+		var senderFirstName, senderLastName string
+		err := sqlite.DB.QueryRow(`
+		SELECT first_name, last_name FROM users WHERE id = ?
+	`, followerID).Scan(&senderFirstName, &senderLastName)
+
+		senderName := "Un utilisateur"
+		if err == nil {
+			senderName = fmt.Sprintf("%s %s", senderFirstName, senderLastName)
+		} else {
+			fmt.Println("Erreur récupération nom de l'expéditeur :", err)
 		}
-		
-		message := fmt.Sprintf("%s vous a envoyé une demande d’abonnement", senderUsername)
+
+		message := fmt.Sprintf("%s vous a envoyé une demande d’abonnement", senderName)
 
 		// 🔴 Enregistrer dans la base
 		go func() {
 			err := notifications.CreateNotification(req.FollowedID, followerID, "follow_request", message)
 			if err != nil {
-				fmt.Println("Erreur création notification :", err) // 🐛 Log visible côté serveur
+				fmt.Println("Erreur création notification :", err)
 			}
 		}()
 
