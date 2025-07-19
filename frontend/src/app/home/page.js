@@ -111,19 +111,19 @@ export default function HomePage() {
               ...prev,
             ];
           });
-      } else if (msg.type === 'private') {
-        // 💬 Message privé
-        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
-      } else {
-        console.warn('Unknown WS message type:', msg.type);
+        } else if (msg.type === 'private') {
+          // 💬 Message privé
+          setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+        } else {
+          console.warn('Unknown WS message type:', msg.type);
+        }
+      } catch (err) {
+        console.error('Failed to parse message:', err);
       }
-    } catch (err) {
-      console.error('Failed to parse message:', err);
-    }
-  };
+    };
 
-  return socket;
-}, [user?.ID]);
+    return socket;
+  }, [user?.ID]);
 
   useEffect(() => {
     const socket = setupWebSocket();
@@ -134,13 +134,13 @@ export default function HomePage() {
     };
   }, [setupWebSocket]);
 
-  const sendWsMessage = useCallback((message) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket not connected');
-    }
-  }, []);
+  // const sendWsMessage = useCallback((message) => {
+  //   if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+  //     ws.current.send(JSON.stringify(message));
+  //   } else {
+  //     console.error('WebSocket not connected');
+  //   }
+  // }, []);
 
   // Ouverture du formulaire de posts
   const togglePostForm = () => {
@@ -285,7 +285,7 @@ export default function HomePage() {
   }, []);
 
   // src/app/home/page.js
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, selectedRecipientIds = []) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -299,10 +299,30 @@ export default function HomePage() {
     }
 
     try {
-      const res = await fetch("/api/posts", {
+      let finalRecipientIds = [];
+
+      if (privacy === "custom") {
+        // Utiliser ceux sélectionnés par les checkboxes
+        finalRecipientIds = selectedRecipientIds;
+      } else if (privacy === "followers" || privacy === "private") {
+        // Récupérer tous les abonnés automatiquement
+        const res = await fetch("http://localhost:8080/api/recipients", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Impossible de récupérer les destinataires");
+        const data = await res.json();
+        finalRecipientIds = data.map((user) => user.id);
+      }
+
+      // Ajoute chaque destinataire dans le formData
+      finalRecipientIds.forEach(id => {
+        formData.append("recipient_ids", id);
+      });
+
+      const res = await fetch("http://localhost:8080/api/posts", {
         method: "POST",
         body: formData,
-        credentials: "include", // important pour les cookies Go
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Erreur lors de la publication");
@@ -316,13 +336,15 @@ export default function HomePage() {
         fileInputRef.current.value = null;
       }
 
-      fetchPosts(); // Recharge les posts après publication
+      fetchPosts(); // recharge les posts
     } catch (err) {
       setError(err.message);
     } finally {
       setCreating(false);
     }
   };
+
+
 
 
   // const toggleProfile = () => {

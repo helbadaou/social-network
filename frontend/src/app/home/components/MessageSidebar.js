@@ -22,7 +22,14 @@ export default function MessageSidebar({ chatUsers, showMessages, setShowMessage
             className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
             onClick={() => openChat(u)}
           >
-            <img src={u.avatar || '/avatar.png'} className="w-8 h-8 rounded-full" alt="avatar" />
+            <img src={
+              u.avatar
+                ? u.avatar.startsWith('http')
+                  ? u.avatar
+                  : `http://localhost:8080/${u?.avatar}`
+                : '/avatar.png'
+            }
+              className="w-8 h-8 rounded-full" alt="avatar" />
             <span className="text-sm font-medium text-white">{u.full_name}</span>
           </div>
         ))}

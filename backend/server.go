@@ -45,6 +45,7 @@ func main() {
 	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
 	mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
 	mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
+	mux.HandleFunc("/api/recipients", follow.GetRecipientsHandler)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
 	mux.HandleFunc("/api/chat/history", chat.GetChatHistory)

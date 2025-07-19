@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
 )
 
@@ -103,15 +104,18 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(following)
 }
 
-// func UserSubrouteHandler(w http.ResponseWriter, r *http.Request) {
-// 	if strings.HasSuffix(r.URL.Path, "/followers") {
-// 		GetFollowersHandler(w, r)
-// 		return
-// 	}
-// 	if strings.HasSuffix(r.URL.Path, "/following") {
-// 		GetFollowingHandler(w, r)
-// 		return
-// 	}
+func GetRecipientsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.GetUserIDFromSession(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-// 	http.Error(w, "Not found", http.StatusNotFound)
-// }
+	recipients, err := sqlite.GetAcceptedFollowers(userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch recipients", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(recipients)
+}
