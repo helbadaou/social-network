@@ -121,7 +121,14 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// 🔴 Envoyer en WebSocket
-		go Hub.SendNotification(followerID, req.FollowedID, message)
+		go Hub.SendNotification(websocket.Notification{
+			SenderID:       followerID,
+			SenderNickname: senderName,
+			Type:           "notification", // <-- use a generic type
+			Message:        message,
+			Seen:           false,
+			CreatedAt: "now", // Utiliser le format approprié si nécessaire
+		}, req.FollowedID)
 	}
 
 	w.WriteHeader(http.StatusCreated)

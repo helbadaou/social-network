@@ -84,6 +84,60 @@ export default function UserProfilePopup({
 
   if (!selectedUser) return null
 
+  if (selectedUser.restricted) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-gray-700">
+          <button
+            onClick={() => setShowPopup(false)}
+            className="absolute top-2 right-3 text-gray-400 hover:text-white text-xl"
+          >
+            ×
+          </button>
+          <div className="flex flex-col items-center">
+            <img
+              src={
+                selectedUser.avatar
+                  ? selectedUser.avatar.startsWith('http')
+                    ? selectedUser.avatar
+                    : `http://localhost:8080/${selectedUser.avatar}`
+                  : '/avatar.png'
+              }
+              alt="Avatar"
+              className="w-20 h-20 rounded-full border border-gray-600 object-cover mb-3"
+            />
+            <h2 className="text-lg font-semibold text-white">
+              {selectedUser.nickname}
+            </h2>
+            <p className="text-gray-400 text-sm mb-4">🔒 Profil privé, veuillez vous abonner pour voir les informations.</p>
+            <button
+              onClick={handleFollowToggle}
+              disabled={loading}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              className={`mt-2 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${followStatus === 'accepted'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : followStatus === 'pending'
+                    ? isHovered
+                      ? 'bg-gray-700 text-white hover:bg-gray-800'
+                      : 'bg-yellow-500 text-white'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+            >
+              {followStatus === 'accepted'
+                ? 'Se désabonner'
+                : followStatus === 'pending'
+                  ? isHovered
+                    ? '❌ Annuler'
+                    : '🕓 En attente'
+                  : '+ Suivre'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-gray-700">

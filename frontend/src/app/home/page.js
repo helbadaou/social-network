@@ -36,6 +36,7 @@ export default function HomePage() {
   const [showPostForm, setShowPostForm] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [realtimeNotification, setRealtimeNotification] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // États WebSocket améliorés
   const [messages, setMessages] = useState([])
@@ -84,10 +85,11 @@ export default function HomePage() {
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        console.log("📨 Message WebSocket reçu:", msg);
 
-        if (msg.type === 'notification') {
-          console.log("🔔 Notification reçue:", msg);
+        // Check if notification has expected fields
+        if (msg.type === "notification" || msg.type === "follow_request") {
+          setNotifications(prev => [msg, ...prev]);
+          setUnreadCount(prev => prev + 1);
           setRealtimeNotification(msg);
         } else if (msg.type === 'private') {
           console.log("💬 Message privé reçu:", msg);
@@ -396,9 +398,14 @@ export default function HomePage() {
       </div>
 
       {/* Affichage des posts */}
-      {posts.map((post) => (
-        <Post key={post.id} post={post} fetchUserById={fetchUserById} />
-      ))}
+      <h2 className="text-xl font-bold mb-4">Posts</h2>
+      {posts.length === 0 ? (
+        <p className="text-gray-400 text-sm">Aucun post à afficher.</p>
+      ) : (
+        posts.map(post => (
+          <Post key={post.id} post={post} fetchUserById={fetchUserById} />
+        ))
+      )}
 
       {/* CHAT BOXES */}
       <div className="fixed bottom-4 right-4 flex gap-4 z-40">

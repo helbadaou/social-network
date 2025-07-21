@@ -52,6 +52,8 @@ func main() {
 	mux.HandleFunc("/api/chat/history", chat.GetChatHistory)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
+	mux.HandleFunc("/api/notifications/seen", notifications.MarkNotificationSeen)
+	mux.HandleFunc("/api/notifications/delete", notifications.DeleteNotification)
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 

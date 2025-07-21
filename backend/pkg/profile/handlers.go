@@ -5,10 +5,11 @@ package profile
 import (
 	"encoding/json"
 	"net/http"
-	"social-network/backend/pkg/db/sqlite"
-	"social-network/backend/pkg/models"
 	"strconv"
 	"strings"
+
+	"social-network/backend/pkg/db/sqlite"
+	"social-network/backend/pkg/models"
 	// "fmt"
 )
 
@@ -46,6 +47,18 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get requester ID from session
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	requesterID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "Invalid session ID", http.StatusBadRequest)
+		return
+	}
+
 	db := sqlite.GetDB()
 	var user struct {
 		ID          int    `json:"id"`
@@ -56,15 +69,40 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		About       string `json:"about"`
 		Avatar      string `json:"avatar"`
 		DateOfBirth string `json:"date_of_birth"`
+		IsPrivate   bool   `json:"is_private"`
 	}
 
-	row := db.QueryRow(`SELECT id, first_name, last_name, nickname, email, about, avatar, date_of_birth FROM users WHERE id = ?`, id)
-	err = row.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Nickname, &user.Email, &user.About, &user.Avatar, &user.DateOfBirth)
+	row := db.QueryRow(`SELECT id, first_name, last_name, nickname, email, about, avatar, date_of_birth, is_private FROM users WHERE id = ?`, id)
+	err = row.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Nickname, &user.Email, &user.About, &user.Avatar, &user.DateOfBirth, &user.IsPrivate)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	// w.Header().Set("Content-Type", "application/json")
+	// Access control for private profiles
+	restricted := false
+	if user.IsPrivate && requesterID != user.ID {
+		var status string
+		err := db.QueryRow(`
+        SELECT status FROM followers
+        WHERE follower_id = ? AND followed_id = ?
+    `, requesterID, user.ID).Scan(&status)
+		if err != nil || status != "accepted" {
+			restricted = true
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if restricted {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":         user.ID,
+			"nickname":   user.Nickname,
+			"avatar":     user.Avatar,
+			"is_private": true,
+			"restricted": true,
+		})
+		return
+	}
+
 	json.NewEncoder(w).Encode(user)
 }

@@ -3,7 +3,6 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -27,6 +26,16 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 	Broadcast  chan Message
+}
+
+type Notification struct {
+	ID             int    `json:"id"`
+	SenderID       int    `json:"sender_id"`
+	SenderNickname string `json:"sender_nickname"`
+	Type           string `json:"type"`
+	Message        string `json:"message"`
+	Seen           bool   `json:"seen"`
+	CreatedAt      string `json:"created_at"`
 }
 
 func NewHub() *Hub {
@@ -72,13 +81,10 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) SendNotification(fromID, toID int, content string) {
-	msg := Message{
-		From:      fromID,
-		To:        toID,
-		Content:   content,
-		Type:      "notification",
-		Timestamp: time.Now().Format(time.RFC3339),
+// After inserting notification in DB, fetch it and send:
+func (h *Hub) SendNotification(notification Notification, toID int) {
+	msgBytes, _ := json.Marshal(notification)
+	if recipient, ok := h.Clients[toID]; ok {
+		recipient.Send <- msgBytes
 	}
-	h.Broadcast <- msg
 }

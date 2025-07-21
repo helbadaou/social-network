@@ -60,14 +60,23 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
   const toggleNotifications = async (e) => {
     e.stopPropagation();
+    // setShowNotifications(prev => !prev);
     const newState = !showNotifications;
     setShowNotifications(newState);
 
     if (newState) {
       await fetchNotifications();
 
-      // Mise à jour optimiste frontend seulement
-      setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
+      // Mark all as seen in backend
+      await fetch('/api/notifications/seen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark_all: true }),
+        credentials: 'include',
+      });
+
+      // Refresh notifications after marking as seen
+      await fetchNotifications();
       setUnreadCount(0);
     }
   };
@@ -81,11 +90,21 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
         credentials: 'include',
       });
 
-      setNotifications(prev => {
-        const updated = prev.filter(n => n.id !== notifId);
-        setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
-        return updated;
+      // Mark notification as seen in backend
+      await fetch('/api/notifications/seen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
       });
+
+      await fetch('/api/notifications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
+      });
+      setNotifications(prev => prev.filter(n => n.id !== notifId));
     } catch (err) {
       console.error('Erreur acceptation:', err);
     }
@@ -101,11 +120,21 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
       });
 
       if (res.ok) {
-        setNotifications(prev => {
-          const updated = prev.filter(n => n.id !== notifId);
-          setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
-          return updated;
+        // Mark notification as seen in backend
+        await fetch('/api/notifications/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
         });
+
+        await fetch('/api/notifications/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notifId));
       }
     } catch (err) {
       console.error('Erreur rejet:', err);
@@ -162,7 +191,7 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
         // Sinon, l'ajouter
         const newNotif = {
-          id: realtimeNotification.sender_id + '-' + Date.now(),
+          id: realtimeNotification.id,
           sender_id: realtimeNotification.sender_id,
           type: realtimeNotification.type,
           message: realtimeNotification.message,
@@ -170,7 +199,10 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
           seen: false
         };
 
-        return [newNotif, ...currentNotifs];
+        const updated = [newNotif, ...currentNotifs];
+        // Always recalculate unread count based on notifications state
+        setUnreadCount(updated.filter(n => !n.seen).length);
+        return updated;
       });
     }
   }, [realtimeNotification]);
@@ -246,9 +278,11 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
                 <p className="text-gray-400 text-sm py-2">Aucune notification</p>
               ) : (
                 <div className="space-y-2">
-                  {notifications.map((notif) => (
-                    <div key={notif.id} className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'
-                      }`}>
+                  {notifications.map((notif, idx) => (
+                    <div
+                      key={notif.id ? notif.id : `${notif.sender_id}-${notif.type}-${notif.message}-${idx}`}
+                      className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'}`}
+                    >
                       <p className="text-sm text-white break-words">
                         {notif.message}
                       </p>
