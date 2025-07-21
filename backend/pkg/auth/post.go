@@ -30,6 +30,7 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
+	recipientIDsStr := r.Form["recipient_ids"]
 
 	if content == "" || privacy == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
@@ -61,6 +62,17 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		imageURL = "/uploads/" + filename
 	}
 
+	// 🔐 Parser les recipient_ids si privacy == "custom"
+	var recipientIDs []int
+	if privacy == "custom" {
+		for _, idStr := range recipientIDsStr {
+			id, err := strconv.Atoi(idStr)
+			if err == nil {
+				recipientIDs = append(recipientIDs, id)
+			}
+		}
+	}
+
 	post := models.Post{
 		AuthorID:  userID,
 		Content:   content,
@@ -69,7 +81,7 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	err = sqlite.CreatePost(post)
+	err = sqlite.CreatePost(post, recipientIDs)
 	if err != nil {
 		http.Error(w, "Failed to create post", http.StatusInternalServerError)
 		return
@@ -78,16 +90,15 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	// Vérifie que l'utilisateur est connecté
-	_, ok := GetUserIDFromSession(r)
+	userID, ok := GetUserIDFromSession(r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	posts, err := sqlite.GetPosts()
+	posts, err := sqlite.GetPosts(userID)
 	if err != nil {
 		http.Error(w, "Failed to get posts", http.StatusInternalServerError)
 		return

@@ -72,6 +72,33 @@ func (h *Hub) Run() {
 	}
 }
 
+// Ajouter cette méthode au Hub
+// Dans hub.go, modifiez la méthode SendFollowRequest :
+func (h *Hub) SendFollowRequest(fromID, toID int, senderName string) {
+	// Créer une notification proprement formatée
+	notification := map[string]interface{}{
+		"type":       "notification",
+		"sender_id":  fromID,
+		"message":    fmt.Sprintf("%s vous a envoyé une demande d'abonnement", senderName),
+		"created_at": time.Now().Format(time.RFC3339),
+	}
+
+	// Envoyer seulement au destinataire
+	if recipient, ok := h.Clients[toID]; ok {
+		notifBytes, err := json.Marshal(notification)
+		if err == nil {
+			select {
+			case recipient.Send <- notifBytes:
+				fmt.Printf("✅ Notification sent to user %d\n", toID)
+			default:
+				fmt.Printf("⚠️ Failed to send notification to user %d (channel full)\n", toID)
+			}
+		}
+	} else {
+		fmt.Printf("⚠️ User %d not connected, notification stored in DB only\n", toID)
+	}
+}
+
 func (h *Hub) SendNotification(fromID, toID int, content string) {
 	msg := Message{
 		From:      fromID,

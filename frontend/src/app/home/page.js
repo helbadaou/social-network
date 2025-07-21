@@ -10,12 +10,8 @@ import ChatBox from "./components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
 
-import { useUser } from "./hooks/useUser";
-import { usePosts } from "./hooks/usePosts";
-
-import Sidebar from './components/Sidebar'
-
 export default function HomePage() {
+  // ... autres états existants ...
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
@@ -39,376 +35,397 @@ export default function HomePage() {
   const [openChats, setOpenChats] = useState([]);
   const [showPostForm, setShowPostForm] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [realtimeNotification, setRealtimeNotification] = useState(null)
 
-  // const [realtimeNotification, setRealtimeNotification] = useState(null);
-
+  // États WebSocket améliorés
   const [messages, setMessages] = useState([])
-  const [input, setInput] = useState({}); // input per chat
+  const [input, setInput] = useState({});
+  const ws = useRef(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
   const fileInputRef = useRef()
 
   const router = useRouter();
 
-  const ws = useRef(null);
-  const [isWsConnected, setIsWsConnected] = useState(false);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-
+  // Configuration WebSocket améliorée
   const setupWebSocket = useCallback(() => {
     if (!user?.ID) return;
+
+    // Fermer la connexion existante si elle existe
+    if (ws.current) {
+      ws.current.close();
+    }
 
     const socket = new WebSocket('ws://localhost:8080/ws');
 
     socket.onopen = () => {
-      console.log('✅ WS connected');
-      setIsWsConnected(true);
+      console.log('✅ WebSocket connected');
       reconnectAttempts.current = 0;
       ws.current = socket;
     };
 
     socket.onclose = (e) => {
-      console.log('❌ WS disconnected', e.code, e.reason);
-      setIsWsConnected(false);
+      console.log('❌ WebSocket disconnected', e.code, e.reason);
+      ws.current = null;
 
-      if (reconnectAttempts.current < maxReconnectAttempts) {
+      // Reconnexion automatique si ce n'est pas une fermeture volontaire
+      if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
         reconnectAttempts.current += 1;
+        console.log(`🔄 Tentative de reconnexion ${reconnectAttempts.current}/${maxReconnectAttempts} dans ${delay}ms`);
         setTimeout(setupWebSocket, delay);
       }
     };
 
     socket.onerror = (err) => {
-      console.error('WS error:', err);
-      setIsWsConnected(false);
+      console.error('❌ WebSocket error:', err);
     };
 
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        console.log("📨 WS message received:", msg);
+        console.log("📨 Message WebSocket reçu:", msg);
 
         if (msg.type === 'notification') {
           console.log("🔔 Notification reçue:", msg);
-          setNotifications((prev) => {
-            const alreadyExists = prev.some(
-              (n) =>
-                n.sender_id === msg.from &&
-                n.message === msg.content &&
-                n.type === msg.type
+          setRealtimeNotification(msg);
+        } else if (msg.type === 'private') {
+          console.log("💬 Message privé reçu:", msg);
+          // Ajouter le message avec un timestamp unique pour éviter les doublons
+          const messageWithId = {
+            ...msg,
+            uniqueId: `${msg.from}-${msg.to}-${msg.timestamp}-${Date.now()}`
+          };
+          setMessages(prev => {
+            const existing = prev.find(m =>
+              m.from === msg.from &&
+              m.to === msg.to &&
+              m.content === msg.content &&
+              Math.abs(new Date(m.timestamp) - new Date(msg.timestamp)) < 1000
             );
 
-            if (alreadyExists) return prev;
+            if (existing) {
+              console.log("Message déjà existant, ignoré");
+              return prev;
+            }
 
-            return [
-              {
-                id: msg.id || `${msg.from}-${Date.now()}`,
-                sender_id: msg.from,
-                type: msg.type,
-                message: msg.content,
-                created_at: new Date().toISOString(),
-              },
-              ...prev,
-            ];
+            return [...prev, messageWithId];
           });
-      } else if (msg.type === 'private') {
-        // 💬 Message privé
-        setMessages(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
-      } else {
-        console.warn('Unknown WS message type:', msg.type);
+        } else {
+          console.warn('Type de message WebSocket inconnu:', msg.type);
+        }
+      } catch (err) {
+        console.error('Erreur parsing message WebSocket:', err);
       }
-    } catch (err) {
-      console.error('Failed to parse message:', err);
+    };
+
+    return socket;
+  }, [user?.ID]);
+
+  // Initialiser WebSocket quand l'utilisateur est chargé
+  useEffect(() => {
+    if (user?.ID) {
+      const socket = setupWebSocket();
+      return () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close(1000, 'Component unmounting');
+        }
+      };
     }
-  };
+  }, [user?.ID]);
 
-  return socket;
-}, [user?.ID]);
+  // Nettoyage à la fermeture du composant
+  useEffect(() => {
+    return () => {
+      if (ws.current) {
+        ws.current.close(1000, 'Page closing');
+      }
+    };
+  }, []);
 
-useEffect(() => {
-  const socket = setupWebSocket();
-  return () => {
-    if (socket) {
-      socket.close();
-    }
-  };
-}, [setupWebSocket]);
+  // Fonction pour envoyer un message WebSocket
+  const sendMessage = useCallback((message) => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      console.log("📤 Envoi message WebSocket:", message);
+      ws.current.send(JSON.stringify(message));
 
-const sendWsMessage = useCallback((message) => {
-  if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-    ws.current.send(JSON.stringify(message));
-  } else {
-    console.error('WebSocket not connected');
-  }
-}, []);
+      // Ajouter immédiatement le message à l'état local pour feedback instantané
+      const messageWithId = {
+        ...message,
+        uniqueId: `${message.from}-${message.to}-${message.timestamp}-${Date.now()}-sent`
+      };
 
-// Ouverture du formulaire de posts
-const togglePostForm = () => {
-  setShowPostForm(prev => !prev)
-}
+      setMessages(prev => {
+        // Éviter d'ajouter si déjà présent
+        const exists = prev.some(m =>
+          m.from === message.from &&
+          m.to === message.to &&
+          m.content === message.content &&
+          Math.abs(new Date(m.timestamp) - new Date(message.timestamp)) < 1000
+        );
 
-// Ouverture de la barre latérale des messages
-const openMessages = () => {
-  setShowMessages(true);
-};
-
-const openChat = (user) => {
-  if (!openChats.some((c) => c.id === user.id)) {
-    setOpenChats((prev) => [...prev, user]);
-  }
-};
-
-useEffect(() => {
-  fetchChatUsers();
-  fetchUser();
-}, []);
-
-const fetchChatUsers = async () => {
-  try {
-    const res = await fetch("http://localhost:8080/api/chat-users", {
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Failed to fetch users");
-    const data = await res.json();
-    setChatUsers(data);
-  } catch (err) {
-    console.error("Error fetching users:", err);
-  }
-};
-
-const fetchUser = async () => {
-  try {
-    const res = await fetch("http://localhost:8080/api/profile", {
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Unauthorized");
-    const data = await res.json();
-    setUser(data);
-  } catch (err) {
-    console.error("Error loading profile:", err);
-  }
-};
-
-const fetchUserById = async (userId) => {
-  try {
-    const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
-      credentials: 'include',
-    })
-    if (!res.ok) throw new Error('Erreur chargement profil')
-    const data = await res.json()
-    setSelectedUser(data)
-
-    const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
-      credentials: 'include',
-    })
-    if (followRes.ok) {
-      const { status } = await followRes.json()
-      setFollowStatus(status)
+        if (exists) return prev;
+        return [...prev, messageWithId];
+      });
     } else {
-      setFollowStatus('')
+      console.error('❌ WebSocket non connecté, impossible d\'envoyer le message');
+      // Optionnel: afficher une notification à l'utilisateur
     }
+  }, []);
 
-    setShowPopup(true)
-  } catch (err) {
-    console.error('Erreur chargement profil utilisateur:', err)
+  // Fonctions existantes...
+  const togglePostForm = () => {
+    setShowPostForm(prev => !prev)
   }
-}
 
-useEffect(() => {
-  const fetchFollowStatus = async () => {
-    if (!selectedUser) return;
+  const openMessages = () => {
+    setShowMessages(true);
+  };
 
-    try {
-      const res = await fetch(
-        `http://localhost:8080/api/follow/status/${selectedUser.id}`,
-        { credentials: "include" }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setFollowStatus(data.status);
-      } else {
-        setFollowStatus(""); // non abonné
-      }
-    } catch (err) {
-      console.error("Erreur status follow :", err);
+  const openChat = (user) => {
+    if (!openChats.some((c) => (c.id || c.ID) === (user.id || user.ID))) {
+      setOpenChats((prev) => [...prev, user]);
     }
   };
 
-  fetchFollowStatus();
-}, [selectedUser]);
-
-const fetchPosts = () => {
-  setLoading(true);
-  fetch("http://localhost:8080/api/posts", { credentials: "include" })
-    .then((res) => res.json())
-    .then((data) => setPosts(data))
-    .catch((err) => console.error("Error fetching posts:", err))
-    .finally(() => setLoading(false));
-};
-
-useEffect(() => {
-  fetchPosts();
-}, []);
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setSuccess("");
-  setCreating(true);
-
-  const formData = new FormData();
-  formData.append("content", content);
-  formData.append("privacy", privacy);
-  if (image) {
-    formData.append("image", image);
-  }
-
-  try {
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-
-    if (!res.ok) throw new Error("Erreur lors de la publication");
-
-    setSuccess("✅ Post publié !");
-    setContent("");
-    setImage(null);
-    setPrivacy("public");
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null;
-    }
-
+  // Charger les données initiales
+  useEffect(() => {
+    fetchChatUsers();
+    fetchUser();
     fetchPosts();
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setCreating(false);
-  }
-};
+  }, []);
 
-const handleSearch = async (e) => {
-  const value = e.target.value;
-  setSearch(value);
-
-  if (value.length > 1) {
+  const fetchChatUsers = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/search?query=${value}`, {
+      const res = await fetch("http://localhost:8080/api/chat-users", {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to search users");
+      if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
-      setResults(data);
+      setChatUsers(data);
     } catch (err) {
-      console.error("Error searching users:", err);
+      console.error("Error fetching users:", err);
     }
-  } else {
-    setResults([]);
-  }
-};
+  };
 
-const handleLogout = async () => {
-  try {
-    const res = await fetch("http://localhost:8080/api/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    if (res.ok) {
-      setUser(null);
-      setShowProfile(false);
-      router.push("/login");
+  const fetchUser = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/profile", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Unauthorized");
+      const data = await res.json();
+      setUser(data);
+    } catch (err) {
+      console.error("Error loading profile:", err);
+    }
+  };
+
+  const fetchPosts = () => {
+    setLoading(true);
+    fetch("http://localhost:8080/api/posts", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => setPosts(data))
+      .catch((err) => console.error("Error fetching posts:", err))
+      .finally(() => setLoading(false));
+  };
+
+  const fetchUserById = async (userId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Erreur chargement profil')
+      const data = await res.json()
+      setSelectedUser(data)
+
+      const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
+        credentials: 'include',
+      })
+      if (followRes.ok) {
+        const { status } = await followRes.json()
+        setFollowStatus(status)
+      } else {
+        setFollowStatus('')
+      }
+
+      setShowPopup(true)
+    } catch (err) {
+      console.error('Erreur chargement profil utilisateur:', err)
+    }
+  }
+
+  const handleSubmit = async (e, selectedRecipientIds = []) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setCreating(true);
+
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("privacy", privacy);
+    if (image) {
+      formData.append("image", image);
+    }
+
+    try {
+      let finalRecipientIds = [];
+
+      if (privacy === "custom") {
+        finalRecipientIds = selectedRecipientIds;
+      } else if (privacy === "followers" || privacy === "private") {
+        const res = await fetch("http://localhost:8080/api/recipients", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Impossible de récupérer les destinataires");
+        const data = await res.json();
+        finalRecipientIds = data.map((user) => user.id);
+      }
+
+      finalRecipientIds.forEach(id => {
+        formData.append("recipient_ids", id);
+      });
+
+      const res = await fetch("http://localhost:8080/api/posts", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Erreur lors de la publication");
+
+      setSuccess("✅ Post publié !");
+      setContent("");
+      setImage(null);
+      setPrivacy("public");
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = null;
+      }
+
+      fetchPosts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    const value = e.target.value;
+    setSearch(value);
+
+    if (value.length > 1) {
+      try {
+        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to search users");
+        const data = await res.json();
+        setResults(data);
+      } catch (err) {
+        console.error("Error searching users:", err);
+      }
     } else {
-      throw new Error("Logout failed");
+      setResults([]);
     }
-  } catch (err) {
-    console.error("Logout error:", err);
-  }
-};
+  };
 
-useEffect(() => {
-  const storedUser = localStorage.getItem('user')
-  if (storedUser) {
-    setUser(JSON.parse(storedUser))
-  }
-}, [])
+  const handleLogout = async () => {
+    try {
+      // Fermer WebSocket avant logout
+      if (ws.current) {
+        ws.current.close(1000, 'User logging out');
+      }
 
-return (
-  <div className="min-h-screen bg-black text-gray-100">
-    <Navbar
-      user={user}
-      handleSearch={handleSearch}
-      handleLogout={handleLogout}
-      results={results}
-      openMessages={openMessages}
-      togglePostForm={togglePostForm}
-      // realtimeNotification={realtimeNotification}
-    />
+      const res = await fetch("http://localhost:8080/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setUser(null);
+        setShowProfile(false);
+        router.push("/login");
+      } else {
+        throw new Error("Logout failed");
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
-    {/* MESSAGES SIDEBAR */}
-    {showMessages && (
-      <MessageSidebar
-        chatUsers={chatUsers}
-        showMessages={showMessages}
-        setShowMessages={setShowMessages}
-        openChat={openChat}
+  return (
+    <div className="min-h-screen bg-black text-gray-100">
+      <Navbar
+        user={user}
+        handleSearch={handleSearch}
+        handleLogout={handleLogout}
+        results={results}
+        openMessages={openMessages}
+        togglePostForm={togglePostForm}
+        realtimeNotification={realtimeNotification}
       />
-    )}
 
-    <div className="max-w-2xl mx-auto px-4 mt-6">
-      {showPostForm && (
-        <div className="max-w-2xl mx-auto px-4 mt-6">
-          <PostForm
-            content={content}
-            setContent={setContent}
-            image={image}
-            setImage={setImage}
-            privacy={privacy}
-            setPrivacy={setPrivacy}
-            handleSubmit={handleSubmit}
-            creating={creating}
-            ref={fileInputRef}
+      {/* MESSAGES SIDEBAR */}
+      {showMessages && user && (
+        <MessageSidebar
+          chatUsers={chatUsers}
+          showMessages={showMessages}
+          setShowMessages={setShowMessages}
+          openChat={openChat}
+          currentUserId={user.ID}
+        />
+      )}
+
+      <div className="max-w-2xl mx-auto px-4 mt-6">
+        {showPostForm && (
+          <div className="max-w-2xl mx-auto px-4 mt-6">
+            <PostForm
+              content={content}
+              setContent={setContent}
+              image={image}
+              setImage={setImage}
+              privacy={privacy}
+              setPrivacy={setPrivacy}
+              handleSubmit={handleSubmit}
+              creating={creating}
+              ref={fileInputRef}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Affichage des posts */}
+      {posts.map((post) => (
+        <Post key={post.id} post={post} fetchUserById={fetchUserById} />
+      ))}
+
+      {/* CHAT BOXES */}
+      <div className="fixed bottom-4 right-4 flex gap-4 z-40">
+        {openChats.map((u) => (
+          <ChatBox
+            key={u.id || u.ID}
+            recipient={u}
+            currentUser={user}
+            messages={messages}
+            input={input[u.id || u.ID] || ''}
+            setInput={(val) => setInput(prev => ({ ...prev, [u.id || u.ID]: val }))}
+            onSendMessage={sendMessage}
+            onClose={() => setOpenChats(prev => prev.filter(c => (c.id || c.ID) !== (u.id || u.ID)))}
           />
-        </div>
+        ))}
+      </div>
+
+      {/* USER PROFILE POPUP */}
+      {showPopup && selectedUser && (
+        <UserProfilePopup
+          selectedUser={selectedUser}
+          currentUser={user}
+          setShowPopup={setShowPopup}
+          followStatus={followStatus}
+          setFollowStatus={setFollowStatus}
+        />
       )}
     </div>
-
-    {/* Affichage des posts */}
-    {posts.map((post) => (
-      <Post key={post.id} post={post} fetchUserById={fetchUserById} />
-    ))}
-
-    {/* OPEN CHAT BOXES */}
-    <div className="fixed bottom-4 right-4 flex gap-4 z-40">
-      {openChats.map((u) => (
-        <ChatBox
-          key={u.id}
-          recipient={u}
-          currentUser={user}
-          messages={messages}
-          input={input[u.id] || ''}
-          setInput={(val) => setInput(prev => ({ ...prev, [u.id]: val }))}
-          onSendMessage={(message) => {
-            if (ws.current?.readyState === WebSocket.OPEN) {
-              ws.current.send(JSON.stringify(message));
-            } else {
-              console.error('WebSocket not connected');
-            }
-          }}
-          onClose={() => setOpenChats(prev => prev.filter(c => c.id !== u.id))}
-        />
-      ))}
-    </div>
-
-    {/* USER PROFILE POPUP */}
-    {showPopup && selectedUser && (
-      <UserProfilePopup
-        selectedUser={selectedUser}
-        currentUser={user}
-        setShowPopup={setShowPopup}
-        followStatus={followStatus}
-        setFollowStatus={setFollowStatus}
-      />
-    )}
-  </div>
-)
+  )
 }

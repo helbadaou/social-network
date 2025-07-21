@@ -1,41 +1,71 @@
 // src/app/home/components/Navbar.js
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from "react";
 
-export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm, realtimeNotification }) {
-  const [showProfile, setShowProfile] = useState(false)
-  const [isPrivate, setIsPrivate] = useState(false)
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState([])
-  const notificationsRef = useRef(null)
-  const notificationButtonRef = useRef(null)
+export default function Navbar({
+  user,
+  handleSearch,
+  handleLogout,
+  results,
+  openMessages,
+  togglePostForm,
+  realtimeNotification,
+}) {
+  const [showProfile, setShowProfile] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const notificationsRef = useRef(null);
+  const notificationButtonRef = useRef(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Fermer les notifications quand on clique ailleurs
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationsRef.current &&
+      if (
+        notificationsRef.current &&
         !notificationsRef.current.contains(event.target) &&
-        !notificationButtonRef.current.contains(event.target)) {
-        setShowNotifications(false)
+        !notificationButtonRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Déclarée ici pour être accessible partout dans le composant
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("http://localhost:8080/api/notifications", {
+        method: "GET",
+        credentials: "include", // Important pour les cookies de session
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+            throw new Error(
+                errorData.message || 
+                `HTTP error! status: ${res.status}`
+            );
+      }
+
       const data = await res.json();
+      console.log("✅ Notifications récupérées:", data);
+
+      // Vérifier si data est bien un tableau
+      const notificationsArray = Array.isArray(data) ? data : [];
 
       const uniqueNotifs = [];
       const seenKeys = new Set();
 
-      for (const notif of data) {
+      for (const notif of notificationsArray) {
         const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
@@ -44,18 +74,22 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
       }
 
       setNotifications(uniqueNotifs);
-      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
+      setUnreadCount(uniqueNotifs.filter((n) => !n.seen).length);
     } catch (err) {
-      console.error("Erreur récupération notifications", err);
+      console.error("❌ Erreur récupération notifications:", err);
+      // En cas d'erreur, initialiser avec un tableau vide
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 
-  // Ensuite dans ton useEffect
+  // Charger les notifications au montage du composant
   useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-
+    if (user?.ID) {
+      // Attendre que l'utilisateur soit chargé
+      fetchNotifications();
+    }
+  }, [user?.ID]);
 
   const toggleNotifications = async (e) => {
     e.stopPropagation();
@@ -66,90 +100,85 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
       await fetchNotifications();
 
       // Mise à jour optimiste frontend seulement
-      setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, seen: true })));
       setUnreadCount(0);
-
-
-      // try {
-      //   await fetch('http://localhost:8080/api/notifications/seen', {
-      //     method: 'POST',
-      //     credentials: 'include',
-      //   });
-
-      //   setNotifications(prev =>
-      //     prev.map(n => ({ ...n, seen: true }))
-      //   );
-
-      //   setUnreadCount(0);
-      // } catch (err) {
-      //   console.error('Erreur lors de la mise à jour des notifs vues:', err);
-      // }
     }
   };
 
-
+  // Remplacer la fonction handleAccept par :
   const handleAccept = async (notifId, senderId) => {
     try {
-      await fetch('/api/follow/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
+      const res = await fetch("http://localhost:8080/api/follow/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_id: senderId,
+          notification_id: notifId,
+        }),
+        credentials: "include",
       });
 
-      setNotifications(prev => {
-        const updated = prev.filter(n => n.id !== notifId);
-        setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
-        return updated;
-      });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+      // Mettre à jour l'état local
+      setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+      setUnreadCount((prev) => prev - 1);
     } catch (err) {
-      console.error('Erreur acceptation:', err);
+      console.error("❌ Erreur acceptation:", err);
     }
   };
 
+  // Remplacer la fonction handleReject par :
   const handleReject = async (notifId, senderId) => {
     try {
-      const res = await fetch('/api/follow/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
+      const res = await fetch("http://localhost:8080/api/follow/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_id: senderId,
+          notification_id: notifId,
+        }),
+        credentials: "include",
       });
 
-      if (res.ok) {
-        setNotifications(prev => {
-          const updated = prev.filter(n => n.id !== notifId);
-          setUnreadCount(updated.filter(n => !n.seen).length); // 👈 met à jour le compteur
-          return updated;
-        });
-      }
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+      // Mettre à jour l'état local
+      setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+      setUnreadCount((prev) => prev - 1);
     } catch (err) {
-      console.error('Erreur rejet:', err);
+      console.error("❌ Erreur rejet:", err);
     }
   };
 
   const toggleProfile = () => {
-    setShowProfile(prev => !prev)
-  }
+    setShowProfile((prev) => !prev);
+  };
 
   const togglePrivacy = async () => {
     try {
-      const res = await fetch('/api/user/toggle-privacy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_private: !isPrivate })
-      })
+      const res = await fetch("http://localhost:8080/api/user/toggle-privacy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_private: !isPrivate }),
+        credentials: "include", // ✅ Important pour envoyer les cookies de session
+      });
+
       if (res.ok) {
-        setIsPrivate(!isPrivate)
+        setIsPrivate(!isPrivate);
+        console.log("✅ Confidentialité mise à jour:", !isPrivate);
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Erreur serveur:", errorText);
       }
     } catch (err) {
-      console.error('Erreur modification confidentialité', err)
+      console.error("❌ Erreur modification confidentialité:", err);
     }
-  }
+  };
 
   useEffect(() => {
     console.log("📦 USER reçu dans Navbar :", user);
-    if (user && typeof user.IsPrivate === 'boolean') {
+    if (user && typeof user.IsPrivate === "boolean") {
       setIsPrivate(user.IsPrivate);
     }
   }, [user]);
@@ -159,14 +188,15 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
     if (realtimeNotification) {
       console.log("New realtime notification:", realtimeNotification);
 
-      setNotifications(prev => {
+      setNotifications((prev) => {
         const currentNotifs = prev || [];
 
         // Vérifier si cette notification existe déjà
-        const exists = currentNotifs.some(n =>
-          n.sender_id === realtimeNotification.sender_id &&
-          n.type === realtimeNotification.type &&
-          n.message === realtimeNotification.message
+        const exists = currentNotifs.some(
+          (n) =>
+            n.sender_id === realtimeNotification.sender_id &&
+            n.type === realtimeNotification.type &&
+            n.message === realtimeNotification.message
         );
 
         // Si elle existe déjà, ne pas l'ajouter
@@ -177,21 +207,19 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
         // Sinon, l'ajouter
         const newNotif = {
-          id: realtimeNotification.sender_id + '-' + Date.now(),
+          id: realtimeNotification.sender_id + "-" + Date.now(),
           sender_id: realtimeNotification.sender_id,
           type: realtimeNotification.type,
           message: realtimeNotification.message,
-          created_at: realtimeNotification.created_at || new Date().toISOString(),
-          seen: false
+          created_at:
+            realtimeNotification.created_at || new Date().toISOString(),
+          seen: false,
         };
 
         return [newNotif, ...currentNotifs];
       });
     }
   }, [realtimeNotification]);
-
-  // ✅ Compter seulement les notifications non vues
-  // const unreadCount = notifications.filter(n => !n.seen).length;
 
   return (
     <nav className="bg-gray-900 shadow flex justify-between items-center px-6 py-4 border-b border-gray-800 relative">
@@ -206,7 +234,10 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
         {results.length > 0 && (
           <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
             {results.map((u) => (
-              <div key={u.id} className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
+              <div
+                key={u.id}
+                className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
+              >
                 <p className="font-medium text-white">
                   {u.first_name} {u.last_name}
                 </p>
@@ -219,7 +250,6 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
       {/* Section à droite : messages + avatar */}
       <div className="flex items-center gap-4 ml-4 relative">
-
         {/* BOUTON + POUR AJOUTER UN POST */}
         <button onClick={togglePostForm}>
           <img src="/plus-icon.png" alt="Créer un post" className="w-6 h-6" />
@@ -237,7 +267,11 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
             onClick={toggleNotifications}
             className="relative p-1"
           >
-            <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
+            <img
+              src="/notif-icon.png"
+              className="w-6 h-6"
+              alt="Notifications"
+            />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                 {unreadCount}
@@ -251,7 +285,9 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
               className="absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-50 max-h-96 overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold text-white">Notifications</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  Notifications
+                </h3>
                 <button
                   onClick={() => setShowNotifications(false)}
                   className="text-gray-400 hover:text-white"
@@ -261,24 +297,32 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
               </div>
 
               {notifications.length === 0 ? (
-                <p className="text-gray-400 text-sm py-2">Aucune notification</p>
+                <p className="text-gray-400 text-sm py-2">
+                  Aucune notification
+                </p>
               ) : (
                 <div className="space-y-2">
                   {notifications.map((notif) => (
-                    <div key={notif.id} className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'
-                      }`}>
+                    <div
+                      key={notif.id}
+                      className={`p-3 rounded border ${
+                        notif.seen
+                          ? "bg-gray-800 border-gray-700"
+                          : "bg-blue-900 border-blue-600"
+                      }`}
+                    >
                       <p className="text-sm text-white break-words">
                         {notif.message}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {new Date(notif.created_at).toLocaleString()}
                       </p>
-                      {notif.type === 'follow_request' && (
+                      {notif.type === "follow_request" && (
                         <div className="flex gap-2 mt-2">
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleAccept(notif.id, notif.sender_id)
+                              e.stopPropagation();
+                              handleAccept(notif.id, notif.sender_id);
                             }}
                             className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
                           >
@@ -286,14 +330,31 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
                           </button>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleReject(notif.id, notif.sender_id)
+                              e.stopPropagation();
+                              handleReject(notif.id, notif.sender_id);
                             }}
                             className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                           >
                             Refuser
                           </button>
                         </div>
+                      )}
+                      {notif.type === "message" && (
+                        <button
+                          onClick={() => {
+                            // Ouvrir le chat avec l'expéditeur
+                            const sender = chatUsers.find(
+                              (u) => u.id === notif.sender_id
+                            );
+                            if (sender) {
+                              openChat(sender);
+                              setShowNotifications(false);
+                            }
+                          }}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded mt-2"
+                        >
+                          Voir le message
+                        </button>
                       )}
                     </div>
                   ))}
@@ -309,10 +370,10 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
             <img
               src={
                 user.Avatar
-                  ? user.Avatar.startsWith('http')
+                  ? user.Avatar.startsWith("http")
                     ? user.Avatar
                     : `http://localhost:8080/${user?.Avatar}`
-                  : '/avatar.png'
+                  : "/avatar.png"
               }
               alt="Avatar"
               onClick={toggleProfile}
@@ -328,16 +389,16 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-sm text-gray-300">
-                    {isPrivate ? '🔒 Profil privé' : '🌍 Profil public'}
+                    {isPrivate ? "🔒 Profil privé" : "🌍 Profil public"}
                   </span>
                   <button
                     onClick={togglePrivacy}
                     className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out 
-              ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
+              ${isPrivate ? "bg-red-500" : "bg-green-500"}`}
                   >
                     <div
                       className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out 
-                ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
+                ${isPrivate ? "translate-x-6" : "translate-x-0"}`}
                     ></div>
                   </button>
                 </div>
@@ -352,8 +413,7 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
             )}
           </div>
         )}
-
       </div>
     </nav>
-  )
+  );
 }

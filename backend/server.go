@@ -1,7 +1,10 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"social-network/backend/pkg/auth"
@@ -21,7 +24,6 @@ func main() {
 
 	go hub.Run()
 
-	// Ajouter juste après la création du hub :
 	follow.Hub = hub
 
 	sqlite.InitDB()
@@ -43,16 +45,15 @@ func main() {
 	mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
 	mux.HandleFunc("/api/follow/accept", follow.AcceptFollowHandler)
 	mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
-
 	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
 	mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
 	mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
+	mux.HandleFunc("/api/recipients", follow.GetRecipientsHandler)
 
 	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
+	mux.HandleFunc("/api/chat/history", chat.GetChatHistory)
 	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
-	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
-	// mux.HandleFunc("/api/notifications/seen", notifications.MarkNotificationSeen)
-
+	// mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
@@ -76,6 +77,52 @@ func main() {
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
+	mux.HandleFunc("/api/notifications/mark-read", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			NotificationID int `json:"notification_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		_, err := sqlite.DB.Exec("UPDATE notifications SET seen = TRUE WHERE id = ?", req.NotificationID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserIDFromSession(r)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		notifs, err := notifications.GetUserNotifications(sqlite.DB, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(notifs); err != nil {
+			log.Printf("Error encoding notifications: %v", err)
+		}
+	})
+
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
+}
+
+func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
+	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
 }
