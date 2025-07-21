@@ -35,9 +35,9 @@ export default function MessageSidebar({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          creator_id: currentUserId,
           title: newGroupName,
-          description: newGroupDesc,
-          creator_id: currentUserId
+          description: newGroupDesc
         })
       })
 

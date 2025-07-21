@@ -1,12 +1,11 @@
 package auth
 
 import (
-	 "database/sql"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
-
-	// "log"
+	"log"
 	"net/http"
 	"os"
 
@@ -14,7 +13,6 @@ import (
 
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/models"
-	
 )
 
 type RegisterRequest struct {
@@ -31,6 +29,17 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type InviteRequest struct {
+	UserID  int `json:"user_id"`  // The user being invited
+	GroupID int `json:"group_id"` // The group to join
+}
+
+type RespondToInviteRequest struct {
+	UserID  int    `json:"user_id"`
+	GroupID int    `json:"group_id"`
+	Action  string `json:"action"` // "accept" or "reject"
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +212,32 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("✅ Logged out successfully"))
 }
 
+func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
+	log.Println("access")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("in return")
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var group models.Group
+		log.Println("good method")
+		if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		log.Println("valid body")
+		createdGroup, err := sqlite.CreateGroup(db, group)
+		if err != nil {
+			http.Error(w, "Failed to create group", http.StatusInternalServerError)
+			return
+		}
+		log.Println("created")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(createdGroup)
+	}
+}
+
 func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groups, err := sqlite.GetAllGroups(dbConn)
@@ -213,5 +248,34 @@ func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(groups)
+	}
+}
+
+func InviteUserToGroupHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req InviteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		stmt, err := db.Prepare(`
+			INSERT OR IGNORE INTO group_memberships (group_id, user_id, status)
+			VALUES (?, ?, 'pending')
+		`)
+		if err != nil {
+			http.Error(w, "Failed to prepare SQL", http.StatusInternalServerError)
+			return
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(req.GroupID, req.UserID)
+		if err != nil {
+			http.Error(w, "Failed to invite user", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Invitation sent"})
 	}
 }

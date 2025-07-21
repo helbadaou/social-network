@@ -3,6 +3,7 @@ package sqlite
 
 import (
 	"database/sql"
+
 	"social-network/backend/pkg/models"
 )
 
@@ -22,4 +23,20 @@ func GetAllGroups(db *sql.DB) ([]models.Group, error) {
 		groups = append(groups, g)
 	}
 	return groups, nil
+}
+
+func CreateGroup(db *sql.DB, group models.Group) (models.Group, error) {
+	result, err := db.Exec(`
+        INSERT INTO groups (title, description)
+        VALUES (?, ?)`,
+		group.Title, group.Description)
+	if err != nil {
+		return models.Group{}, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return models.Group{}, err
+	}
+	group.ID = int(id)
+	return group, nil
 }

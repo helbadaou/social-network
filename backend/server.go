@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"database/sql"
+	//"database/sql"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
@@ -57,6 +57,10 @@ func main() {
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
+	mux.HandleFunc("/api/groups", auth.CreateGroupHandler(sqlite.DB))
+
+	mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
+
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
 		websocket.ServeWS(hub, w, r)
@@ -77,17 +81,10 @@ func main() {
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
-
-
-
-
-
-
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
 }
 
-
-func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
-	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
-}
+// func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
+// 	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
+// }
