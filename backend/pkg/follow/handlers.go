@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
+	"social-network/backend/pkg/notifications"
 	"social-network/backend/pkg/websocket"
 )
 
@@ -48,12 +48,12 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Vérifie s'il existe déjà une relation
+	// Vérifie s’il existe déjà une relation
 	var exists int
 	err = sqlite.DB.QueryRow(`
-        SELECT COUNT(*) FROM followers
-        WHERE follower_id = ? AND followed_id = ?
-    `, followerID, req.FollowedID).Scan(&exists)
+		SELECT COUNT(*) FROM followers
+		WHERE follower_id = ? AND followed_id = ?
+	`, followerID, req.FollowedID).Scan(&exists)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -69,8 +69,8 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 	// Vérifie si le profil suivi est privé
 	var isPrivate bool
 	err = sqlite.DB.QueryRow(`
-        SELECT is_private FROM users WHERE id = ?
-    `, req.FollowedID).Scan(&isPrivate)
+	SELECT is_private FROM users WHERE id = ?
+`, req.FollowedID).Scan(&isPrivate)
 	if err != nil {
 		http.Error(w, "Followed user not found", http.StatusNotFound)
 		return
@@ -83,50 +83,56 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Insertion dans la table followers
 	_, err = sqlite.DB.Exec(`
-        INSERT INTO followers (follower_id, followed_id, status)
-        VALUES (?, ?, ?)`, followerID, req.FollowedID, status)
+	INSERT INTO followers (follower_id, followed_id, status)
+	VALUES (?, ?, ?)`, followerID, req.FollowedID, status)
 	if err != nil {
 		http.Error(w, "Failed to insert follow", http.StatusInternalServerError)
 		return
 	}
 
-	if isPrivate {
-		// Récupérer les infos de l'expéditeur
+	// 🔔 Envoie d'une notification WebSocket si profil privé
+	// var senderUsername string
+	// err = sqlite.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, followerID).Scan(&senderUsername)
+	// if err != nil {
+	// 	senderUsername = "Un utilisateur"
+	// }
+
+	if isPrivate && Hub != nil {
 		var senderFirstName, senderLastName string
 		err := sqlite.DB.QueryRow(`
-            SELECT first_name, last_name FROM users WHERE id = ?
-        `, followerID).Scan(&senderFirstName, &senderLastName)
-		if err != nil {
-			http.Error(w, "Failed to get sender info", http.StatusInternalServerError)
-			return
+		SELECT first_name, last_name FROM users WHERE id = ?
+	`, followerID).Scan(&senderFirstName, &senderLastName)
+
+		senderName := "Un utilisateur"
+		if err == nil {
+			senderName = fmt.Sprintf("%s %s", senderFirstName, senderLastName)
+		} else {
+			fmt.Println("Erreur récupération nom de l'expéditeur :", err)
 		}
 
-		senderName := fmt.Sprintf("%s %s", senderFirstName, senderLastName)
-		message := fmt.Sprintf("%s vous a envoyé une demande d'abonnement", senderName)
+		message := fmt.Sprintf("%s vous a envoyé une demande d’abonnement", senderName)
 
-		// Créer la notification en base de données
-		_, err = sqlite.DB.Exec(`
-            INSERT INTO notifications (sender_id, receiver_id, message, type)
-            VALUES (?, ?, ?, 'follow_request')
-        `, followerID, req.FollowedID, message)
-		if err != nil {
-			log.Printf("Failed to create notification: %v", err)
-			http.Error(w, "Failed to create notification", http.StatusInternalServerError)
-			return
-		}
+		// 🔴 Enregistrer dans la base
+		go func() {
+			err := notifications.CreateNotification(req.FollowedID, followerID, "follow_request", message)
+			if err != nil {
+				fmt.Println("Erreur création notification :", err)
+			}
+		}()
 
-		// Envoyer la notification via WebSocket si le hub est disponible
-		if Hub != nil {
-			Hub.SendFollowRequest(followerID, req.FollowedID, senderName)
-		}
+		// 🔴 Envoyer en WebSocket
+		go Hub.SendNotification(websocket.Notification{
+			SenderID:       followerID,
+			SenderNickname: senderName,
+			Type:           "notification", // <-- use a generic type
+			Message:        message,
+			Seen:           false,
+			CreatedAt: "now", // Utiliser le format approprié si nécessaire
+		}, req.FollowedID)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":  "success",
-		"message": "Follow request sent",
-		"private": strconv.FormatBool(isPrivate),
-	})
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, "Follow request sent")
 }
 
 func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +212,6 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Unfollowed successfully"))
 }
 
-// Dans handlers.go, remplacez AcceptFollowHandler par :
 func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -220,8 +225,7 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		SenderID       int `json:"sender_id"`
-		NotificationID int `json:"notification_id"`
+		SenderID int `json:"sender_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -234,27 +238,21 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 		WHERE follower_id = ? AND followed_id = ?
 	`, req.SenderID, userID)
 	if err != nil {
-		log.Printf("Error updating follower status: %v", err)
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
 
-	// Supprimer la notification au lieu de la marquer comme vue
-	if req.NotificationID > 0 {
-		_, err = sqlite.DB.Exec(`
-			DELETE FROM notifications 
-			WHERE id = ? AND receiver_id = ? AND sender_id = ? AND type = 'follow_request'
-		`, req.NotificationID, userID, req.SenderID)
-		if err != nil {
-			log.Printf("Error deleting notification: %v", err)
-		}
-	}
+	// Marque la notification comme "seen"
+	_, _ = sqlite.DB.Exec(`
+        UPDATE notifications 
+        SET seen = 1, status = 'accepted'
+        WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'`,
+		req.SenderID, userID)
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow accepté")
 }
 
-// Et remplacez RejectFollowHandler par :
 func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -268,8 +266,7 @@ func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		SenderID       int `json:"sender_id"`
-		NotificationID int `json:"notification_id"`
+		SenderID int `json:"sender_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -282,21 +279,16 @@ func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 		WHERE follower_id = ? AND followed_id = ?
 	`, req.SenderID, userID)
 	if err != nil {
-		log.Printf("Error deleting follower: %v", err)
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
 
-	// Supprimer la notification
-	if req.NotificationID > 0 {
-		_, err = sqlite.DB.Exec(`
-			DELETE FROM notifications 
-			WHERE id = ? AND receiver_id = ? AND sender_id = ? AND type = 'follow_request'
-		`, req.NotificationID, userID, req.SenderID)
-		if err != nil {
-			log.Printf("Error deleting notification: %v", err)
-		}
-	}
+	// Marque la notif comme "seen"
+	_, _ = sqlite.DB.Exec(`
+    UPDATE notifications 
+    SET seen = 1, status = 'rejected'
+    WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'`,
+		req.SenderID, userID)
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow refusé")

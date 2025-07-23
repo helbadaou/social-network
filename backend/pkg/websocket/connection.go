@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -65,35 +64,6 @@ func (c *Client) readPump(hub *Hub) {
         `, msg.From, msg.To, msg.Content, msg.Type, time.Now())
 		if err != nil {
 			log.Printf("Error storing message: %v", err)
-			continue
-		}
-
-		// Notification pour les messages privés
-		if msg.Type == "private" {
-			// Vérifier si le destinataire est connecté
-			if _, ok := hub.Clients[msg.To]; !ok {
-				// Récupérer les infos de l'expéditeur
-				var senderFirstName, senderLastName string
-				err := sqlite.DB.QueryRow(`
-					SELECT first_name, last_name FROM users WHERE id = ?
-				`, msg.From).Scan(&senderFirstName, &senderLastName)
-
-				if err == nil {
-					notificationMsg := fmt.Sprintf("Nouveau message de %s %s", senderFirstName, senderLastName)
-
-					// Créer la notification en base
-					_, err = sqlite.DB.Exec(`
-						INSERT INTO notifications (sender_id, receiver_id, message, type, created_at)
-						VALUES (?, ?, ?, 'message', datetime('now'))
-					`, msg.From, msg.To, notificationMsg)
-
-					if err != nil {
-						log.Printf("Failed to create message notification: %v", err)
-					}
-				} else {
-					log.Printf("Failed to get sender info for notification: %v", err)
-				}
-			}
 		}
 
 		hub.Broadcast <- msg
