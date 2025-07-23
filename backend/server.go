@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	//"database/sql"
+	"strings"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
@@ -57,9 +57,42 @@ func main() {
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
-	mux.HandleFunc("/api/groups", auth.CreateGroupHandler(sqlite.DB))
+ 
 
-	mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
+
+
+ //////////////////////////////////////////////////////////////////////
+	
+mux.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == http.MethodGet {
+            auth.GetGroupsHandler(sqlite.DB)(w, r)
+        } else if r.Method == http.MethodPost {
+            auth.CreateGroupHandler(sqlite.DB)(w, r)
+        }
+    })
+	
+mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
+		auth.CheckGroupAccessHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/membership/join") && r.Method == http.MethodPost:
+		auth.JoinGroupRequestHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
+		auth.AcceptGroupInviteHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/membership/invite") && r.Method == http.MethodPost:
+		auth.InviteToGroupHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
+		auth.ApproveRequestHandler(w, r)
+	// Add more here if needed
+	default:
+		http.NotFound(w, r)
+	}
+}))
+
+//////////////////////////////////////////////////////////////////////
+
+
+	//mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
@@ -81,9 +114,22 @@ func main() {
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
+
+
+
+
+
+
+
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
 }
+
+
+
+
+
+
 
 // func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
 // 	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))

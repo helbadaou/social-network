@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Modal from "./components/Modal";
 
 export default function MessageSidebar({
   chatUsers,
@@ -9,25 +10,55 @@ export default function MessageSidebar({
   openChat,
   currentUserId
 }) {
-  const [groups, setGroups] = useState([])
-  const [showModal, setShowModal] = useState(false)
+
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
+
+
+  const [groups, setGroups] = useState([])
+
+
+  const [showModal, setShowModal] = useState(false)
+  const [showGroupAccessModal, setShowGroupAccessModal] = useState(false);
+
+
+
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('messages')
+
+  const [selectedGroup, setSelectedGroup] = useState(null)
+
+
+  const [groupState, setGroupState] = useState("");
+
+  const [inviteData, setInviteData] = useState(null);
+
+
 
   const otherUsers = chatUsers.filter(u => u.id !== currentUserId)
 
   useEffect(() => {
-    fetch('/api/groups')
-      .then(res => res.json())
-      .then(data => setGroups(data))
-      .catch(err => console.error('Error fetching groups:', err))
+    const fetchGroups = async () => {
+      try {
+        const res = await fetch('/api/groups')
+        if (!res.ok) throw new Error('Failed to fetch groups')
+        const data = await res.json()
+        setGroups(data)
+        console.log(data)
+      } catch (err) {
+        console.error('Error fetching groups:', err)
+      }
+    }
+
+    fetchGroups()
   }, [])
 
   const filteredGroups = groups?.filter(group =>
     group.title.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+
+
 
   const handleCreateGroup = async () => {
     try {
@@ -53,28 +84,62 @@ export default function MessageSidebar({
     }
   }
 
+
+  const handleGroupClick = async (groupId) => {
+    try {
+      const res = await fetch(`/api/groups/${groupId}/membership`, {
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      setActiveGroupId(groupId);
+
+      switch (data.status) {
+        case 'accepted':
+          setGroupState('accepted');
+          break;
+        case 'pending':
+          setGroupState('pending');
+          break;
+        case 'invited':
+          setGroupState('invited');
+          setInviteData({ inviter: data.inviterName });
+          break;
+        case 'none':
+          setGroupState('none');
+          break;
+      }
+
+      setShowGroupAccessModal(true); // only open the group modal here
+
+    } catch (err) {
+      console.error('Failed to check group access', err);
+    }
+  };
+
+
+
+
+
   return (
     <div
-      className={`fixed top-0 left-0 h-full w-100 bg-gray-900 shadow-lg transform transition-transform duration-300 z-40 ${
-        showMessages ? 'translate-x-0' : '-translate-x-full'
-      }`}
+      className={`fixed top-0 left-0 h-full w-100 bg-gray-900 shadow-lg transform transition-transform duration-300 z-40 ${showMessages ? 'translate-x-0' : '-translate-x-full'
+        }`}
     >
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
         <div className="flex space-x-4">
           <button
             onClick={() => setActiveTab('messages')}
-            className={`text-sm font-medium ${
-              activeTab === 'messages' ? 'text-blue-400' : 'text-gray-400 hover:text-gray-300'
-            }`}
+            className={`text-sm font-medium ${activeTab === 'messages' ? 'text-blue-400' : 'text-gray-400 hover:text-gray-300'
+              }`}
           >
             📨 Messages
           </button>
           <button
             onClick={() => setActiveTab('groups')}
-            className={`text-sm font-medium ${
-              activeTab === 'groups' ? 'text-blue-400' : 'text-gray-400 hover:text-gray-300'
-            }`}
+            className={`text-sm font-medium ${activeTab === 'groups' ? 'text-blue-400' : 'text-gray-400 hover:text-gray-300'
+              }`}
           >
             👥 Groups
           </button>
@@ -134,6 +199,8 @@ export default function MessageSidebar({
             </div>
 
             {/* Modal */}
+
+
             {showModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                 <div className="bg-gray-800 p-6 rounded shadow-md w-96 border border-gray-700">
@@ -169,14 +236,44 @@ export default function MessageSidebar({
               </div>
             )}
 
+
+
+            {showGroupAccessModal && (
+              <Modal onClose={() => setShowGroupAccessModal(false)}>
+                {groupState === 'accepted' && <GroupDashboard groupId={activeGroupId} />}
+                {groupState === 'pending' && <p>⏳ Request sent. Awaiting approval.</p>}
+                {groupState === 'invited' && (
+                  <InviteResponse
+                    groupId={activeGroupId}
+                    inviter={inviteData?.inviter}
+                    onResponse={() => setShowGroupAccessModal(false)}
+                  />
+                )}
+                {groupState === 'none' && (
+                  <JoinGroupButton
+                    groupId={activeGroupId}
+                    onRequestSent={() => setShowGroupAccessModal(false)}
+                  />
+                )}
+              </Modal>
+            )}
+
+
+
+
+
+
             {/* Group List */}
             <ul className="space-y-2 mt-4">
+
+
+
               {filteredGroups?.length > 0 ? (
                 filteredGroups.map(group => (
                   <li
                     key={group.id}
-                    className="p-3 bg-gray-800 border border-gray-700 rounded hover:bg-gray-700 cursor-pointer"
-                  >
+                    onClick={() => handleGroupClick(group.id)}
+                    className="p-3 bg-gray-800 border border-gray-700 rounded hover:bg-gray-700 cursor-pointer">
                     <strong className="text-white">{group.title}</strong>
                     <p className="text-sm text-gray-400">{group.description}</p>
                   </li>
@@ -184,6 +281,10 @@ export default function MessageSidebar({
               ) : (
                 <p className="text-gray-400">No groups found.</p>
               )}
+
+
+
+
             </ul>
           </div>
         )}

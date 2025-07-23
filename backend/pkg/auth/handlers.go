@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
+	"strconv"
 	"golang.org/x/crypto/bcrypt"
 
 	"social-network/backend/pkg/db/sqlite"
@@ -41,6 +43,12 @@ type RespondToInviteRequest struct {
 	GroupID int    `json:"group_id"`
 	Action  string `json:"action"` // "accept" or "reject"
 }
+
+type ApproveRequest struct {
+	UserID int `json:"user_id"`
+}
+
+
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -212,6 +220,10 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("✅ Logged out successfully"))
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+
+
 func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 	log.Println("access")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -226,12 +238,14 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+
 		log.Println("valid body")
 		createdGroup, err := sqlite.CreateGroup(db, group)
 		if err != nil {
 			http.Error(w, "Failed to create group", http.StatusInternalServerError)
 			return
 		}
+
 		log.Println("created")
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(createdGroup)
@@ -240,6 +254,8 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 
 func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+ 
+
 		groups, err := sqlite.GetAllGroups(dbConn)
 		if err != nil {
 			http.Error(w, "Failed to fetch groups", http.StatusInternalServerError)
@@ -249,33 +265,221 @@ func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(groups)
 	}
+	
 }
 
-func InviteUserToGroupHandler(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req InviteRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
+////////////////////////////////////////////////////////////////////////////////
 
-		stmt, err := db.Prepare(`
-			INSERT OR IGNORE INTO group_memberships (group_id, user_id, status)
-			VALUES (?, ?, 'pending')
-		`)
-		if err != nil {
-			http.Error(w, "Failed to prepare SQL", http.StatusInternalServerError)
-			return
-		}
-		defer stmt.Close()
 
-		_, err = stmt.Exec(req.GroupID, req.UserID)
-		if err != nil {
-			http.Error(w, "Failed to invite user", http.StatusInternalServerError)
-			return
-		}
+func CheckGroupAccessHandler(w http.ResponseWriter, r *http.Request) {
+	
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership")
 
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Invitation sent"})
+	groupID, err := strconv.Atoi(groupIDStr)
+	
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
 	}
+   //
+	userIDStr := r.URL.Query().Get("user_id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// First, check if user is the group creator
+	var creatorID int
+
+	err = sqlite.DB.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
+	if err != nil {
+		http.Error(w, "Group not found", http.StatusNotFound)
+		return
+	}
+	if userID == creatorID {
+		json.NewEncoder(w).Encode(map[string]string{"status": "creator"})
+		return
+	}
+
+	// Second, check membership status
+	var status string
+	err = sqlite.DB.QueryRow("SELECT status FROM group_memberships WHERE group_id = ? AND user_id = ?", groupID, userID).Scan(&status)
+	if err == sql.ErrNoRows {
+		json.NewEncoder(w).Encode(map[string]string{"status": "none"})
+		return
+	} else if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": status})
+}
+
+
+func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/join")
+	groupID, err := strconv.Atoi(groupIDStr)
+	
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if already a member or request exists
+	var exists int
+	err = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM group_membership WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&exists)
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	if exists > 0 {
+		http.Error(w, "Request already exists or already a member", http.StatusConflict)
+		return
+	}
+
+	_, err = sqlite.DB.Exec(`
+		INSERT INTO group_membership (group_id, user_id, status)
+		VALUES (?, ?, 'pending')`, groupID, userID)
+	if err != nil {
+		http.Error(w, "Failed to create join request", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+
+func AcceptGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
+
+	userID, _ := GetUserIDFromSession(r) // Adjust this for your session logic
+	
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/accept")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Only allow if user was invited
+	var status string
+	err = sqlite.DB.QueryRow(`
+		SELECT status FROM group_membership 
+		WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&status)
+
+	if err != nil {
+		http.Error(w, "Membership not found", http.StatusNotFound)
+		return
+	}
+
+	if status != "invited" {
+		http.Error(w, "You are not invited", http.StatusForbidden)
+		return
+	}
+
+	// Update the membership to accepted
+	_, err = sqlite.DB.Exec(`
+		UPDATE group_membership 
+		SET status = 'accepted' 
+		WHERE group_id = ? AND user_id = ?`, groupID, userID)
+	if err != nil {
+		http.Error(w, "Failed to accept invitation", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+
+func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
+	creatorID, _ := GetUserIDFromSession(r)
+	if creatorID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/invite")
+	groupID, _ := strconv.Atoi(groupIDStr)
+
+	// Verify current user is creator of the group
+	var dbCreatorID int
+	err := sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&dbCreatorID)
+	if err != nil || dbCreatorID != creatorID {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	var invite InviteRequest
+	
+	err = json.NewDecoder(r.Body).Decode(&invite)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	_, err = sqlite.DB.Exec(`
+		INSERT INTO group_membership (group_id, user_id, status)
+		VALUES (?, ?, 'invited')
+		ON CONFLICT(group_id, user_id) DO UPDATE SET status='invited'`, groupID, invite.UserID)
+
+	if err != nil {
+		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+
+func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
+	creatorID, _ := GetUserIDFromSession(r)
+	if creatorID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/approve")
+	groupID, _ := strconv.Atoi(groupIDStr)
+
+	var groupCreatorID int
+	err := sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
+	if err != nil || groupCreatorID != creatorID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var body ApproveRequest
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	_, err = sqlite.DB.Exec(`
+		UPDATE group_membership 
+		SET status = 'accepted' 
+		WHERE group_id = ? AND user_id = ? AND status = 'pending'`, groupID, body.UserID)
+	if err != nil {
+		http.Error(w, "Failed to approve request", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
