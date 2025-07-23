@@ -57,6 +57,18 @@ func (c *Client) readPump(hub *Hub) {
 			msg.Timestamp = time.Now().Format(time.RFC3339)
 		}
 
+		// Vérification : empêcher l'envoi de message à un profil privé si l'expéditeur n'est pas abonné
+		var isPrivate bool
+		err = sqlite.DB.QueryRow(`SELECT is_private FROM users WHERE id = ?`, msg.To).Scan(&isPrivate)
+		if err == nil && isPrivate && msg.From != msg.To {
+			var status string
+			err = sqlite.DB.QueryRow(`SELECT status FROM followers WHERE follower_id = ? AND followed_id = ?`, msg.From, msg.To).Scan(&status)
+			if err != nil || status != "accepted" {
+				log.Printf("Tentative d'envoi de message refusée : profil privé non suivi")
+				continue // ignore le message
+			}
+		}
+
 		// Store message in database
 		_, err = sqlite.DB.Exec(`
             INSERT INTO messages (from_id, to_id, content, type, timestamp)

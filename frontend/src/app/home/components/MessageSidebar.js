@@ -20,9 +20,17 @@ export default function MessageSidebar({
 
   useEffect(() => {
     fetch('/api/groups')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          return res.text().then(text => { throw new Error(text || 'Failed to fetch groups') })
+        }
+        return res.json()
+      })
       .then(data => setGroups(data))
-      .catch(err => console.error('Error fetching groups:', err))
+      .catch(err => {
+        console.error('Error fetching groups:', err)
+        setGroups([])
+      })
   }, [])
 
   const filteredGroups = groups?.filter(group =>
