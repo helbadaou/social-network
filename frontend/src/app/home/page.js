@@ -398,7 +398,7 @@ export default function HomePage() {
       </div>
 
       {/* Affichage des posts */}
-      <h2 className="text-xl font-bold mb-4">Posts</h2>
+      <h2 className="text-xl font-bold mb-4"></h2>
       {posts.length === 0 ? (
         <p className="text-gray-400 text-sm">Aucun post à afficher.</p>
       ) : (
