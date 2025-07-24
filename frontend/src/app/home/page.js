@@ -366,6 +366,7 @@ export default function HomePage() {
         openMessages={openMessages}
         togglePostForm={togglePostForm}
         realtimeNotification={realtimeNotification}
+        fetchChatUsers={fetchChatUsers} // Ajout de la prop pour rafraîchir la liste après acceptation
       />
 
       {/* MESSAGES SIDEBAR */}
@@ -376,6 +377,7 @@ export default function HomePage() {
           setShowMessages={setShowMessages}
           openChat={openChat}
           currentUserId={user.ID}
+          fetchChatUsers={fetchChatUsers}
         />
       )}
 

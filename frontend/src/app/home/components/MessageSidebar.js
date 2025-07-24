@@ -61,6 +61,14 @@ export default function MessageSidebar({
     }
   }
 
+  const handleUserClick = (u) => {
+    if (u.is_private && u.follow_status !== 'accepted' && u.id !== currentUserId) {
+      alert('🔒 Ce profil est privé. Vous devez suivre ce profil pour pouvoir envoyer un message.')
+      return
+    }
+    openChat(u)
+  }
+
   return (
     <div
       className={`fixed top-0 left-0 h-full w-100 bg-gray-900 shadow-lg transform transition-transform duration-300 z-40 ${
@@ -103,7 +111,7 @@ export default function MessageSidebar({
               <div
                 key={u.id}
                 className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
-                onClick={() => openChat(u)}
+                onClick={() => handleUserClick(u)}
               >
                 <img
                   src={

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 
-export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm, realtimeNotification }) {
+export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm, realtimeNotification, fetchChatUsers }) {
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
 
@@ -89,6 +89,11 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
         body: JSON.stringify({ sender_id: senderId }),
         credentials: 'include',
       });
+
+      // Rafraîchir la liste des utilisateurs pour mettre à jour le follow_status
+      if (typeof fetchChatUsers === 'function') {
+        fetchChatUsers();
+      }
 
       // Mark notification as seen in backend
       await fetch('/api/notifications/seen', {
