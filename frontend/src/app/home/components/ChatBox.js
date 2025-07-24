@@ -20,7 +20,8 @@ export default function ChatBox({ currentUser, recipient, onSendMessage, message
         });
 
         if (!res.ok) {
-          throw new Error('Failed to load chat history');
+          const errorText = await res.text();
+          throw new Error(errorText || 'Failed to load chat history');
         }
 
         const history = await res.json();

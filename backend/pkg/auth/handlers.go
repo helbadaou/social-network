@@ -10,11 +10,14 @@ import (
 	"os"
 	"strings"
 
+	// "log"
+
 	"strconv"
 	"golang.org/x/crypto/bcrypt"
 
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/models"
+	
 )
 
 type RegisterRequest struct {
@@ -252,10 +255,12 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
  
 
+func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		groups, err := sqlite.GetAllGroups(dbConn)
 		if err != nil {
 			http.Error(w, "Failed to fetch groups", http.StatusInternalServerError)
@@ -482,4 +487,5 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	
 }

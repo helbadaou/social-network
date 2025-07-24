@@ -164,7 +164,7 @@ export default function UserProfilePopup({
           <h2 className="text-lg font-semibold text-white">
             {selectedUser.first_name} {selectedUser.last_name}
           </h2>
-          <p className="text-gray-400 text-sm">@{selectedUser.nickname || ''}</p>
+          <p className="text-gray-400 text-sm">{selectedUser.nickname}</p>
           {selectedUser.About && (
             <p className="mt-2 text-sm text-blue-400 text-center">{selectedUser.About}</p>
           )}
@@ -201,15 +201,24 @@ export default function UserProfilePopup({
           )}
 
 
-          <button
-            className="mt-3 text-blue-400 text-sm hover:underline cursor-pointer"
-            onClick={() => {
-              setShowPopup(false)
-              router.push(`/profile/${selectedUser.id}`)
-            }}
-          >
-            Voir le profil complet →
-          </button>
+          {/* Bouton 'Voir le profil complet' affiché seulement si :
+              - le profil n'est pas privé
+              - OU l'utilisateur est abonné (followStatus === 'accepted')
+              - OU c'est le propriétaire du profil */}
+          {selectedUser.is_private && followStatus !== 'accepted' && selectedUser.id !== currentUser?.ID && (
+            <p className="mt-2 text-sm text-yellow-400 text-center">🔒 Profil privé, veuillez vous abonner pour voir les informations complètes.</p>
+          )}
+          {(!selectedUser.is_private || followStatus === 'accepted' || selectedUser.id === currentUser?.ID) && (
+            <button
+              className="mt-3 text-blue-400 text-sm hover:underline cursor-pointer"
+              onClick={() => {
+                setShowPopup(false);
+                router.push(`/profile/${selectedUser.id}`);
+              }}
+            >
+              Voir le profil complet →
+            </button>
+          )}
         </div>
       </div>
     </div>

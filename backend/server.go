@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"database/sql"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
@@ -56,10 +57,6 @@ func main() {
 	mux.HandleFunc("/api/notifications/delete", notifications.DeleteNotification)
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
-
- 
-
-
 
  //////////////////////////////////////////////////////////////////////
 	
@@ -114,23 +111,15 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
-
-
-
-
-
-
+	
+	fmt.Println("✅ Server started at :8080")
+	http.ListenAndServe(":8080", handler)
 
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
 }
 
 
-
-
-
-
-
-// func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
-// 	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
-// }
+func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
+	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
+}
