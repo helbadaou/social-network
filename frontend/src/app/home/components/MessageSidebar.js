@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Modal from "./components/Modal";
+// import Modal from "./components/Modal";
 
 export default function MessageSidebar({
   chatUsers,
