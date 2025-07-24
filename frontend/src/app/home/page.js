@@ -48,6 +48,8 @@ export default function HomePage() {
 
   const router = useRouter();
 
+
+
   // Configuration WebSocket améliorée
   const setupWebSocket = useCallback(() => {
     if (!user?.ID) return;

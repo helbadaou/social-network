@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-// import Modal from "./components/Modal";
+ import Modal from "../components/Modal";
 
 export default function MessageSidebar({
   chatUsers,
@@ -26,7 +26,7 @@ export default function MessageSidebar({
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('messages')
 
-  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [activeGroupId,  setActiveGroupId] = useState(null)
 
 
   const [groupState, setGroupState] = useState("");
@@ -66,16 +66,16 @@ export default function MessageSidebar({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          creator_id: currentUserId,
           title: newGroupName,
-          description: newGroupDesc
+          description: newGroupDesc,
+          creator_id: currentUserId
         })
       })
 
       if (!res.ok) throw new Error('Failed to create group')
 
       const newGroup = await res.json()
-      setGroups(prev => [...prev, newGroup])
+      setGroups(prev => [...prev || [], newGroup])
       setShowModal(false)
       setNewGroupName('')
       setNewGroupDesc('')
@@ -116,6 +116,67 @@ export default function MessageSidebar({
       console.error('Failed to check group access', err);
     }
   };
+
+
+
+
+
+
+
+
+const handleJoinGroup = async () => {
+  try {
+    const res = await fetch(`/api/groups/${activeGroupId}/join`, {
+      method: "POST",
+      credentials: "include",
+    })
+    if (!res.ok) throw new Error("Join request failed")
+    setGroupState("pending")
+  } catch (err) {
+    console.error("Error joining group:", err)
+  }
+}
+
+const handleAcceptInvite = async () => {
+  try {
+    const res = await fetch(`/api/groups/${activeGroupId}/invite/accept`, {
+      method: "POST",
+      credentials: "include",
+    })
+    if (!res.ok) throw new Error("Accept failed")
+    setGroupState("accepted")
+  } catch (err) {
+    console.error("Error accepting invite:", err)
+  }
+}
+
+
+const handleDeclineInvite = async () => {
+  try {
+    const res = await fetch(`/api/groups/${activeGroupId}/membership/decline`, {
+      method: "POST",
+      credentials: "include",
+    })
+    if (!res.ok) throw new Error("Decline failed")
+    setShowGroupAccessModal(false)
+  } catch (err) {
+    console.error("Error declining invite:", err)
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -237,26 +298,45 @@ export default function MessageSidebar({
             )}
 
 
+{showGroupAccessModal && (
+  <Modal onClose={() => setShowGroupAccessModal(false)}>
+    {groupState === "none" && (
+      <div className="group-access-ui">
+        <h2>Join Group</h2>
+        <p>You’re not a member of this group.</p>
+        <button onClick={handleJoinGroup}>Request to Join</button>
+      </div>
+    )}
 
-            {showGroupAccessModal && (
-              <Modal onClose={() => setShowGroupAccessModal(false)}>
-                {groupState === 'accepted' && <GroupDashboard groupId={activeGroupId} />}
-                {groupState === 'pending' && <p>⏳ Request sent. Awaiting approval.</p>}
-                {groupState === 'invited' && (
-                  <InviteResponse
-                    groupId={activeGroupId}
-                    inviter={inviteData?.inviter}
-                    onResponse={() => setShowGroupAccessModal(false)}
-                  />
-                )}
-                {groupState === 'none' && (
-                  <JoinGroupButton
-                    groupId={activeGroupId}
-                    onRequestSent={() => setShowGroupAccessModal(false)}
-                  />
-                )}
-              </Modal>
-            )}
+    {groupState === "pending" && (
+      <div className="group-access-ui">
+        <h2>Request Sent</h2>
+        <p>Your join request is pending approval.</p>
+      </div>
+    )}
+
+    {groupState === "invited" && (
+      <div className="group-access-ui">
+        <h2>You've been invited!</h2>
+        <p>Would you like to join this group?</p>
+        <button onClick={handleAcceptInvite}>Accept</button>
+        <button onClick={handleDeclineInvite}>Decline</button>
+      </div>
+    )}
+
+    {groupState === "accepted" && (
+      <GroupDashboard groupId={activeGroupId} />
+    )}
+  </Modal>
+)}
+
+
+
+
+
+
+
+
 
 
 

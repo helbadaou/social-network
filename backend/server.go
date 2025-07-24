@@ -71,7 +71,7 @@ mux.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
 mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
-		auth.CheckGroupAccessHandler(w, r)
+		auth.CheckGroupAccessHandler(w, r) //{"status": status}
 	case strings.HasSuffix(r.URL.Path, "/membership/join") && r.Method == http.MethodPost:
 		auth.JoinGroupRequestHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
@@ -80,6 +80,8 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.InviteToGroupHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
 		auth.ApproveRequestHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
+        auth.DeclineGroupInviteHandler(w, r)
 	// Add more here if needed
 	default:
 		http.NotFound(w, r)

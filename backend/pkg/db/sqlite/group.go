@@ -27,9 +27,9 @@ func GetAllGroups(db *sql.DB) ([]models.Group, error) {
 
 func CreateGroup(db *sql.DB, group models.Group) (models.Group, error) {
 	result, err := db.Exec(`
-        INSERT INTO groups (title, description)
-        VALUES (?, ?)`,
-		group.Title, group.Description)
+        INSERT INTO groups (title, description, creator_id)
+        VALUES (?, ?, ?)`,
+		group.Title, group.Description, group.CreatorID)
 	if err != nil {
 		return models.Group{}, err
 	}
