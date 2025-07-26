@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
@@ -59,7 +60,7 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if exists > 0 {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status": "already_following",
 		})
@@ -127,7 +128,7 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 			Type:           "notification", // <-- use a generic type
 			Message:        message,
 			Seen:           false,
-			CreatedAt: "now", // Utiliser le format approprié si nécessaire
+			CreatedAt:      "now", // Utiliser le format approprié si nécessaire
 		}, req.FollowedID)
 	}
 
@@ -156,7 +157,7 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 	`, followerID, followedID).Scan(&status)
 
 	if err == sql.ErrNoRows {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status": "",
 		})
@@ -166,7 +167,7 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": status,
 	})
@@ -249,6 +250,9 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
         WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'`,
 		req.SenderID, userID)
 
+	// Envoyer une notification WebSocket aux deux utilisateurs pour mettre à jour leur interface
+	notifyFollowStatusUpdate(req.SenderID, userID)
+
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow accepté")
 }
@@ -292,4 +296,20 @@ func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Follow refusé")
+}
+
+// Fonction pour notifier les utilisateurs de la mise à jour du statut
+func notifyFollowStatusUpdate(userID1, userID2 int) {
+	updateMessage := websocket.Message{
+		Type:      "follow_status_update",
+		Content:   "Follow status updated",
+		From:      0, // Message système
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	// Envoyer à l'utilisateur 1
+	Hub.SendMessageToUser(userID1, updateMessage)
+
+	// Envoyer à l'utilisateur 2
+	Hub.SendMessageToUser(userID2, updateMessage)
 }

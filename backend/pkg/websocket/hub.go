@@ -88,3 +88,24 @@ func (h *Hub) SendNotification(notification Notification, toID int) {
 		recipient.Send <- msgBytes
 	}
 }
+
+
+func (h *Hub) SendMessageToUser(userID int, message Message) {
+	msgBytes, err := json.Marshal(message)
+	if err != nil {
+		fmt.Printf("❌ Failed to marshal message: %v\n", err)
+		return
+	}
+
+	if client, ok := h.Clients[userID]; ok {
+		select {
+		case client.Send <- msgBytes:
+			fmt.Printf("✅ Message sent to user %d\n", userID)
+		default:
+			// Canal plein, client déconnecté ou occupé
+			fmt.Printf("⚠️ Failed to send message to user %d (channel full or client disconnected)\n", userID)
+		}
+	} else {
+		fmt.Printf("⚠️ User %d not connected\n", userID)
+	}
+}

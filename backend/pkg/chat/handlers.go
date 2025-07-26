@@ -4,6 +4,7 @@ package chat
 
 import (
 	"encoding/json"
+	"strconv"
 	// "fmt"
 	"net/http"
 
@@ -18,6 +19,26 @@ type ChatUser struct {
 	Avatar       string `json:"avatar"`
 	IsPrivate    bool   `json:"is_private"`
 	FollowStatus string `json:"follow_status"`
+	CanChat      bool   `json:"can_chat"`
+}
+
+// Fonction utilitaire pour vérifier si deux utilisateurs peuvent discuter
+func canUsersChat(userID1, userID2 int) (bool, error) {
+	// Vérifier si user1 suit user2 ET user2 suit user1 (suivi mutuel)
+	var count int
+	err := sqlite.DB.QueryRow(`
+		SELECT COUNT(*) FROM followers 
+		WHERE (follower_id = ? AND followed_id = ? AND status = 'accepted')
+		AND EXISTS (
+			SELECT 1 FROM followers 
+			WHERE follower_id = ? AND followed_id = ? AND status = 'accepted'
+		)
+	`, userID1, userID2, userID2, userID1).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
@@ -64,10 +85,17 @@ func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Vérifier si les utilisateurs peuvent discuter (suivi mutuel)
+		canChat, err := canUsersChat(requesterID, id)
+		if err != nil {
+			canChat = false // En cas d'erreur, interdire le chat
+		}
+		user.CanChat = canChat
+
 		users = append(users, user)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(users)
 }
 
@@ -81,11 +109,30 @@ func GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	otherID := r.URL.Query().Get("with")
-	if otherID == "" {
+	otherIDStr := r.URL.Query().Get("with")
+	if otherIDStr == "" {
 		http.Error(w, "Missing 'with' parameter", http.StatusBadRequest)
 		return
 	}
+
+	otherID, err := strconv.Atoi(otherIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// NOUVELLE VÉRIFICATION : Vérifier si les utilisateurs peuvent discuter
+	canChat, err := canUsersChat(userID, otherID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if !canChat {
+		http.Error(w, "Chat not allowed: users must follow each other", http.StatusForbidden)
+		return
+	}
+
 	rows, err := sqlite.DB.Query(`
         SELECT from_id, to_id, content, type, timestamp
         FROM messages
@@ -107,7 +154,7 @@ func GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		messages = append(messages, msg)
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(messages); err != nil {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Modal from "../components/Modal";
 import GroupDashboard from '../components/GroupDashboard';
 
@@ -9,37 +9,55 @@ export default function MessageSidebar({
   showMessages,
   setShowMessages,
   openChat,
-  currentUserId
+  currentUserId,
+  fetchChatUsers // Cette fonction doit être passée depuis le parent
 }) {
 
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
-
-
   const [groups, setGroups] = useState([])
-
-
   const [showModal, setShowModal] = useState(false)
   const [showGroupAccessModal, setShowGroupAccessModal] = useState(false);
-
-
-
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('messages')
-
   const [activeGroupId, setActiveGroupId] = useState(null)
-
-
   const [groupState, setGroupState] = useState("");
-
   const [inviteData, setInviteData] = useState(null);
-
   const [selectedGroup, setSelectedGroup] = useState(null);
 
+  // Référence pour l'intervalle de polling
+  const pollingInterval = useRef(null);
 
+  // Filtrer les utilisateurs qui peuvent discuter
+  const chatableUsers = chatUsers.filter(u => u.id !== currentUserId && u.can_chat)
+  const nonChatableUsers = chatUsers.filter(u => u.id !== currentUserId && !u.can_chat)
 
+  // Polling automatique quand la sidebar des messages est ouverte et sur l'onglet messages
+  useEffect(() => {
+    if (showMessages && activeTab === 'messages' && fetchChatUsers) {
+      // Rafraîchir immédiatement
+      fetchChatUsers();
+      
+      // Puis toutes les 3 secondes
+      pollingInterval.current = setInterval(() => {
+        console.log("🔄 Rafraîchissement automatique de la liste des utilisateurs...");
+        fetchChatUsers();
+      }, 3000);
+    } else {
+      // Nettoyer l'intervalle si on change d'onglet ou ferme la sidebar
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+        pollingInterval.current = null;
+      }
+    }
 
-  const otherUsers = chatUsers.filter(u => u.id !== currentUserId)
+    // Nettoyage à la fermeture du composant
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
+  }, [showMessages, activeTab, fetchChatUsers]);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -57,14 +75,9 @@ export default function MessageSidebar({
     fetchGroups()
   }, [])
 
-
-
   const filteredGroups = groups?.filter(group =>
     group.title.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-
-
 
   const handleCreateGroup = async () => {
     try {
@@ -90,7 +103,6 @@ export default function MessageSidebar({
     }
   }
 
-
   const handleGroupClick = async (groupId) => {
     try {
       const res = await fetch(`/api/groups/${groupId}/membership`, {
@@ -99,13 +111,8 @@ export default function MessageSidebar({
       const data = await res.json();
 
       setActiveGroupId(groupId);
-
       const selectedGroup = groups.find(group => group.id === groupId);
-      
       setSelectedGroup(selectedGroup);
-
-
-      
 
       switch (data.status) {
         case 'accepted':
@@ -126,19 +133,12 @@ export default function MessageSidebar({
           break;
       }
 
-      setShowGroupAccessModal(true); // only open the group modal here
+      setShowGroupAccessModal(true);
 
     } catch (err) {
       console.error('Failed to check group access', err);
     }
   };
-
-
-
-
-
-
-
 
   const handleJoinGroup = async () => {
     try {
@@ -166,7 +166,6 @@ export default function MessageSidebar({
     }
   }
 
-
   const handleDeclineInvite = async () => {
     try {
       const res = await fetch(`/api/groups/${activeGroupId}/membership/decline`, {
@@ -180,23 +179,18 @@ export default function MessageSidebar({
     }
   }
 
+  // Fonction pour gérer le clic sur un utilisateur non-chatable
+  const handleNonChatableUserClick = (user) => {
+    alert(`Vous ne pouvez pas discuter avec ${user.full_name}. Vous devez vous suivre mutuellement pour pouvoir discuter.`);
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // Fonction pour forcer le rafraîchissement manuel
+  const handleManualRefresh = () => {
+    if (fetchChatUsers) {
+      console.log("🔄 Rafraîchissement manuel de la liste des utilisateurs...");
+      fetchChatUsers();
+    }
+  };
 
   return (
     <div
@@ -220,6 +214,16 @@ export default function MessageSidebar({
           >
             👥 Groups
           </button>
+          {/* Bouton de rafraîchissement manuel pour l'onglet messages */}
+          {activeTab === 'messages' && (
+            <button
+              onClick={handleManualRefresh}
+              className="text-gray-400 hover:text-white text-sm"
+              title="Rafraîchir la liste"
+            >
+              🔄
+            </button>
+          )}
         </div>
         <button
           onClick={() => setShowMessages(false)}
@@ -232,30 +236,89 @@ export default function MessageSidebar({
       {/* Main Content */}
       <div className="overflow-y-auto max-h-[calc(100%-56px)]">
         {activeTab === 'messages' ? (
-          otherUsers.length > 0 ? (
-            otherUsers.map(u => (
-              <div
-                key={u.id}
-                className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md"
-                onClick={() => openChat(u)}
-              >
-                <img
-                  src={
-                    u.avatar
-                      ? u.avatar.startsWith('http')
-                        ? u.avatar
-                        : `http://localhost:8080/${u.avatar}`
-                      : '/avatar.png'
-                  }
-                  className="w-8 h-8 rounded-full"
-                  alt="avatar"
-                />
-                <span className="text-sm font-medium text-white">{u.full_name}</span>
+          <div className="p-4">
+            {/* Indicateur de mise à jour automatique */}
+            <div className="text-xs text-gray-500 mb-3 text-center">
+              🔄 Mise à jour automatique toutes les 3s
+            </div>
+
+            {/* Utilisateurs avec qui on peut discuter */}
+            {chatableUsers.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-green-400 mb-3">💬 Discussions disponibles ({chatableUsers.length})</h3>
+                {chatableUsers.map(u => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-gray-800 p-2 rounded-md border-l-2 border-green-500 transition-colors"
+                    onClick={() => openChat(u)}
+                  >
+                    <img
+                      src={
+                        u.avatar
+                          ? u.avatar.startsWith('http')
+                            ? u.avatar
+                            : `http://localhost:8080/${u.avatar}`
+                          : '/avatar.png'
+                      }
+                      className="w-8 h-8 rounded-full"
+                      alt="avatar"
+                    />
+                    <span className="text-sm font-medium text-white">{u.full_name}</span>
+                    <span className="text-xs text-green-400">✓ Suivi mutuel</span>
+                  </div>
+                ))}
               </div>
-            ))
-          ) : (
-            <p className="text-gray-400 text-sm p-4">Aucun autre utilisateur</p>
-          )
+            )}
+
+            {/* Utilisateurs avec qui on ne peut pas discuter */}
+            {nonChatableUsers.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-red-400 mb-3">🚫 Discussions non autorisées ({nonChatableUsers.length})</h3>
+                {nonChatableUsers.map(u => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-2 mb-3 cursor-not-allowed opacity-60 p-2 rounded-md border-l-2 border-red-500"
+                    onClick={() => handleNonChatableUserClick(u)}
+                  >
+                    <img
+                      src={
+                        u.avatar
+                          ? u.avatar.startsWith('http')
+                            ? u.avatar
+                            : `http://localhost:8080/${u.avatar}`
+                          : '/avatar.png'
+                      }
+                      className="w-8 h-8 rounded-full grayscale"
+                      alt="avatar"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-300">{u.full_name}</span>
+                      <div className="text-xs text-red-400">
+                        {u.follow_status === 'accepted' ? 
+                          '⚠️ Ne vous suit pas' : 
+                          u.follow_status === 'pending' ? 
+                            '⏳ Demande en attente' : 
+                            '❌ Suivi mutuel requis'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {chatableUsers.length === 0 && nonChatableUsers.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-400 text-sm">Aucun autre utilisateur</p>
+                <button 
+                  onClick={handleManualRefresh}
+                  className="mt-2 text-blue-400 hover:text-blue-300 text-xs"
+                >
+                  🔄 Actualiser
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="p-4">
             {/* Group Search & Create */}
@@ -276,8 +339,6 @@ export default function MessageSidebar({
             </div>
 
             {/* Modal */}
-
-
             {showModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                 <div className="bg-gray-800 p-6 rounded shadow-md w-96 border border-gray-700">
@@ -313,10 +374,8 @@ export default function MessageSidebar({
               </div>
             )}
 
-
             {showGroupAccessModal && (
               <Modal onClose={() => setShowGroupAccessModal(false)}>
-
                 {groupState === "none" && (
                   <div>
                     <h2 className="text-xl font-semibold text-white mb-4">Join Group</h2>
@@ -347,9 +406,7 @@ export default function MessageSidebar({
 
                 {groupState === "creator" && (
                   <div className="group-access-ui">
-
                     <GroupDashboard group={selectedGroup} onClose={() => setShowGroupAccessModal(false)}/>
-
                   </div>
                 )}
 
@@ -359,24 +416,8 @@ export default function MessageSidebar({
               </Modal>
             )}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
             {/* Group List */}
             <ul className="space-y-2 mt-4">
-
-
-
               {filteredGroups?.length > 0 ? (
                 filteredGroups.map(group => (
                   <li
@@ -390,10 +431,6 @@ export default function MessageSidebar({
               ) : (
                 <p className="text-gray-400">No groups found.</p>
               )}
-
-
-
-
             </ul>
           </div>
         )}

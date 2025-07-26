@@ -16,7 +16,7 @@ var DB *sql.DB
 
 func InitDB() {
 	var err error
-	DB, err = sql.Open("sqlite3", "./social.db")
+	DB, err = sql.Open("sqlite3", "./social.db?charset=utf8")
 	if err != nil {
 		log.Fatal("Failed to open DB:", err)
 	}

@@ -189,7 +189,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   false, // use true if using https
 	})
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"id":            user.ID,
@@ -253,7 +253,7 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		log.Println("created")
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(createdGroup)
 	}
 }
@@ -270,7 +270,7 @@ func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(groups)
 	}
 	

@@ -34,7 +34,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	json.NewEncoder(w).Encode(user)
 }
@@ -115,6 +115,6 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		// Tu peux masquer d'autres champs si besoin
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(user)
 }

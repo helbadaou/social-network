@@ -3,7 +3,16 @@
 
 import { useState, useEffect, useRef } from 'react'
 
-export default function Navbar({ user, handleSearch, handleLogout, results, openMessages, togglePostForm, realtimeNotification, fetchChatUsers }) {
+export default function Navbar({
+  user,
+  handleSearch,
+  handleLogout,
+  results,
+  openMessages,
+  togglePostForm,
+  realtimeNotification,
+  fetchChatUsers
+}) {
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
 
@@ -92,7 +101,8 @@ export default function Navbar({ user, handleSearch, handleLogout, results, open
 
       // Rafraîchir la liste des utilisateurs pour mettre à jour le follow_status
       if (typeof fetchChatUsers === 'function') {
-        fetchChatUsers();
+        // await fetchChatUsers();
+        setTimeout(() => fetchChatUsers(), 500) // Petit délai pour laisser le temps à la DB de se mettre à jour
       }
 
       // Mark notification as seen in backend

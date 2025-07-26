@@ -48,8 +48,6 @@ export default function HomePage() {
 
   const router = useRouter();
 
-
-
   // Configuration WebSocket améliorée
   const setupWebSocket = useCallback(() => {
     if (!user?.ID) return;
@@ -88,6 +86,21 @@ export default function HomePage() {
       try {
         const msg = JSON.parse(event.data);
 
+        // Gestion des messages d'erreur du serveur
+        if (msg.type === "error") {
+          console.error("Erreur WebSocket:", msg.content);
+          showNotification("error", msg.content);
+          return;
+        }
+
+        // Gérer les mises à jour de statut de suivi
+        if (msg.type === "follow_status_update") {
+          console.log("📡 Mise à jour statut de suivi reçue");
+          // Rafraîchir la liste des utilisateurs de chat
+          fetchChatUsers();
+          return;
+        }
+
         // Check if notification has expected fields
         if (msg.type === "notification" || msg.type === "follow_request") {
           setNotifications(prev => [msg, ...prev]);
@@ -125,6 +138,15 @@ export default function HomePage() {
 
     return socket;
   }, [user?.ID]);
+
+  // Fonction utilitaire pour afficher les notifications
+  const showNotification = (type, message) => {
+    if (type === "error") {
+      alert(`❌ Erreur: ${message}`);
+    } else {
+      alert(`ℹ️ ${message}`);
+    }
+  };
 
   // Initialiser WebSocket quand l'utilisateur est chargé
   useEffect(() => {
@@ -173,7 +195,7 @@ export default function HomePage() {
       });
     } else {
       console.error('❌ WebSocket non connecté, impossible d\'envoyer le message');
-      // Optionnel: afficher une notification à l'utilisateur
+      showNotification("error", "Connexion WebSocket fermée. Impossible d'envoyer le message.");
     }
   }, []);
 
@@ -201,12 +223,14 @@ export default function HomePage() {
 
   const fetchChatUsers = async () => {
     try {
+      // console.log("🔄 Rechargement de la liste des utilisateurs de chat...");
       const res = await fetch("http://localhost:8080/api/chat-users", {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setChatUsers(data);
+      // console.log("✅ Liste des utilisateurs de chat mise à jour:", data);
     } catch (err) {
       console.error("Error fetching users:", err);
     }
@@ -368,7 +392,7 @@ export default function HomePage() {
         openMessages={openMessages}
         togglePostForm={togglePostForm}
         realtimeNotification={realtimeNotification}
-        fetchChatUsers={fetchChatUsers} // Ajout de la prop pour rafraîchir la liste après acceptation
+        fetchChatUsers={fetchChatUsers}
       />
 
       {/* MESSAGES SIDEBAR */}
@@ -435,6 +459,7 @@ export default function HomePage() {
           setShowPopup={setShowPopup}
           followStatus={followStatus}
           setFollowStatus={setFollowStatus}
+          fetchChatUsers={fetchChatUsers}
         />
       )}
     </div>

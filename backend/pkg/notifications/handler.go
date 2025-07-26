@@ -87,7 +87,7 @@ func GetUserNotifications(w http.ResponseWriter, r *http.Request) {
 		notifs = []map[string]interface{}{} // Garantit un tableau vide plutôt que nil
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(notifs); err != nil {
 		log.Println("Error encoding notifications:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

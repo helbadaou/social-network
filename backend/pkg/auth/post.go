@@ -105,7 +105,7 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ✅ Très important : définir le bon Content-Type
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
 	// ✅ Encoder le tableau même s'il est vide
@@ -166,6 +166,6 @@ func GetUserPostsHandler(w http.ResponseWriter, r *http.Request) {
 		posts = append(posts, post)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(posts) // ✅ pas de WriteHeader manuelle si tout va bien
 }

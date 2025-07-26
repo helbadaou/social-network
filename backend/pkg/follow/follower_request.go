@@ -49,7 +49,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(followers)
 }
 
@@ -100,7 +100,7 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 		following = append(following, u)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(following)
 }
 
