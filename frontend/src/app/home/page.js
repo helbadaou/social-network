@@ -38,6 +38,9 @@ export default function HomePage() {
   const [realtimeNotification, setRealtimeNotification] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // ✅ Nouvelle référence pour stocker le callback de suppression de notifications
+  const removeNotificationCallback = useRef(null);
+
   // États WebSocket améliorés
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({});
@@ -102,7 +105,8 @@ export default function HomePage() {
         }
 
         // Check if notification has expected fields
-        if (msg.type === "notification" || msg.type === "follow_request") {
+        if (msg.type === "notification" || msg.type === "follow_request" || 
+            msg.type === "follow_request_response" || msg.type === "follow_request_cancelled") {
           setNotifications(prev => [msg, ...prev]);
           setUnreadCount(prev => prev + 1);
           setRealtimeNotification(msg);
@@ -196,6 +200,18 @@ export default function HomePage() {
     } else {
       console.error('❌ WebSocket non connecté, impossible d\'envoyer le message');
       showNotification("error", "Connexion WebSocket fermée. Impossible d'envoyer le message.");
+    }
+  }, []);
+
+  // ✅ Fonction pour recevoir le callback de suppression depuis Navbar
+  const handleNotificationRemoved = useCallback((removeCallback) => {
+    removeNotificationCallback.current = removeCallback;
+  }, []);
+
+  // ✅ Fonction pour supprimer une notification (appelée depuis UserProfilePopup)
+  const onNotificationRemoved = useCallback((criteria) => {
+    if (removeNotificationCallback.current) {
+      removeNotificationCallback.current(criteria);
     }
   }, []);
 
@@ -393,6 +409,9 @@ export default function HomePage() {
         togglePostForm={togglePostForm}
         realtimeNotification={realtimeNotification}
         fetchChatUsers={fetchChatUsers}
+        hideActions={false} // ✅ on affiche les icônes
+        hideSearch={false}
+        onNotificationRemoved={handleNotificationRemoved} // ✅ Passer le callback
       />
 
       {/* MESSAGES SIDEBAR */}
@@ -460,6 +479,8 @@ export default function HomePage() {
           followStatus={followStatus}
           setFollowStatus={setFollowStatus}
           fetchChatUsers={fetchChatUsers}
+          realtimeNotification={realtimeNotification} // ✅ Passer les notifications
+          onNotificationRemoved={onNotificationRemoved} // ✅ Passer le callback
         />
       )}
     </div>

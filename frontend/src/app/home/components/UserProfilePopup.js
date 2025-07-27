@@ -10,11 +10,75 @@ export default function UserProfilePopup({
   setShowPopup,
   followStatus,
   setFollowStatus,
+  fetchChatUsers,
+  realtimeNotification, // ✅ Nouveau prop pour les notifications WebSocket
+  onNotificationRemoved // ✅ Nouveau callback pour supprimer les notifications du parent
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [isHovered, setIsHovered] = useState(false);
 
+  // ✅ Écouter les notifications WebSocket pour mettre à jour le statut
+  useEffect(() => {
+    if (realtimeNotification && selectedUser) {
+      console.log("🔄 Notification WebSocket reçue:", realtimeNotification);
+      
+      // Si on reçoit une notification de mise à jour de statut de suivi
+      if (realtimeNotification.type === "follow_status_update") {
+        // Actualiser le statut de suivi pour cet utilisateur
+        refetchFollowStatus();
+      }
+      
+      // ✅ Si on reçoit une notification d'acceptation/rejet de demande
+      if (realtimeNotification.type === "follow_request_response") {
+        const { sender_id, recipient_id, action } = realtimeNotification;
+        
+        console.log("📩 Réponse follow request:", { sender_id, recipient_id, action, selectedUserId: selectedUser.id, currentUserId: currentUser?.ID });
+        
+        // Si c'est une réponse à notre demande (nous sommes le sender)
+        if (sender_id === currentUser?.ID && recipient_id === selectedUser.id) {
+          if (action === "accepted") {
+            console.log("✅ Demande acceptée");
+            setFollowStatus("accepted");
+          } else if (action === "rejected") {
+            console.log("❌ Demande refusée - retour à l'état initial");
+            setFollowStatus(""); // Retour à l'état initial = bouton "Suivre"
+          }
+        }
+      }
+
+      // ✅ Si on reçoit une notification d'annulation de demande
+      if (realtimeNotification.type === "follow_request_cancelled") {
+        const { sender_id, recipient_id } = realtimeNotification;
+        
+        // Si nous sommes celui qui a annulé la demande
+        if (sender_id === currentUser?.ID && recipient_id === selectedUser.id) {
+          setFollowStatus(""); // Retour à l'état initial
+        }
+      }
+    }
+  }, [realtimeNotification, selectedUser, currentUser]);
+
+  // ✅ Fonction pour re-fetch le statut de suivi
+  const refetchFollowStatus = async () => {
+    if (!selectedUser?.id || selectedUser.id === currentUser?.ID) return;
+
+    try {
+      const res = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFollowStatus(data.status || "");
+        console.log("🔄 Follow status mis à jour:", data.status);
+      } else {
+        setFollowStatus("");
+      }
+    } catch (err) {
+      console.error("Erreur récupération follow status", err);
+      setFollowStatus("");
+    }
+  };
 
   useEffect(() => {
     async function fetchFollowStatus() {
@@ -45,16 +109,51 @@ export default function UserProfilePopup({
 
     try {
       if (followStatus === 'accepted' || followStatus === 'pending') {
-        // UNFOLLOW
+        // UNFOLLOW / CANCEL REQUEST
         const res = await fetch('http://localhost:8080/api/unfollow', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ followed_id: selectedUser.id }),
+          body: JSON.stringify({ 
+            followed_id: selectedUser.id,
+            cancel_request: followStatus === 'pending' // ✅ Indiquer qu'il s'agit d'une annulation
+          }),
         })
 
         if (res.ok) {
-          setFollowStatus(""); // remet à l’état initial
+          setFollowStatus(""); // remet à l'état initial
+          
+          // ✅ Si c'était une demande en attente, supprimer la notification côté frontend
+          if (followStatus === 'pending') {
+            try {
+              await fetch('/api/notifications/cancel-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  sender_id: currentUser.ID,
+                  recipient_id: selectedUser.id 
+                }),
+                credentials: 'include',
+              });
+
+              // ✅ Callback pour supprimer la notification du state parent (Navbar)
+              if (onNotificationRemoved) {
+                onNotificationRemoved({
+                  type: 'follow_request_cancelled',
+                  sender_id: currentUser.ID,
+                  recipient_id: selectedUser.id
+                });
+              }
+
+            } catch (err) {
+              console.error('Erreur suppression notification:', err);
+            }
+          }
+          
+          // ✅ Rafraîchir la liste des utilisateurs pour que les autres composants soient mis à jour
+          if (fetchChatUsers) {
+            setTimeout(() => fetchChatUsers(), 500);
+          }
         }
       } else {
         // FOLLOW
@@ -66,12 +165,12 @@ export default function UserProfilePopup({
         })
 
         if (res.ok) {
-          const check = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
-            credentials: 'include'
-          })
-          if (check.ok) {
-            const data = await check.json()
-            setFollowStatus(data.status || "")
+          // ✅ Vérifier immédiatement le nouveau statut
+          await refetchFollowStatus();
+          
+          // ✅ Rafraîchir la liste des utilisateurs
+          if (fetchChatUsers) {
+            setTimeout(() => fetchChatUsers(), 500);
           }
         }
       }
@@ -84,7 +183,12 @@ export default function UserProfilePopup({
 
   if (!selectedUser) return null
 
-  if (selectedUser.restricted) {
+  // ✅ Vérifier si l'utilisateur doit voir les infos complètes en temps réel
+  const canViewFullProfile = !selectedUser.is_private || 
+                            followStatus === 'accepted' || 
+                            selectedUser.id === currentUser?.ID;
+
+  if (selectedUser.restricted || (selectedUser.is_private && followStatus !== 'accepted' && selectedUser.id !== currentUser?.ID)) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-gray-700">
@@ -97,41 +201,46 @@ export default function UserProfilePopup({
           <div className="flex flex-col items-center">
             <img
               src={
-                selectedUser.avatar
-                  ? selectedUser.avatar.startsWith('http')
-                    ? selectedUser.avatar
-                    : `http://localhost:8080/${selectedUser.avatar}`
+                selectedUser.avatar || selectedUser.author_avatar
+                  ? (selectedUser.avatar || selectedUser.author_avatar).startsWith('http')
+                    ? (selectedUser.avatar || selectedUser.author_avatar)
+                    : `http://localhost:8080/${selectedUser.avatar || selectedUser.author_avatar}`
                   : '/avatar.png'
               }
               alt="Avatar"
               className="w-20 h-20 rounded-full border border-gray-600 object-cover mb-3"
             />
             <h2 className="text-lg font-semibold text-white">
-              {selectedUser.nickname}
+              {selectedUser.nickname || `${selectedUser.first_name} ${selectedUser.last_name}`}
             </h2>
             <p className="text-gray-400 text-sm mb-4">🔒 Profil privé, veuillez vous abonner pour voir les informations.</p>
-            <button
-              onClick={handleFollowToggle}
-              disabled={loading}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              className={`mt-2 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${followStatus === 'accepted'
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : followStatus === 'pending'
-                    ? isHovered
-                      ? 'bg-gray-700 text-white hover:bg-gray-800'
-                      : 'bg-yellow-500 text-white'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+            
+            {selectedUser.id !== currentUser?.ID && (
+              <button
+                onClick={handleFollowToggle}
+                disabled={loading}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                className={`mt-2 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${
+                  followStatus === 'accepted'
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : followStatus === 'pending'
+                      ? isHovered
+                        ? 'bg-gray-700 text-white hover:bg-gray-800'
+                        : 'bg-yellow-500 text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
-            >
-              {followStatus === 'accepted'
-                ? 'Se désabonner'
-                : followStatus === 'pending'
-                  ? isHovered
-                    ? '❌ Annuler'
-                    : '🕓 En attente'
-                  : '+ Suivre'}
-            </button>
+              >
+                {loading ? '...' : 
+                  followStatus === 'accepted'
+                    ? 'Se désabonner'
+                    : followStatus === 'pending'
+                      ? isHovered
+                        ? '❌ Annuler'
+                        : '🕓 En attente'
+                      : '+ Suivre'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -150,7 +259,6 @@ export default function UserProfilePopup({
 
         <div className="flex flex-col items-center">
           <img
-            // src={selectedUser.author_avatar || '/avatar.png'}
             src={
               selectedUser.author_avatar
                 ? selectedUser.author_avatar.startsWith('http')
@@ -181,34 +289,33 @@ export default function UserProfilePopup({
               disabled={loading}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
-              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${followStatus === 'accepted'
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : followStatus === 'pending'
-                  ? isHovered
-                    ? 'bg-gray-700 text-white hover:bg-gray-800'
-                    : 'bg-yellow-500 text-white'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+              className={`mt-4 px-4 py-2 rounded-full text-sm font-medium w-32 text-center transition-all duration-200 ${
+                followStatus === 'accepted'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : followStatus === 'pending'
+                    ? isHovered
+                      ? 'bg-gray-700 text-white hover:bg-gray-800'
+                      : 'bg-yellow-500 text-white'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              {followStatus === 'accepted'
-                ? 'Se désabonner'
-                : followStatus === 'pending'
-                  ? isHovered
-                    ? '❌ Annuler'
-                    : '🕓 En attente'
-                  : '+ Suivre'}
+              {loading ? '...' : 
+                followStatus === 'accepted'
+                  ? 'Se désabonner'
+                  : followStatus === 'pending'
+                    ? isHovered
+                      ? '❌ Annuler'
+                      : '🕓 En attente'
+                    : '+ Suivre'}
             </button>
           )}
 
-
-          {/* Bouton 'Voir le profil complet' affiché seulement si :
-              - le profil n'est pas privé
-              - OU l'utilisateur est abonné (followStatus === 'accepted')
-              - OU c'est le propriétaire du profil */}
-          {selectedUser.is_private && followStatus !== 'accepted' && selectedUser.id !== currentUser?.ID && (
+          {/* ✅ Affichage conditionnel du bouton "Voir le profil complet" basé sur le statut actuel */}
+          {!canViewFullProfile && (
             <p className="mt-2 text-sm text-yellow-400 text-center">🔒 Profil privé, veuillez vous abonner pour voir les informations complètes.</p>
           )}
-          {(!selectedUser.is_private || followStatus === 'accepted' || selectedUser.id === currentUser?.ID) && (
+          
+          {canViewFullProfile && (
             <button
               className="mt-3 text-blue-400 text-sm hover:underline cursor-pointer"
               onClick={() => {

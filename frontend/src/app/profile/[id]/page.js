@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Navbar from '../../home/components/Navbar';
 
 export default function PublicProfilePage() {
   const { id } = useParams()
@@ -13,8 +14,124 @@ export default function PublicProfilePage() {
   const [tab, setTab] = useState('posts'); // 'posts' | 'followers' | 'following'
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
+  // ✅ Ajout des états WebSocket et notifications
+  const [realtimeNotification, setRealtimeNotification] = useState(null)
+  const ws = useRef(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
+  // ✅ Configuration WebSocket (copié depuis la page d'accueil)
+  const setupWebSocket = useCallback(() => {
+    if (!currentUser?.ID) return;
+
+    // Fermer la connexion existante si elle existe
+    if (ws.current) {
+      ws.current.close();
+    }
+
+    const socket = new WebSocket('ws://localhost:8080/ws');
+
+    socket.onopen = () => {
+      console.log('✅ WebSocket connected');
+      reconnectAttempts.current = 0;
+      ws.current = socket;
+    };
+
+    socket.onclose = (e) => {
+      console.log('❌ WebSocket disconnected', e.code, e.reason);
+      ws.current = null;
+
+      // Reconnexion automatique si ce n'est pas une fermeture volontaire
+      if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        reconnectAttempts.current += 1;
+        console.log(`🔄 Tentative de reconnexion ${reconnectAttempts.current}/${maxReconnectAttempts} dans ${delay}ms`);
+        setTimeout(setupWebSocket, delay);
+      }
+    };
+
+    socket.onerror = (err) => {
+      console.error('❌ WebSocket error:', err);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+
+        // Gestion des messages d'erreur du serveur
+        if (msg.type === "error") {
+          console.error("Erreur WebSocket:", msg.content);
+          return;
+        }
+
+        // Check if notification has expected fields
+        if (msg.type === "notification" || msg.type === "follow_request") {
+          setRealtimeNotification(msg);
+        }
+      } catch (err) {
+        console.error('Erreur parsing message WebSocket:', err);
+      }
+    };
+
+    return socket;
+  }, [currentUser?.ID]);
+
+  // ✅ Initialiser WebSocket quand l'utilisateur est chargé
+  useEffect(() => {
+    if (currentUser?.ID) {
+      const socket = setupWebSocket();
+      return () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close(1000, 'Component unmounting');
+        }
+      };
+    }
+  }, [currentUser?.ID, setupWebSocket]);
+
+  // ✅ Nettoyage à la fermeture du composant
+  useEffect(() => {
+    return () => {
+      if (ws.current) {
+        ws.current.close(1000, 'Page closing');
+      }
+    };
+  }, []);
+
+  // ✅ Charger l'utilisateur actuel au démarrage
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/profile", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Unauthorized");
+      const data = await res.json();
+      setCurrentUser(data);
+    } catch (err) {
+      console.error("Error loading profile:", err);
+      // Si l'utilisateur n'est pas connecté, rediriger vers login
+      router.push('/login');
+    }
+  };
+
+  // ✅ Fonction fetchChatUsers (même si pas utilisée sur cette page, nécessaire pour la Navbar)
+  const fetchChatUsers = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/chat-users", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      // Pas besoin de stocker dans un state sur cette page
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  };
 
   useEffect(() => {
     if (!id) return
@@ -36,7 +153,6 @@ export default function PublicProfilePage() {
       })
   }, [id])
 
-
   const loadPosts = async (userId) => {
     try {
       const res = await fetch(`http://localhost:8080/api/user-posts/${id}`, {
@@ -55,7 +171,6 @@ export default function PublicProfilePage() {
       console.error('Erreur chargement posts :', err.message)
       setError(err.message)
     }
-
   }
 
   const loadFollowers = async () => {
@@ -64,7 +179,6 @@ export default function PublicProfilePage() {
         credentials: 'include',
       });
       console.log("userId utilisé :", id)
-
 
       const text = await res.text();
 
@@ -78,7 +192,6 @@ export default function PublicProfilePage() {
       console.error("Erreur chargement followers:", err.message);
     }
   };
-
 
   const loadFollowing = async () => {
     try {
@@ -99,7 +212,6 @@ export default function PublicProfilePage() {
     }
   };
 
-
   const handleTabClick = (newTab) => {
     setTab(newTab);
 
@@ -112,141 +224,161 @@ export default function PublicProfilePage() {
     }
   };
 
-
-
   if (error) return <p className="text-red-600">{error}</p>
   if (!profile) return <p>Chargement du profil...</p>
 
   return (
-    <main className="min-h-screen bg-black text-gray-100 px-4 py-6">
-      <button
-        onClick={() => router.push('/home')}
-        className="mb-4 text-sm text-blue-400 hover:text-blue-300 underline cursor-pointer"
-      >
-        ← Retour à l’accueil
-      </button>
+    <>
+      <Navbar
+        user={currentUser} // ✅ Passer l'utilisateur actuel au lieu de null
+        handleSearch={() => { }}
+        handleLogout={() => {
+          // ✅ Fonction de logout appropriée
+          if (ws.current) {
+            ws.current.close(1000, 'User logging out');
+          }
+          fetch("http://localhost:8080/api/logout", {
+            method: "POST",
+            credentials: "include",
+          }).then(() => {
+            router.push("/login");
+          });
+        }}
+        results={[]}
+        openMessages={() => { }}
+        togglePostForm={() => { }}
+        realtimeNotification={realtimeNotification} // ✅ Passer les notifications en temps réel
+        fetchChatUsers={fetchChatUsers} // ✅ Passer la fonction fetchChatUsers
+        hideActions={true} // ← ✅ ici on cache les icônes
+        hideSearch={true}
+      />
 
-      <div className="max-w-xl mx-auto">
+      <main className="min-h-screen bg-black text-gray-100 px-4 py-6">
+        <button
+          onClick={() => router.push('/home')}
+          className="mb-4 text-sm text-blue-400 hover:text-blue-300 underline cursor-pointer"
+        >
+          ← Retour à l'accueil
+        </button>
 
-        <h1 className="text-3xl font-bold mb-6 text-blue-500">
-          Profil de {profile.first_name} {profile.last_name}
-        </h1>
+        <div className="max-w-xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6 text-blue-500">
+            Profil de {profile.first_name} {profile.last_name}
+          </h1>
 
-        <div className="bg-gray-900 rounded-xl p-4 shadow-md border border-gray-700">
-          <img
-            src={
-              profile.avatar
-                ? profile.avatar.startsWith('http')
-                  ? profile.avatar
-                  : `http://localhost:8080/${profile.avatar}`
-                : '/avatar.png'
-            }
-            alt="Avatar"
-            className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
-          />
-          <p><strong className="text-blue-400">Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}</p>
-          <p><strong className="text-blue-400">Email :</strong> {profile.email}</p>
-          <p><strong className="text-blue-400">À propos :</strong> {profile.about || 'N/A'}</p>
-          <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>
-        </div>
+          <div className="bg-gray-900 rounded-xl p-4 shadow-md border border-gray-700">
+            <img
+              src={
+                profile.avatar
+                  ? profile.avatar.startsWith('http')
+                    ? profile.avatar
+                    : `http://localhost:8080/${profile.avatar}`
+                  : '/avatar.png'
+              }
+              alt="Avatar"
+              className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
+            />
+            <p><strong className="text-blue-400">Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}</p>
+            <p><strong className="text-blue-400">Email :</strong> {profile.email}</p>
+            <p><strong className="text-blue-400">À propos :</strong> {profile.about || 'N/A'}</p>
+            <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>
+          </div>
 
-        {/* 🔄 Onglets */}
-        <div className="flex space-x-4 mt-8 mb-4 text-sm font-semibold">
-          <button
-            onClick={() => handleTabClick('posts')}
-            className={`px-4 py-2 rounded ${tab === 'posts' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-          >
-            Publications
-          </button>
-          <button
-            onClick={() => handleTabClick('followers')}
-            className={`px-4 py-2 rounded ${tab === 'followers' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-          >
-            Abonnés
-          </button>
-          <button
-            onClick={() => handleTabClick('following')}
-            className={`px-4 py-2 rounded ${tab === 'following' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-          >
-            Abonnements
-          </button>
-        </div>
+          {/* 🔄 Onglets */}
+          <div className="flex space-x-4 mt-8 mb-4 text-sm font-semibold">
+            <button
+              onClick={() => handleTabClick('posts')}
+              className={`px-4 py-2 rounded ${tab === 'posts' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+            >
+              Publications
+            </button>
+            <button
+              onClick={() => handleTabClick('followers')}
+              className={`px-4 py-2 rounded ${tab === 'followers' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+            >
+              Abonnés
+            </button>
+            <button
+              onClick={() => handleTabClick('following')}
+              className={`px-4 py-2 rounded ${tab === 'following' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+            >
+              Abonnements
+            </button>
+          </div>
 
-        {tab === 'posts' && (
-          posts.length === 0 ? (
-            <p className="text-gray-400">Aucune publication pour le moment.</p>
-          ) : (
-            <div className="space-y-4">
-              {posts.map(post => (
-                <div key={post.id} className="bg-gray-800 shadow-md rounded-xl p-4 border border-gray-700">
-                  <div className="text-sm text-gray-400 mb-2">
-                    🕒 {new Date(post.created_at).toLocaleString()}
+          {tab === 'posts' && (
+            posts.length === 0 ? (
+              <p className="text-gray-400">Aucune publication pour le moment.</p>
+            ) : (
+              <div className="space-y-4">
+                {posts.map(post => (
+                  <div key={post.id} className="bg-gray-800 shadow-md rounded-xl p-4 border border-gray-700">
+                    <div className="text-sm text-gray-400 mb-2">
+                      🕒 {new Date(post.created_at).toLocaleString()}
+                    </div>
+                    <p className="text-gray-100 mb-3 whitespace-pre-wrap">{post.content}</p>
+                    {post.image_url && (
+                      <img
+                        src={post.image_url.startsWith('http') ? post.image_url : `http://localhost:8080${post.image_url}`}
+                        alt="Post"
+                        className="w-full max-w-md rounded border border-gray-700 mb-2"
+                      />
+                    )}
                   </div>
-                  <p className="text-gray-100 mb-3 whitespace-pre-wrap">{post.content}</p>
-                  {post.image_url && (
+                ))}
+              </div>
+            )
+          )}
+
+          {tab === 'followers' && (
+            <div className="space-y-3">
+              {!Array.isArray(followers) ? (
+                <p className="text-gray-400">Chargement des abonnés...</p>
+              ) : followers.length === 0 ? (
+                <p className="text-gray-400">Aucun abonné pour l'instant.</p>
+              ) : (
+                followers.map(user => (
+                  <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
                     <img
-                      src={post.image_url.startsWith('http') ? post.image_url : `http://localhost:8080${post.image_url}`}
-                      alt="Post"
-                      className="w-full max-w-md rounded border border-gray-700 mb-2"
+                      src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                      className="w-10 h-10 rounded-full object-cover"
+                      alt="avatar"
                     />
-                  )}
-                </div>
-              ))}
+                    <div>
+                      <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
+                      <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          )
-        )}
+          )}
 
-        {tab === 'followers' && (
-          <div className="space-y-3">
-            {!Array.isArray(followers) ? (
-              <p className="text-gray-400">Chargement des abonnés...</p>
-            ) : followers.length === 0 ? (
-              <p className="text-gray-400">Aucun abonné pour l’instant.</p>
-            ) : (
-              followers.map(user => (
-                <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
-                  <img
-                    src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
-                    className="w-10 h-10 rounded-full object-cover"
-                    alt="avatar"
-                  />
-                  <div>
-                    <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
+          {tab === 'following' && (
+            <div className="space-y-3">
+              {!Array.isArray(following) ? (
+                <p className="text-gray-400">Chargement des suivis...</p>
+              ) : following.length === 0 ? (
+                <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
+              ) : (
+                following.map(user => (
+                  <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                    <img
+                      src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                      className="w-10 h-10 rounded-full object-cover"
+                      alt="avatar"
+                    />
+                    <div>
+                      <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
+                      <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {tab === 'following' && (
-          <div className="space-y-3">
-            {!Array.isArray(following) ? (
-              <p className="text-gray-400">Chargement des suivis...</p>
-            ) : following.length === 0 ? (
-              <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
-            ) : (
-              following.map(user => (
-                <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
-                  <img
-                    src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
-                    className="w-10 h-10 rounded-full object-cover"
-                    alt="avatar"
-                  />
-                  <div>
-                    <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                    <p className="text-gray-400 text-sm">@{user.nickname}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-
-
-      </div>
-    </main>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+    </>
   )
 }
