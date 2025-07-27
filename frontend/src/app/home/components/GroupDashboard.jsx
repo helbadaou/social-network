@@ -5,7 +5,7 @@ import { useState } from 'react'
 import styles from './GroupDashboard.module.css';
 
 
-export default function GroupDashboard({ group , onClose}) {
+export default function GroupDashboard({ group, onClose }) {
 
 
   const [activeTab, setActiveTab] = useState('chat')
@@ -16,9 +16,7 @@ export default function GroupDashboard({ group , onClose}) {
       <div className={styles.groupDashboardPopup}>
         {/* Close button */}
         <button className={styles.closeButton} onClick={onClose}>×</button>
-
-       <p>{group.title}</p>
-
+ 
         {/* Tabs */}
         <div className={styles.tabs}>
           <button
@@ -44,35 +42,50 @@ export default function GroupDashboard({ group , onClose}) {
         {/* Dynamic content area */}
         <div className={styles.tabContent}>
           {activeTab === 'chat' && (
-            <div>
-              <h2>Group Chat</h2>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
-              <p>Messages between members will appear here.</p>
+            <div className={styles.chatContainer}>
+              <div className={styles.chatMessages}>
+                {/* Example messages */}
+                <div className={styles.messageBubble}>Hi everyone!</div>
+                <div className={`${styles.messageBubble} ${styles.sent}`}>Welcome to the group 🎉</div>
+              </div>
+              <div className={styles.chatInputArea}>
+                <input type="text" placeholder="Type your message..." />
+                <button>Send</button>
+              </div>
             </div>
           )}
+
 
           {activeTab === 'posts' && (
-            <div>
-              <h2>Group Posts</h2>
-              <p>Display latest group posts and updates here.</p>
+            <div className={styles.postsContainer}>
+              <form className={styles.postForm}>
+                <textarea placeholder="Share something with the group..."></textarea>
+                <button type="submit">Post</button>
+              </form>
+              <div className={styles.postList}>
+                <div className={styles.postCard}>
+                  <h4>John Doe</h4>
+                  <p>This is a cool group, excited to be here!</p>
+                </div>
+                {/* Add more postCards dynamically later */}
+              </div>
             </div>
           )}
 
+
           {activeTab === 'events' && (
-            <div>
-              <h2>Upcoming Events</h2>
-              <p>Show event cards, RSVP options, etc.</p>
+            <div className={styles.eventsContainer}>
+              <div className={styles.eventCard}>
+                <h3>Monthly Group Meetup</h3>
+                <p>Date: July 27, 2025</p>
+                <p>Location: Casablanca</p>
+                <button>RSVP</button>
+              </div>
+              {/* Add more eventCards dynamically later */}
             </div>
           )}
+
+
         </div>
       </div>
     </div>

@@ -294,15 +294,6 @@ func CheckGroupAccessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-   ////////////////////////////////////////////////////////////////////
-
-	// userIDStr := r.URL.Query().Get("user_id")
-	// userID, err := strconv.Atoi(userIDStr)
-	// if err != nil {
-	// 	http.Error(w, "Invalid user ID", http.StatusBadRequest)
-	// 	return
-	// }
-
 	userID, _ := GetUserIDFromSession(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

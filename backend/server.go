@@ -80,7 +80,7 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.InviteToGroupHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
 		auth.ApproveRequestHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
+	case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
         auth.DeclineGroupInviteHandler(w, r)
 	// Add more here if needed
 	default:

@@ -22,7 +22,7 @@ export default function MessageSidebar({
   const [activeTab, setActiveTab] = useState('messages')
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [groupState, setGroupState] = useState("");
-  const [inviteData, setInviteData] = useState(null);
+ 
   const [selectedGroup, setSelectedGroup] = useState(null);
 
   // Référence pour l'intervalle de polling
@@ -131,7 +131,6 @@ export default function MessageSidebar({
           setGroupState('creator');
           break;
       }
-
       setShowGroupAccessModal(true);
 
     } catch (err) {

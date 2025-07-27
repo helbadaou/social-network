@@ -101,3 +101,112 @@
   font-size: 1rem;
   color: #222;
 }
+
+
+.chatContainer {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+}
+
+.chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  background: #ffffff1a;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.messageBubble {
+  background: #ffffffcc;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 5px 0;
+  max-width: 70%;
+}
+
+.sent {
+  background: #a3d3ff;
+  align-self: flex-end;
+}
+
+.chatInputArea {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.chatInputArea input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+.chatInputArea button {
+  padding: 10px 15px;
+  border: none;
+  background-color: #00c3ff;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* POSTS */
+
+.postsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.postForm textarea {
+  width: 100%;
+  height: 80px;
+  padding: 10px;
+  border-radius: 8px;
+  resize: none;
+  border: none;
+}
+
+.postForm button {
+  margin-top: 8px;
+  padding: 10px 20px;
+  background-color: #00c3ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.postCard {
+  background: #ffffff1a;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+/* EVENTS */
+
+.eventsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.eventCard {
+  background: #ffffff1a;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+.eventCard button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #00c3ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
