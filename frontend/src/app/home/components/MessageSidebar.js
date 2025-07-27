@@ -40,7 +40,6 @@ export default function MessageSidebar({
       
       // Puis toutes les 3 secondes
       pollingInterval.current = setInterval(() => {
-        console.log("🔄 Rafraîchissement automatique de la liste des utilisateurs...");
         fetchChatUsers();
       }, 3000);
     } else {
@@ -187,7 +186,6 @@ export default function MessageSidebar({
   // Fonction pour forcer le rafraîchissement manuel
   const handleManualRefresh = () => {
     if (fetchChatUsers) {
-      console.log("🔄 Rafraîchissement manuel de la liste des utilisateurs...");
       fetchChatUsers();
     }
   };
@@ -221,7 +219,6 @@ export default function MessageSidebar({
               className="text-gray-400 hover:text-white text-sm"
               title="Rafraîchir la liste"
             >
-              🔄
             </button>
           )}
         </div>
@@ -236,11 +233,7 @@ export default function MessageSidebar({
       {/* Main Content */}
       <div className="overflow-y-auto max-h-[calc(100%-56px)]">
         {activeTab === 'messages' ? (
-          <div className="p-4">
-            {/* Indicateur de mise à jour automatique */}
-            <div className="text-xs text-gray-500 mb-3 text-center">
-              🔄 Mise à jour automatique toutes les 3s
-            </div>
+          <div className="p-4">            
 
             {/* Utilisateurs avec qui on peut discuter */}
             {chatableUsers.length > 0 && (
@@ -314,7 +307,6 @@ export default function MessageSidebar({
                   onClick={handleManualRefresh}
                   className="mt-2 text-blue-400 hover:text-blue-300 text-xs"
                 >
-                  🔄 Actualiser
                 </button>
               </div>
             )}
