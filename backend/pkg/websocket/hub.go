@@ -38,6 +38,14 @@ type Notification struct {
 	CreatedAt      string `json:"created_at"`
 }
 
+type GroupMessage struct {
+	From      int    `json:"from"`
+	GroupID   int    `json:"group_id"`
+	Content   string `json:"content"`
+	Type      string `json:"type"` // "group"
+	Timestamp string `json:"timestamp"`
+}
+
 func NewHub() *Hub {
 	return &Hub{
 		Clients:    make(map[int]*Client),

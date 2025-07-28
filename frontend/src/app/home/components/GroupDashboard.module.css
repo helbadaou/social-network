@@ -154,36 +154,53 @@
 
 /* POSTS */
 
-.postsContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.postForm {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .postForm textarea {
   width: 100%;
-  height: 80px;
+  min-height: 80px;
   padding: 10px;
+  border: 1px solid #ddd;
   border-radius: 8px;
-  resize: none;
-  border: none;
+  resize: vertical;
+  font-family: inherit;
 }
 
 .postForm button {
-  margin-top: 8px;
-  padding: 10px 20px;
-  background-color: #00c3ff;
+  background-color: #007bff;
   color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
+  margin-top: 10px;
+}
+
+.postForm button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.postForm button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .postCard {
-  background: #ffffff1a;
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
   padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  margin-bottom: 15px;
+}
+
+.postCard h4 {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
 }
 
 /* EVENTS */

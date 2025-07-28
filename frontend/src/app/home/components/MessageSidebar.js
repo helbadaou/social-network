@@ -395,14 +395,14 @@ export default function MessageSidebar({
                   </div>
                 )}
 
-                {groupState === "creator" && (
-                  <div className="group-access-ui">
-                    <GroupDashboard group={selectedGroup} onClose={() => setShowGroupAccessModal(false)}/>
-                  </div>
-                )}
-
-                {(groupState === "accepted") && (
-                  <GroupDashboard group={selectedGroup} />
+                
+                {(groupState === "accepted" || groupState === "creator") && (
+                  <GroupDashboard 
+                    group={selectedGroup} 
+                    onClose={() => setShowGroupAccessModal(false)}
+                    currentUserId={currentUserId}
+                    isCreator={groupState === "creator"}
+                  />
                 )}
               </Modal>
             )}

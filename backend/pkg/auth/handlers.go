@@ -527,3 +527,415 @@ func DeclineGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
 }
+
+
+func CreateGroupPostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse multipart form pour gérer l'upload d'image
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
+
+	groupIDStr := r.FormValue("group_id")
+	content := r.FormValue("content")
+
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifier que l'utilisateur est membre du groupe
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil || !isMember {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	var imagePath string
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		imagePath = "uploads/group_posts/" + header.Filename
+		
+		out, err := os.Create(imagePath)
+		if err != nil {
+			http.Error(w, "Unable to save file", http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+		
+		_, err = io.Copy(out, file)
+		if err != nil {
+			http.Error(w, "Failed to write file", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	post := models.GroupPost{
+		GroupID:  groupID,
+		AuthorID: userID,
+		Content:  content,
+		Image:    imagePath,
+	}
+
+	createdPost, err := sqlite.CreateGroupPost(sqlite.DB, post)
+	if err != nil {
+		http.Error(w, "Failed to create post", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(createdPost)
+}
+
+func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		log.Println("🔒 Utilisateur non authentifié")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/posts")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		log.Println("❌ ID de groupe invalide:", groupIDStr)
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("📥 Récupération des posts pour le groupe %d (user %d)\n", groupID, userID)
+
+	posts, err := sqlite.GetGroupPosts(sqlite.DB, groupID, userID)
+	if err != nil {
+		log.Println("🔥 Erreur lors de la récupération des posts:", err)
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✅ %d posts trouvés\n", len(posts))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
+// ==================== COMMENTS ====================
+
+func CreateGroupPostCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req models.CreateCommentRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	comment := models.GroupPostComment{
+		PostID:   req.PostID,
+		AuthorID: userID,
+		Content:  req.Content,
+	}
+
+	createdComment, err := sqlite.CreateGroupPostComment(sqlite.DB, comment)
+	if err != nil {
+		http.Error(w, "Failed to create comment", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(createdComment)
+}
+
+func GetGroupPostCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	postIDStr := strings.TrimPrefix(r.URL.Path, "/api/group-posts/")
+	postIDStr = strings.TrimSuffix(postIDStr, "/comments")
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	comments, err := sqlite.GetGroupPostComments(sqlite.DB, postID, userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+}
+
+// ==================== EVENTS ====================
+
+// func CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 		return
+// 	}
+
+// 	userID, _ := GetUserIDFromSession(r)
+// 	if userID == 0 {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	var req models.CreateEventRequest
+// 	err := json.NewDecoder(r.Body).Decode(&req)
+// 	if err != nil {
+// 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// Vérifier que l'utilisateur est membre du groupe
+// 	isMember, err := sqlite.IsGroupMember(sqlite.DB, req.GroupID, userID)
+// 	if err != nil || !isMember {
+// 		http.Error(w, "Not authorized", http.StatusForbidden)
+// 		return
+// 	}
+
+// 	eventDate, err := time.Parse(time.RFC3339, req.EventDate)
+// 	if err != nil {
+// 		http.Error(w, "Invalid date format", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	event := models.GroupEvent{
+// 		GroupID:     req.GroupID,
+// 		CreatorID:   userID,
+// 		Title:       req.Title,
+// 		Description: req.Description,
+// 		EventDate:   eventDate,
+// 	}
+
+// 	createdEvent, err := sqlite.CreateGroupEvent(sqlite.DB, event)
+// 	if err != nil {
+// 		http.Error(w, "Failed to create event", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(createdEvent)
+// }
+
+// func GetGroupEventsHandler(w http.ResponseWriter, r *http.Request) {
+// 	userID, _ := GetUserIDFromSession(r)
+// 	if userID == 0 {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+// 	groupIDStr = strings.TrimSuffix(groupIDStr, "/events")
+// 	groupID, err := strconv.Atoi(groupIDStr)
+// 	if err != nil {
+// 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	events, err := sqlite.GetGroupEvents(sqlite.DB, groupID, userID)
+// 	if err != nil {
+// 		http.Error(w, "Failed to fetch events", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(events)
+// }
+
+// func RespondToEventHandler(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 		return
+// 	}
+
+// 	userID, _ := GetUserIDFromSession(r)
+// 	if userID == 0 {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	var req models.EventResponseRequest
+// 	err := json.NewDecoder(r.Body).Decode(&req)
+// 	if err != nil {
+// 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	if req.Response != "going" && req.Response != "not_going" {
+// 		http.Error(w, "Invalid response type", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	response := models.EventResponse{
+// 		EventID: req.EventID,
+// 		UserID:  userID,
+// 		Response: req.Response,
+// 	}
+
+// 	err = sqlite.CreateEventResponse(sqlite.DB, response)
+// 	if err != nil {
+// 		http.Error(w, "Failed to save response", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusOK)
+// 	w.Write([]byte("Response saved"))
+// }
+
+// func GetEventResponsesHandler(w http.ResponseWriter, r *http.Request) {
+// 	userID, _ := GetUserIDFromSession(r)
+// 	if userID == 0 {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	eventIDStr := strings.TrimPrefix(r.URL.Path, "/api/events/")
+// 	eventIDStr = strings.TrimSuffix(eventIDStr, "/responses")
+// 	eventID, err := strconv.Atoi(eventIDStr)
+// 	if err != nil {
+// 		http.Error(w, "Invalid event ID", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	responses, err := sqlite.GetEventResponses(sqlite.DB, eventID)
+// 	if err != nil {
+// 		http.Error(w, "Failed to fetch responses", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(responses)
+// }
+
+// // ==================== PERMETTRE AUX MEMBRES D'INVITER ====================
+
+// func UpdateInviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
+// 	memberID, _ := GetUserIDFromSession(r)
+// 	if memberID == 0 {
+// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+// 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/invite")
+// 	groupID, _ := strconv.Atoi(groupIDStr)
+
+// 	// Vérifier que l'utilisateur est membre accepté du groupe (pas seulement créateur)
+// 	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, memberID)
+// 	if err != nil || !isMember {
+// 		http.Error(w, "Not authorized - must be group member", http.StatusForbidden)
+// 		return
+// 	}
+
+// 	var invite InviteRequest
+// 	err = json.NewDecoder(r.Body).Decode(&invite)
+// 	if err != nil {
+// 		http.Error(w, "Invalid request", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// Vérifier que l'utilisateur à inviter n'est pas déjà membre
+// 	isAlreadyMember, _ := sqlite.IsGroupMember(sqlite.DB, groupID, invite.UserID)
+// 	if isAlreadyMember {
+// 		http.Error(w, "User is already a member", http.StatusConflict)
+// 		return
+// 	}
+
+// 	_, err = sqlite.DB.Exec(`
+// 		INSERT INTO group_membership (group_id, user_id, status)
+// 		VALUES (?, ?, 'invited')
+// 		ON CONFLICT(group_id, user_id) DO UPDATE SET status='invited'`, groupID, invite.UserID)
+
+// 	if err != nil {
+// 		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusCreated)
+// 	w.Write([]byte("User invited successfully"))
+// }
+
+// // ==================== ROUTE HELPER ====================
+
+// // Fonction pour ajouter toutes les nouvelles routes
+// func AddGroupRoutes(mux *http.ServeMux, db *sql.DB) {
+// 	// Routes existantes (garder celles que vous avez déjà)
+// 	mux.HandleFunc("/api/groups", CreateGroupHandler(db))
+// 	mux.HandleFunc("/api/groups/", func(w http.ResponseWriter, r *http.Request) {
+// 		if strings.HasSuffix(r.URL.Path, "/membership") {
+// 			CheckGroupAccessHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/membership/join") {
+// 			JoinGroupRequestHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/membership/accept") {
+// 			AcceptGroupInviteHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/membership/invite") {
+// 			// Nouvelle version qui permet aux membres d'inviter
+// 			UpdateInviteToGroupHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/membership/approve") {
+// 			ApproveRequestHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/membership/decline") {
+// 			DeclineGroupInviteHandler(w, r)
+// 		} else if strings.HasSuffix(r.URL.Path, "/posts") {
+// 			if r.Method == http.MethodGet {
+// 				GetGroupPostsHandler(w, r)
+// 			} else if r.Method == http.MethodPost {
+// 				CreateGroupPostHandler(w, r)
+// 			}
+// 		} else if strings.HasSuffix(r.URL.Path, "/events") {
+// 			if r.Method == http.MethodGet {
+// 				GetGroupEventsHandler(w, r)
+// 			} else if r.Method == http.MethodPost {
+// 				CreateGroupEventHandler(w, r)
+// 			}
+// 		}
+// 	})
+
+// 	// Routes pour les commentaires
+// 	mux.HandleFunc("/api/group-posts/", func(w http.ResponseWriter, r *http.Request) {
+// 		if strings.HasSuffix(r.URL.Path, "/comments") {
+// 			if r.Method == http.MethodGet {
+// 				GetGroupPostCommentsHandler(w, r)
+// 			} else if r.Method == http.MethodPost {
+// 				CreateGroupPostCommentHandler(w, r)
+// 			}
+// 		}
+// 	})
+
+// 	// Routes pour les événements
+// 	mux.HandleFunc("/api/events/respond", RespondToEventHandler)
+// 	mux.HandleFunc("/api/events/", func(w http.ResponseWriter, r *http.Request) {
+// 		if strings.HasSuffix(r.URL.Path, "/responses") {
+// 			GetEventResponsesHandler(w, r)
+// 		}
+// 	})
+// }
