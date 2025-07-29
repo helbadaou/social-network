@@ -68,7 +68,7 @@ func GetGroupPosts(db *sql.DB, groupID int, userID int) ([]models.GroupPost, err
 	// Vérifier que l'utilisateur est membre du groupe
 	var memberCount int
 	err := db.QueryRow(`
-		SELECT 1 FROM group_membership 
+		SELECT 1 FROM group_memberships
 		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
 		UNION
 		SELECT 1 FROM groups WHERE id = ? AND creator_id = ?`,
@@ -81,7 +81,7 @@ func GetGroupPosts(db *sql.DB, groupID int, userID int) ([]models.GroupPost, err
 
 	rows, err := db.Query(`
 		SELECT gp.id, gp.group_id, gp.author_id, gp.content, gp.image, gp.created_at,
-			   u.first_name || ' ' || u.last_name as author_name, u.avatar,
+			   u.first_name || ' ' || u.last_name as author_name, u.avatar as avatar,
 			   COUNT(gpc.id) as comments_count
 		FROM group_posts gp
 		JOIN users u ON gp.author_id = u.id
@@ -150,7 +150,7 @@ func GetGroupPostComments(db *sql.DB, postID int, userID int) ([]models.GroupPos
 
 	var memberCount int
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM group_membership 
+		SELECT COUNT(*) FROM group_memberships
 		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
 		UNION ALL
 		SELECT COUNT(*) FROM groups WHERE id = ? AND creator_id = ?`,
@@ -162,7 +162,7 @@ func GetGroupPostComments(db *sql.DB, postID int, userID int) ([]models.GroupPos
 
 	rows, err := db.Query(`
 		SELECT gpc.id, gpc.post_id, gpc.author_id, gpc.content, gpc.created_at,
-			   u.first_name || ' ' || u.last_name as author_name, u.avatar
+			   u.first_name || ' ' || u.last_name as author_name, u.avatar as avatar
 		FROM group_post_comments gpc
 		JOIN users u ON gpc.author_id = u.id
 		WHERE gpc.post_id = ?
@@ -219,7 +219,7 @@ func GetGroupPostComments(db *sql.DB, postID int, userID int) ([]models.GroupPos
 // 	// Vérifier membership
 // 	var memberCount int
 // 	err := db.QueryRow(`
-// 		SELECT COUNT(*) FROM group_membership
+// 		SELECT COUNT(*) FROM group_memberships
 // 		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
 // 		UNION ALL
 // 		SELECT COUNT(*) FROM groups WHERE id = ? AND creator_id = ?`,
@@ -322,7 +322,7 @@ func IsGroupMember(db *sql.DB, groupID int, userID int) (bool, error) {
 	var count int
 	err := db.QueryRow(`
 		SELECT COUNT(*) FROM (
-			SELECT 1 FROM group_membership 
+			SELECT 1 FROM group_memberships
 			WHERE group_id = ? AND user_id = ? AND status = 'accepted'
 			UNION ALL
 			SELECT 1 FROM groups WHERE id = ? AND creator_id = ?

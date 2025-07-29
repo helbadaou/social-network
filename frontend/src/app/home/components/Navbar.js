@@ -69,7 +69,10 @@ export default function Navbar({
   // Déclarée ici pour être accessible partout dans le composant
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("http://localhost:8080/api/notifications", {
+      credentials: 'include'
+    });
+
       const data = await res.json();
 
       const uniqueNotifs = [];
@@ -104,7 +107,7 @@ export default function Navbar({
       await fetchNotifications();
 
       // Mark all as seen in backend
-      await fetch('/api/notifications/seen', {
+      await fetch('http://localhost:8080/api/notifications/seen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),

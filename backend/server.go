@@ -87,6 +87,11 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.GetGroupPostsHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodPost:
 		auth.CreateGroupPostHandler(w, r)
+	// comments
+	case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodGet:
+		auth.GetGroupPostCommentsHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
+		auth.CreateGroupPostCommentHandler(w, r)
 	default:
 		http.NotFound(w, r)
 	}
