@@ -24,10 +24,18 @@
   backdrop-filter: blur(10px);
   position: relative;
   animation: fadeIn 0.4s ease-in-out;
-  max-height: 90vh; /* Ajoutez cette ligne */
-  overflow: hidden; /* Empêche le défilement du popup lui-même */
+  max-height: 90vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.groupHeader {
+  margin-bottom: 2rem;
+}
+
+.groupHeader p {
+  opacity: 0.8;
 }
 
 .closeButton {
@@ -41,6 +49,7 @@
   cursor: pointer;
   transition: color 0.3s ease;
 }
+
 .closeButton:hover {
   color: #ff4d4d;
 }
@@ -52,7 +61,7 @@
   margin-bottom: 2rem;
 }
 
-.tabs button {
+.tabButton {
   padding: 0.7rem 1.5rem;
   border: none;
   background: rgba(255, 255, 255, 0.2);
@@ -60,17 +69,15 @@
   font-size: 1rem;
   border-radius: 30px;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
   font-weight: 500;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.tabs button:hover {
+.tabButton:hover {
   background: rgba(255, 255, 255, 0.35);
 }
 
-.tabs button.active {
+.tabButton.active {
   background: linear-gradient(135deg, #007bff, #00c3ff);
   color: white;
   font-weight: 600;
@@ -90,126 +97,142 @@
 }
 
 .tabContent {
-  text-align: center;
   color: black;
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.9);
   padding: 1.5rem;
   border-radius: 12px;
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
-  overflow-y: auto; /* Permet le défilement du contenu */
-  max-height: calc(90vh - 200px); /* Ajustez selon vos besoins */
-  flex-grow: 1; /* Prend tout l'espace disponible */
-}
-.tabContent h2 {
-  margin-bottom: 0.5rem;
-  font-size: 1.6rem;
-}
-.tabContent p {
-  font-size: 1rem;
-  color: #222;
+  overflow-y: auto;
+  max-height: calc(90vh - 200px);
+  flex-grow: 1;
 }
 
-
+/* Chat styles */
 .chatContainer {
   display: flex;
   flex-direction: column;
-  height: 300px;
+  height: 100%;
 }
 
 .chatMessages {
   flex: 1;
   overflow-y: auto;
-  background: #ffffff1a;
   padding: 10px;
+  background: #1e1e1e;
   border-radius: 8px;
+  margin-bottom: 10px;
 }
 
 .messageBubble {
-  background: #ffffffcc;
-  padding: 10px;
-  border-radius: 10px;
-  margin: 5px 0;
+  margin-bottom: 10px;
+  text-align: left;
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #2d2d2d;
+  color: white;
   max-width: 70%;
 }
 
-.sent {
-  background: #a3d3ff;
-  align-self: flex-end;
+.messageBubble.sent {
+  text-align: right;
+  background: #007bff;
+}
+
+.messageSender {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.messageTime {
+  font-size: 0.7em;
+  opacity: 0.6;
 }
 
 .chatInputArea {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
 }
 
 .chatInputArea input {
   flex: 1;
   padding: 10px;
-  border-radius: 6px;
+  border-radius: 20px;
   border: none;
+  background: #2d2d2d;
+  color: white;
 }
 
 .chatInputArea button {
-  padding: 10px 15px;
+  padding: 10px 20px;
+  border-radius: 20px;
   border: none;
-  background-color: #00c3ff;
+  background: #007bff;
   color: white;
-  border-radius: 6px;
   cursor: pointer;
 }
 
-/* POSTS */
+.chatInputArea button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 
+/* Common styles */
+.errorMessage {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #f5c6cb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.errorMessage button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #721c24;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+}
+
+.emptyState div {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.emptyState p {
+  margin: 0.5rem 0;
+}
+
+.emptyState small {
+  color: #666;
+}
+
+/* Posts styles */
 .postsContainer {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  min-height: 0; /* Important pour le scroll interne */
-}
-
-.postList {
-  overflow-y: auto;
-  flex-grow: 1;
   min-height: 0;
-  padding-right: 0.5rem; /* Espace pour le scrollbar */
 }
 
-.postList::-webkit-scrollbar {
-  width: 6px;
-}
-
-.postList::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-/* Formulaire de post */
 .postForm {
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border: 2px solid rgba(0, 123, 255, 0.1);
   border-radius: 15px;
   padding: 1.5rem;
-  margin-bottom: 2rem;
-  transition: all 0.3s ease;
-  min-width: 100%; /* Empêche le rétrécissement */
-  flex-shrink: 0; /* Empêche le formulaire de rétrécir */
+  flex-shrink: 0;
 }
 
-.postForm:focus-within {
-  border-color: rgba(0, 123, 255, 0.3);
-  box-shadow: 0 0 20px rgba(0, 123, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.postFormHeader {
-  margin-bottom: 1rem;
-}
-
-.postFormHeader h3 {
-  margin: 0;
+.postForm h3 {
+  margin: 0 0 1rem 0;
   color: #333;
-  font-size: 1.2rem;
 }
 
 .postTextarea {
@@ -221,29 +244,14 @@
   resize: vertical;
   font-family: inherit;
   font-size: 0.95rem;
-  transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.9);
 }
 
-.postTextarea:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 15px rgba(0, 123, 255, 0.2);
-}
-
-/* Upload d'image */
 .imageUploadSection {
   margin: 1rem 0;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 10px;
   border: 2px dashed #ddd;
-  transition: all 0.3s ease;
-}
-
-.imageUploadSection:hover {
-  border-color: #007bff;
-  background: rgba(0, 123, 255, 0.05);
 }
 
 .imageUploadLabel {
@@ -254,12 +262,6 @@
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.imageUploadLabel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
 }
 
 .imageInput {
@@ -282,12 +284,6 @@
   border: none;
   cursor: pointer;
   font-size: 1rem;
-  padding: 0;
-  transition: transform 0.2s ease;
-}
-
-.removeImage:hover {
-  transform: scale(1.2);
 }
 
 .postSubmitButton {
@@ -299,38 +295,18 @@
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.postSubmitButton::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.6s;
-}
-
-.postSubmitButton:hover::before {
-  left: 100%;
-}
-
-.postSubmitButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
 .postSubmitButton:disabled {
   background: #6c757d;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
+.postList {
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0;
+}
 
 .postCard {
   background: linear-gradient(135deg, #ffffff, #f8f9fa);
@@ -338,43 +314,14 @@
   border-radius: 15px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  transition: all 0.3s ease;
   position: relative;
-  overflow: hidden;
-}
-
-.postCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #007bff, #00c3ff, #007bff);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.postCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 .postHeader {
   display: flex;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.authorInfo {
-  display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .authorAvatar {
@@ -411,8 +358,6 @@
 .postDate {
   font-size: 0.85rem;
   color: #666;
-  display: block;
-  margin-top: 0.2rem;
 }
 
 .postContent {
@@ -423,14 +368,12 @@
 .postContent p {
   margin: 0;
   color: #333;
-  font-size: 0.95rem;
 }
 
 .postImageContainer {
   margin: 1rem 0;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .postImage {
@@ -439,14 +382,8 @@
   max-height: 400px;
   object-fit: cover;
   display: block;
-  transition: transform 0.3s ease;
 }
 
-.postImage:hover {
-  transform: scale(1.02);
-}
-
-/* Actions de post */
 .postActions {
   padding-top: 1rem;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
@@ -460,24 +397,16 @@
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
 }
 
-.commentToggle:hover {
-  background: rgba(0, 123, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-/* Section des commentaires */
 .commentsSection {
   margin-top: 1rem;
-  background: white; /* Fond blanc pour mieux voir */
+  background: white;
   padding: 1rem;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
   max-height: 400px;
   overflow-y: auto;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .commentsList {
@@ -496,18 +425,11 @@
   border-left: 3px solid #007bff;
 }
 
-.comment:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateX(5px);
-}
-
 .commentAvatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .defaultCommentAvatar {
@@ -521,72 +443,161 @@
   justify-content: center;
   font-weight: bold;
   font-size: 0.9rem;
-  border: 2px solid #fff;
 }
 
-/* EVENTS */
+.commentContent {
+  flex: 1;
+}
 
+.commentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.commentHeader small {
+  color: #666;
+}
+
+.commentForm {
+  display: flex;
+  gap: 10px;
+}
+
+.commentForm input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+}
+
+.commentForm button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.emptyComments {
+  text-align: center;
+  color: #666;
+  padding: 1rem;
+}
+
+/* Events styles */
 .eventsContainer {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 1.5rem;
+  min-height: 0;
+}
+
+.eventForm {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid rgba(255, 193, 7, 0.3);
+  border-radius: 15px;
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.eventForm h3 {
+  margin: 0 0 1rem 0;
+  color: #856404;
+}
+
+.formField {
+  margin-bottom: 1rem;
+}
+
+.formField input,
+.formField textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.formField textarea {
+  resize: vertical;
+}
+
+.eventSubmitButton {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.eventSubmitButton:disabled {
+  background: #6c757d;
+  color: white;
+  cursor: not-allowed;
+}
+
+.eventList {
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0;
 }
 
 .eventCard {
-  background: #ffffff1a;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
 }
 
-.eventCard button {
-  margin-top: 10px;
-  padding: 8px 16px;
-  background-color: #00c3ff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-/* .commentsSection {
-  margin-top: 1rem;
-  background: #ffffff1a;
-  padding: 10px;
-  border-radius: 10px;
-}
-
-.comment {
+.eventHeader {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
 }
 
-.commentAvatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
+.eventHeader h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.3rem;
 }
 
-.commentsSection form {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
+.eventHeader p {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
 }
 
-.commentsSection input {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  border: none;
-}
-
-.commentsSection button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  background-color: #00c3ff;
+.eventStatus {
   color: white;
-  cursor: pointer;
-} */
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.eventStatus.upcoming {
+  background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.eventStatus.past {
+  background: linear-gradient(135deg, #6c757d, #adb5bd);
+}
+
+.eventDescription {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.eventDate {
+  font-size: 0.9rem;
+  color: #888;
+}

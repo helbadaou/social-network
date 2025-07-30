@@ -572,26 +572,25 @@ func CreateGroupPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Récupérer les informations complètes de l'auteur
-    var fullPost models.GroupPost
-    err = sqlite.DB.QueryRow(`
+	var fullPost models.GroupPost
+	err = sqlite.DB.QueryRow(`
         SELECT gp.id, gp.group_id, gp.author_id, gp.content, gp.image, gp.created_at,
                u.nickname as author_name, u.avatar as author_avatar
         FROM group_posts gp
         JOIN users u ON gp.author_id = u.id
         WHERE gp.id = ?`, createdPost.ID).Scan(
-        &fullPost.ID, &fullPost.GroupID, &fullPost.AuthorID, &fullPost.Content, 
-        &fullPost.Image, &fullPost.CreatedAt, &fullPost.AuthorName, &fullPost.AuthorAvatar,
-    )
+		&fullPost.ID, &fullPost.GroupID, &fullPost.AuthorID, &fullPost.Content,
+		&fullPost.Image, &fullPost.CreatedAt, &fullPost.AuthorName, &fullPost.AuthorAvatar,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch post details", http.StatusInternalServerError)
+		return
+	}
 
-    if err != nil {
-        http.Error(w, "Failed to fetch post details", http.StatusInternalServerError)
-        return
-    }
-
-    // Formater l'URL de l'avatar si nécessaire
-    if fullPost.AuthorAvatar != "" {
-        fullPost.AuthorAvatar = "http://localhost:8080/" + fullPost.AuthorAvatar
-    }
+	// Formater l'URL de l'avatar si nécessaire
+	if fullPost.AuthorAvatar != "" {
+		fullPost.AuthorAvatar = "http://localhost:8080/" + fullPost.AuthorAvatar
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(fullPost)
@@ -678,26 +677,25 @@ func CreateGroupPostCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Récupérer les informations complètes de l'auteur
-    var fullComment models.GroupPostComment
-    err = sqlite.DB.QueryRow(`
+	var fullComment models.GroupPostComment
+	err = sqlite.DB.QueryRow(`
         SELECT gpc.id, gpc.post_id, gpc.author_id, gpc.content, gpc.created_at,
                u.nickname as author_name, u.avatar as author_avatar
         FROM group_post_comments gpc
         JOIN users u ON gpc.author_id = u.id
         WHERE gpc.id = ?`, createdComment.ID).Scan(
-        &fullComment.ID, &fullComment.PostID, &fullComment.AuthorID, &fullComment.Content,
-        &fullComment.CreatedAt, &fullComment.AuthorName, &fullComment.AuthorAvatar,
-    )
+		&fullComment.ID, &fullComment.PostID, &fullComment.AuthorID, &fullComment.Content,
+		&fullComment.CreatedAt, &fullComment.AuthorName, &fullComment.AuthorAvatar,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch comment details", http.StatusInternalServerError)
+		return
+	}
 
-    if err != nil {
-        http.Error(w, "Failed to fetch comment details", http.StatusInternalServerError)
-        return
-    }
-
-    // Formater l'URL de l'avatar si nécessaire
-    if fullComment.AuthorAvatar != "" {
-        fullComment.AuthorAvatar = "http://localhost:8080/" + fullComment.AuthorAvatar
-    }
+	// Formater l'URL de l'avatar si nécessaire
+	if fullComment.AuthorAvatar != "" {
+		fullComment.AuthorAvatar = "http://localhost:8080/" + fullComment.AuthorAvatar
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(fullComment)
@@ -788,23 +786,21 @@ func CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Récupérer les informations complètes du créateur
-    var fullEvent models.GroupEvent
-    err = sqlite.DB.QueryRow(`
+	var fullEvent models.GroupEvent
+	err = sqlite.DB.QueryRow(`
         SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
                ge.event_date, ge.created_at,
                u.first_name || ' ' || u.last_name as creator_name
         FROM group_events ge
         JOIN users u ON ge.creator_id = u.id
         WHERE ge.id = ?`, createdEvent.ID).Scan(
-        &fullEvent.ID, &fullEvent.GroupID, &fullEvent.CreatorID, &fullEvent.Title,
-        &fullEvent.Description, &fullEvent.EventDate, &fullEvent.CreatedAt, &fullEvent.CreatorName,
-    )
-
-    if err != nil {
-        http.Error(w, "Failed to fetch event details", http.StatusInternalServerError)
-        return
-    }
-
+		&fullEvent.ID, &fullEvent.GroupID, &fullEvent.CreatorID, &fullEvent.Title,
+		&fullEvent.Description, &fullEvent.EventDate, &fullEvent.CreatedAt, &fullEvent.CreatorName,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch event details", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(fullEvent)
@@ -826,17 +822,17 @@ func GetGroupEventsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Vérifier que l'utilisateur est membre du groupe
-    isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
-    if err != nil {
-        http.Error(w, "Failed to check membership", http.StatusInternalServerError)
-        return
-    }
-    if !isMember {
-        // Retourner un tableau vide si l'utilisateur n'est pas membre
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode([]models.GroupEvent{})
-        return
-    }
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil {
+		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
+		return
+	}
+	if !isMember {
+		// Retourner un tableau vide si l'utilisateur n'est pas membre
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]models.GroupEvent{})
+		return
+	}
 
 	events, err := sqlite.GetGroupEvents(sqlite.DB, groupID, userID)
 	if err != nil {

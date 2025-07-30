@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import styles from './GroupDashboard.module.css'
 
-export default function GroupDashboard({ group, onClose }) {
+export default function GroupDashboard({ group, onClose, currentUser }) {
 
   const [activeTab, setActiveTab] = useState('posts')
   const [posts, setPosts] = useState([])
@@ -17,6 +18,124 @@ export default function GroupDashboard({ group, onClose }) {
   const [commentsMap, setCommentsMap] = useState({})
   const [commentInputs, setCommentInputs] = useState({})
   const [expandedComments, setExpandedComments] = useState({})
+
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [groupMessageInput, setGroupMessageInput] = useState('');
+  const [chatUsers, setChatUsers] = useState([]);
+  const ws = useRef(null);
+
+
+  useEffect(() => {
+    if (!group?.id || !currentUser?.ID) return;
+
+    const socket = new WebSocket('ws://localhost:8080/ws');
+
+    socket.onopen = () => {
+      console.log('✅ WebSocket connected for group chat');
+      ws.current = socket;
+    };
+
+    socket.onclose = (e) => {
+      console.log('❌ WebSocket disconnected for group chat', e);
+      ws.current = null;
+    };
+
+    socket.onerror = (err) => {
+      console.error('❌ WebSocket error:', err);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'group' && msg.group_id === group.id) {
+          setGroupMessages(prev => [...prev, {
+            ...msg,
+            id: `${msg.from}-${msg.timestamp}-${Date.now()}`
+          }])
+          console.log('Message de groupe envoyé :', msg)
+            ;
+        }
+      } catch (err) {
+        console.error('Error parsing group message:', err);
+      }
+    };
+
+    // Charger l'historique des messages
+    const fetchGroupMessages = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/groups/${group.id}/messages`);
+        if (res.ok) {
+          const data = await res.json();
+          setGroupMessages(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching group messages:', err);
+      }
+    };
+    fetchGroupMessages();
+
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, [group?.id, currentUser?.ID]);
+
+
+
+
+  const handleSendGroupMessage = () => {
+    console.log('🚀 handleSendGroupMessage called');
+    console.log('📝 Message input:', groupMessageInput);
+    console.log('🔌 WebSocket state:', ws.current?.readyState);
+    console.log('🏷️ Group ID:', group.id);
+
+    if (!groupMessageInput.trim()) {
+      console.log('❌ Message is empty');
+      return;
+    }
+
+    if (!ws.current) {
+      console.log('❌ WebSocket is null');
+      return;
+    }
+
+    if (ws.current.readyState !== WebSocket.OPEN) {
+      console.log('❌ WebSocket not connected, readyState:', ws.current.readyState);
+      return;
+    }
+
+    const messageContent = groupMessageInput.trim();
+    console.log('✅ Sending message:', messageContent);
+
+    // D'abord envoyer via HTTP
+    fetch(`http://localhost:8080/api/groups/${group.id}/messages`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: messageContent })
+    })
+      .then(response => {
+        console.log('📡 HTTP response status:', response.status)
+        if (response.ok) {
+          console.log('✅ HTTP message sent successfully');
+          // Puis via WebSocket
+          const message = {
+            type: 'group',
+            groupId: group.id,  // Attention: groupId, pas group_id
+            content: messageContent.trim(),
+            timestamp: new Date().toISOString()
+          };
+          console.log('📤 Sending WebSocket message:', message);
+          ws.current.send(JSON.stringify(message));
+          setGroupMessageInput('');
+        } else {
+          console.error('❌ HTTP request failed');
+          response.text().then(text => console.error('Error:', text));
+        }
+      });
+  };
+
 
   // Charger les données selon l'onglet actif
   useEffect(() => {
@@ -318,177 +437,82 @@ export default function GroupDashboard({ group, onClose }) {
     if (fileInput) fileInput.value = ''
   }
 
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      backdropFilter: 'blur(6px)',
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999
-    }}>
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.15)',
-        border: '1px solid rgba(255, 255, 255, 0.25)',
-        borderRadius: '16px',
-        padding: '2rem',
-        width: '90%',
-        maxWidth: '700px',
-        color: '#fff',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        backdropFilter: 'blur(10px)',
-        position: 'relative',
-        maxHeight: '90vh',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+    <div className={styles.groupDashboardOverlay}>
+      <div className={styles.groupDashboardPopup}>
         {/* Close button */}
-        <button 
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '15px',
-            right: '20px',
-            fontSize: '1.5rem',
-            background: 'transparent',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer'
-          }}
-        >
+        <button onClick={onClose} className={styles.closeButton}>
           ×
         </button>
 
         {/* Group title */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div className={styles.groupHeader}>
           <h2>{group?.title || 'Groupe'}</h2>
-          <p style={{ opacity: 0.8 }}>{group?.description}</p>
+          <p>{group?.description}</p>
         </div>
 
         {/* Tabs */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
+        <div className={styles.tabs}>
           <button
             onClick={() => setActiveTab('chat')}
-            style={{
-              padding: '0.7rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'chat' 
-                ? 'linear-gradient(135deg, #007bff, #00c3ff)' 
-                : 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '1rem',
-              borderRadius: '30px',
-              cursor: 'pointer',
-              fontWeight: activeTab === 'chat' ? '600' : '500'
-            }}
+            className={`${styles.tabButton} ${activeTab === 'chat' ? styles.active : ''}`}
           >
             💬 Chat
           </button>
           <button
             onClick={() => setActiveTab('posts')}
-            style={{
-              padding: '0.7rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'posts' 
-                ? 'linear-gradient(135deg, #007bff, #00c3ff)' 
-                : 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '1rem',
-              borderRadius: '30px',
-              cursor: 'pointer',
-              fontWeight: activeTab === 'posts' ? '600' : '500'
-            }}
+            className={`${styles.tabButton} ${activeTab === 'posts' ? styles.active : ''}`}
           >
             📝 Posts
           </button>
           <button
             onClick={() => setActiveTab('events')}
-            style={{
-              padding: '0.7rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'events' 
-                ? 'linear-gradient(135deg, #007bff, #00c3ff)' 
-                : 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '1rem',
-              borderRadius: '30px',
-              cursor: 'pointer',
-              fontWeight: activeTab === 'events' ? '600' : '500'
-            }}
+            className={`${styles.tabButton} ${activeTab === 'events' ? styles.active : ''}`}
           >
             📅 Events
           </button>
         </div>
 
         {/* Dynamic content area */}
-        <div style={{
-          color: 'black',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          overflowY: 'auto',
-          maxHeight: 'calc(90vh - 200px)',
-          flexGrow: 1
-        }}>
+        <div className={styles.tabContent}>
           {activeTab === 'chat' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '300px' }}>
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                background: '#ffffff1a',
-                padding: '10px',
-                borderRadius: '8px'
-              }}>
-                <div style={{
-                  background: '#ffffffcc',
-                  padding: '10px',
-                  borderRadius: '10px',
-                  margin: '5px 0',
-                  maxWidth: '70%'
-                }}>
-                  Hi everyone!
-                </div>
-                <div style={{
-                  background: '#a3d3ff',
-                  padding: '10px',
-                  borderRadius: '10px',
-                  margin: '5px 0',
-                  maxWidth: '70%',
-                  alignSelf: 'flex-end'
-                }}>
-                  Welcome to the group 🎉
-                </div>
+            <div className={styles.chatContainer}>
+              <div className={styles.chatMessages}>
+                {groupMessages.map(msg => (
+                  <div
+                    key={msg.id}
+                    className={`${styles.messageBubble} 
+                    ${msg.from === currentUser.ID ? styles.sent : ''}`}
+                  >
+                    <div className={styles.messageSender}>
+                      {(msg.from || msg.senderId) === currentUser.ID ? 'You' :
+                        msg.senderNickname || 'User'}
+                    </div>
+                    <div>{msg.content}</div>
+                    <div className={styles.messageTime}>
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <input 
-                  type="text" 
-                  placeholder="Type your message..."
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: 'none'
+              <div className={styles.chatInputArea}>
+                <input
+                  type="text"
+                  value={groupMessageInput}
+                  onChange={(e) => setGroupMessageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendGroupMessage();
+                    }
                   }}
+                  placeholder="Type your message..."
                 />
-                <button style={{
-                  padding: '10px 15px',
-                  border: 'none',
-                  backgroundColor: '#00c3ff',
-                  color: 'white',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}>
+                <button
+                  onClick={handleSendGroupMessage}
+                  disabled={!groupMessageInput.trim()}
+                >
                   Send
                 </button>
               </div>
@@ -496,44 +520,18 @@ export default function GroupDashboard({ group, onClose }) {
           )}
 
           {activeTab === 'posts' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0 }}>
+            <div className={styles.postsContainer}>
               {/* Affichage des erreurs */}
               {error && (
-                <div style={{
-                  background: '#f8d7da',
-                  color: '#721c24',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid #f5c6cb',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div className={styles.errorMessage}>
                   <span>⚠️ {error}</span>
-                  <button 
-                    onClick={() => setError('')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '1.2rem',
-                      cursor: 'pointer',
-                      color: '#721c24'
-                    }}
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => setError('')}>×</button>
                 </div>
               )}
 
               {/* Formulaire de création de post */}
-              <form onSubmit={handleCreatePost} style={{
-                background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
-                border: '2px solid rgba(0, 123, 255, 0.1)',
-                borderRadius: '15px',
-                padding: '1.5rem',
-                flexShrink: 0
-              }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#333' }}>✍️ Créer un nouveau post</h3>
+              <form onSubmit={handleCreatePost} className={styles.postForm}>
+                <h3>✍️ Créer un nouveau post</h3>
 
                 <textarea
                   placeholder="Partager quelque chose avec le groupe..."
@@ -541,66 +539,29 @@ export default function GroupDashboard({ group, onClose }) {
                   onChange={(e) => setNewPost(e.target.value)}
                   disabled={loading}
                   rows={3}
-                  style={{
-                    width: '100%',
-                    minHeight: '100px',
-                    padding: '1rem',
-                    border: '2px solid #e9ecef',
-                    borderRadius: '12px',
-                    resize: 'vertical',
-                    fontFamily: 'inherit',
-                    fontSize: '0.95rem'
-                  }}
+                  className={styles.postTextarea}
                 />
 
                 {/* Input pour l'image */}
-                <div style={{
-                  margin: '1rem 0',
-                  padding: '1rem',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '10px',
-                  border: '2px dashed #ddd'
-                }}>
-                  <label style={{
-                    display: 'inline-block',
-                    padding: '0.5rem 1rem',
-                    background: 'linear-gradient(135deg, #007bff, #0056b3)',
-                    color: 'white',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem'
-                  }}>
+                <div className={styles.imageUploadSection}>
+                  <label className={styles.imageUploadLabel}>
                     📷 Ajouter une image
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageChange}
                       disabled={loading}
-                      style={{ display: 'none' }}
+                      className={styles.imageInput}
                     />
                   </label>
 
                   {newPostImage && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginTop: '0.5rem',
-                      padding: '0.5rem',
-                      background: 'rgba(40, 167, 69, 0.1)',
-                      borderRadius: '8px',
-                      color: '#28a745'
-                    }}>
+                    <div className={styles.selectedImagePreview}>
                       <span>📎 {newPostImage.name}</span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={removeSelectedImage}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '1rem'
-                        }}
+                        className={styles.removeImage}
                       >
                         ❌
                       </button>
@@ -611,117 +572,66 @@ export default function GroupDashboard({ group, onClose }) {
                 <button
                   type="submit"
                   disabled={loading || (!newPost.trim() && !newPostImage)}
-                  style={{
-                    background: loading ? '#6c757d' : 'linear-gradient(135deg, #28a745, #20c997)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '0.8rem 2rem',
-                    borderRadius: '10px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '1rem',
-                    fontWeight: '600'
-                  }}
+                  className={styles.postSubmitButton}
                 >
                   {loading ? '⏳ Publication...' : '🚀 Publier'}
                 </button>
               </form>
 
               {/* Liste des posts */}
-              <div style={{ overflowY: 'auto', flexGrow: 1, minHeight: 0 }}>
+              <div className={styles.postList}>
                 {loading && posts.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div className={styles.emptyState}>
                     Chargement des posts...
                   </div>
                 ) : posts.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                  <div className={styles.emptyState}>
+                    <div>📭</div>
                     <p>Aucun post dans ce groupe</p>
                     <small>Soyez le premier à partager quelque chose !</small>
                   </div>
                 ) : (
                   posts.map(post => (
-                    <div key={post.id} style={{
-                      background: 'linear-gradient(135deg, #ffffff, #f8f9fa)',
-                      border: '1px solid rgba(0, 0, 0, 0.1)',
-                      borderRadius: '15px',
-                      padding: '1.5rem',
-                      marginBottom: '1.5rem',
-                      position: 'relative'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                        {post.author_avatar ? (
-                          <img
-                            src={post.author_avatar.startsWith('http')
-                              ? post.author_avatar
-                              : `http://localhost:8080/${post.author_avatar}`
-                            }
-                            alt="Avatar"
-                            style={{
-                              width: '50px',
-                              height: '50px',
-                              borderRadius: '50%',
-                              objectFit: 'cover',
-                              border: '3px solid #fff',
-                              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-                            }}
-                          />
-                        ) : (
-                          <div style={{
-                            width: '50px',
-                            height: '50px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #007bff, #00c3ff)',
-                            color: 'white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '1.2rem'
-                          }}>
-                            {post.author_name ? post.author_name.charAt(0).toUpperCase() : '👤'}
+                    <div key={post.id} className={styles.postCard}>
+                      <div className={styles.postHeader}>
+                        <div className={styles.authorInfo}>
+                          {post.author_avatar ? (
+                            <img
+                              src={post.author_avatar.startsWith('http')
+                                ? post.author_avatar
+                                : `http://localhost:8080/${post.author_avatar}`}
+                              alt="Avatar"
+                              className={styles.authorAvatar}
+                            />
+                          ) : (
+                            <div className={styles.defaultAvatar}>
+                              {post.author_name ? post.author_name.charAt(0).toUpperCase() : '👤'}
+                            </div>
+                          )}
+                          <div className={styles.authorDetails}>
+                            <h4>{post.author_name || 'Utilisateur'}</h4>
+                            <span className={styles.postDate}>🕒 {formatDate(post.created_at)}</span>
                           </div>
-                        )}
-                        <div>
-                          <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600', color: '#333' }}>
-                            {post.author_name || 'Utilisateur'}
-                          </h4>
-                          <span style={{ fontSize: '0.85rem', color: '#666' }}>
-                            🕒 {formatDate(post.created_at)}
-                          </span>
                         </div>
                       </div>
 
-                      <div style={{ margin: '1rem 0', lineHeight: 1.6 }}>
-                        {post.content && <p style={{ margin: 0, color: '#333' }}>{post.content}</p>}
+                      <div className={styles.postContent}>
+                        {post.content && <p>{post.content}</p>}
                         {post.image && (
-                          <div style={{ margin: '1rem 0', borderRadius: '12px', overflow: 'hidden' }}>
+                          <div className={styles.postImageContainer}>
                             <img
                               src={`http://localhost:8080/${post.image}`}
                               alt="Post"
-                              style={{
-                                width: '100%',
-                                height: 'auto',
-                                maxHeight: '400px',
-                                objectFit: 'cover',
-                                display: 'block'
-                              }}
+                              className={styles.postImage}
                             />
                           </div>
                         )}
                       </div>
 
-                      <div style={{ paddingTop: '1rem', borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+                      <div className={styles.postActions}>
                         <button
                           onClick={() => toggleComments(post.id)}
-                          style={{
-                            background: 'rgba(0, 123, 255, 0.1)',
-                            border: '1px solid rgba(0, 123, 255, 0.2)',
-                            color: '#007bff',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            fontSize: '0.9rem'
-                          }}
+                          className={styles.commentToggle}
                         >
                           💬 {expandedComments[post.id] ? 'Masquer' : 'Voir'} les commentaires
                           {post.comments_count > 0 && ` (${post.comments_count})`}
@@ -729,68 +639,35 @@ export default function GroupDashboard({ group, onClose }) {
                       </div>
 
                       {expandedComments[post.id] && (
-                        <div style={{
-                          marginTop: '1rem',
-                          background: 'white',
-                          padding: '1rem',
-                          borderRadius: '12px',
-                          border: '1px solid #e0e0e0',
-                          maxHeight: '400px',
-                          overflowY: 'auto'
-                        }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                        <div className={styles.commentsSection}>
+                          <div className={styles.commentsList}>
                             {commentsMap[post.id]?.length > 0 ? (
                               commentsMap[post.id].map(comment => (
-                                <div key={comment.id} style={{
-                                  display: 'flex',
-                                  gap: '0.75rem',
-                                  padding: '0.75rem',
-                                  background: '#f8f9fa',
-                                  borderRadius: '8px',
-                                  borderLeft: '3px solid #007bff'
-                                }}>
+                                <div key={comment.id} className={styles.comment}>
                                   {comment.author_avatar ? (
                                     <img
                                       src={comment.author_avatar.startsWith('http')
                                         ? comment.author_avatar
                                         : `http://localhost:8080/${comment.author_avatar}`}
                                       alt="Avatar"
-                                      style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '50%',
-                                        objectFit: 'cover'
-                                      }}
+                                      className={styles.commentAvatar}
                                     />
                                   ) : (
-                                    <div style={{
-                                      width: '35px',
-                                      height: '35px',
-                                      borderRadius: '50%',
-                                      background: 'linear-gradient(135deg, #6c757d, #495057)',
-                                      color: 'white',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontWeight: 'bold',
-                                      fontSize: '0.9rem'
-                                    }}>
+                                    <div className={styles.defaultCommentAvatar}>
                                       {comment.author_name?.charAt(0).toUpperCase() || '👤'}
                                     </div>
                                   )}
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                  <div className={styles.commentContent}>
+                                    <div className={styles.commentHeader}>
                                       <strong>{comment.author_name || 'Utilisateur'}</strong>
-                                      <small style={{ color: '#666' }}>
-                                        {formatDate(comment.created_at)}
-                                      </small>
+                                      <small>{formatDate(comment.created_at)}</small>
                                     </div>
-                                    <p style={{ margin: 0 }}>{comment.content}</p>
+                                    <p>{comment.content}</p>
                                   </div>
                                 </div>
                               ))
                             ) : (
-                              <div style={{ textAlign: 'center', color: '#666', padding: '1rem' }}>
+                              <div className={styles.emptyComments}>
                                 {commentsMap[post.id] === undefined
                                   ? 'Chargement des commentaires...'
                                   : 'Aucun commentaire pour le moment'}
@@ -800,33 +677,15 @@ export default function GroupDashboard({ group, onClose }) {
 
                           <form
                             onSubmit={(e) => handleCommentSubmit(e, post.id)}
-                            style={{ display: 'flex', gap: '10px' }}
+                            className={styles.commentForm}
                           >
                             <input
                               type="text"
                               placeholder="💭 Ajouter un commentaire..."
                               value={commentInputs[post.id] || ''}
                               onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                              style={{
-                                flex: 1,
-                                padding: '0.5rem',
-                                border: '1px solid #ddd',
-                                borderRadius: '20px'
-                              }}
                             />
-                            <button 
-                              type="submit"
-                              style={{
-                                background: '#007bff',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '20px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              ➤
-                            </button>
+                            <button type="submit">➤</button>
                           </form>
                         </div>
                       )}
@@ -838,165 +697,90 @@ export default function GroupDashboard({ group, onClose }) {
           )}
 
           {activeTab === 'events' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0 }}>
+            <div className={styles.eventsContainer}>
               {/* Affichage des erreurs */}
               {error && (
-                <div style={{
-                  background: '#f8d7da',
-                  color: '#721c24',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid #f5c6cb',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div className={styles.errorMessage}>
                   <span>⚠️ {error}</span>
-                  <button 
-                    onClick={() => setError('')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '1.2rem',
-                      cursor: 'pointer',
-                      color: '#721c24'
-                    }}
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => setError('')}>×</button>
                 </div>
               )}
 
               {/* Formulaire de création d'événement */}
-              <form onSubmit={handleCreateEvent} style={{
-                background: 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
-                border: '2px solid rgba(255, 193, 7, 0.3)',
-                borderRadius: '15px',
-                padding: '1.5rem',
-                flexShrink: 0
-              }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#856404' }}>📅 Créer un nouvel événement</h3>
+              <form onSubmit={handleCreateEvent} className={styles.eventForm}>
+                <h3>📅 Créer un nouvel événement</h3>
 
-                <div style={{ marginBottom: '1rem' }}>
+                <div className={styles.formField}>
                   <input
                     type="text"
                     placeholder="Titre de l'événement..."
                     value={newEvent.title}
                     onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
                     disabled={loading}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      fontWeight: '500'
-                    }}
                   />
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
+                <div className={styles.formField}>
                   <textarea
                     placeholder="Description de l'événement..."
                     value={newEvent.description}
                     onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
                     disabled={loading}
                     rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      resize: 'vertical',
-                      fontFamily: 'inherit'
-                    }}
                   />
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
+                <div className={styles.formField}>
                   <input
                     type="datetime-local"
                     value={newEvent.event_date}
                     onChange={(e) => setNewEvent(prev => ({ ...prev, event_date: e.target.value }))}
                     disabled={loading}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      fontSize: '1rem'
-                    }}
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading || !newEvent.title.trim() || !newEvent.event_date}
-                  style={{
-                    background: loading ? '#6c757d' : 'linear-gradient(135deg, #ffc107, #e0a800)',
-                    color: loading ? 'white' : '#212529',
-                    border: 'none',
-                    padding: '0.8rem 2rem',
-                    borderRadius: '10px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '1rem',
-                    fontWeight: '600'
-                  }}
+                  className={styles.eventSubmitButton}
                 >
                   {loading ? '⏳ Création...' : '🎉 Créer l\'événement'}
                 </button>
               </form>
 
               {/* Liste des événements */}
-              <div style={{ overflowY: 'auto', flexGrow: 1, minHeight: 0 }}>
+              <div className={styles.eventList}>
                 {loading && events.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div className={styles.emptyState}>
                     Chargement des événements...
                   </div>
                 ) : events.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📅</div>
+                  <div className={styles.emptyState}>
+                    <div>📅</div>
                     <p>Aucun événement dans ce groupe</p>
                     <small>Créez le premier événement !</small>
                   </div>
                 ) : (
                   events.map(event => (
-                    <div key={event.id} style={{
-                      background: 'linear-gradient(135deg, #ffffff, #f8f9fa)',
-                      border: '1px solid rgba(0, 0, 0, 0.1)',
-                      borderRadius: '15px',
-                      padding: '1.5rem',
-                      marginBottom: '1.5rem',
-                      position: 'relative'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div key={event.id} className={styles.eventCard}>
+                      <div className={styles.eventHeader}>
                         <div>
-                          <h3 style={{ margin: '0 0 0.5rem 0', color: '#333', fontSize: '1.3rem' }}>
-                            📅 {event.title}
-                          </h3>
-                          <p style={{ margin: '0 0 0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
-                            👤 Créé par {event.creator_name}
-                          </p>
+                          <h3>📅 {event.title}</h3>
+                          <p>👤 Créé par {event.creator_name}</p>
                         </div>
-                                                <span style={{
-                          background: new Date(event.event_date) > new Date() 
-                            ? 'linear-gradient(135deg, #28a745, #20c997)' 
-                            : 'linear-gradient(135deg, #6c757d, #adb5bd)',
-                          color: 'white',
-                          padding: '0.4rem 1rem',
-                          borderRadius: '20px',
-                          fontSize: '0.85rem',
-                          fontWeight: '600'
-                        }}>
+                        <span className={`${styles.eventStatus} ${new Date(event.event_date) > new Date()
+                          ? styles.upcoming
+                          : styles.past
+                          }`}>
                           {new Date(event.event_date) > new Date() ? 'À venir' : 'Terminé'}
                         </span>
                       </div>
 
-                      <div style={{ marginBottom: '1rem', color: '#555' }}>
+                      <div className={styles.eventDescription}>
                         {event.description}
                       </div>
 
-                      <div style={{ fontSize: '0.9rem', color: '#888' }}>
+                      <div className={styles.eventDate}>
                         📆 {formatDate(event.event_date, true)}
                       </div>
                     </div>

@@ -3,15 +3,24 @@
 package chat
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strconv"
+	"strings"
+	"time"
+
 	// "fmt"
 	"net/http"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
+	"social-network/backend/pkg/models"
+	"social-network/backend/pkg/websocket"
 	x "social-network/backend/pkg/websocket"
 )
+
+var Hub *websocket.Hub
 
 type ChatUser struct {
 	ID           int    `json:"id"`
@@ -159,4 +168,135 @@ func GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
+}
+
+// pkg/chat/handlers.go
+func HandleGroupMessage(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.GetUserIDFromSession(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	pathParts := strings.Split(r.URL.Path, "/")
+	groupIDStr := pathParts[len(pathParts)-2] // .../groups/{id}/messages
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	var requestBody struct {
+		Content string `json:"content"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifier si l'utilisateur est membre du groupe avant d'envoyer
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil {
+		http.Error(w, "Database error checking group membership", http.StatusInternalServerError)
+		return
+	}
+	if !isMember {
+		http.Error(w, "Not a member of this group", http.StatusForbidden)
+		return
+	}
+
+	// Insérer le message dans la base de données
+	_, err = InsertGroupMessage(sqlite.DB, groupID, userID, requestBody.Content)
+	if err != nil {
+		fmt.Printf("Error inserting group message into DB: %v\n", err)
+		http.Error(w, "Failed to send message", http.StatusInternalServerError)
+		return
+	}
+
+	// Créer un message WebSocket pour diffusion
+	wsMessage := websocket.Message{
+		From:      userID,
+		GroupID:   groupID, // Important: Utilisez GroupID ici
+		Content:   requestBody.Content,
+		Type:      "group", // Important: Spécifiez le type "group"
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	// Diffuser le message via le Hub WebSocket
+	Hub.Broadcast <- wsMessage // Assurez-vous que chat.Hub est initialisé
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Group message sent successfully"})
+}
+
+func GetGroupMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := auth.GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/messages")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifiez que l'utilisateur est membre du groupe
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil || !isMember {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	rows, err := sqlite.DB.Query(`
+        SELECT gm.id, gm.group_id, gm.sender_id, gm.content, gm.timestamp,
+               u.first_name || ' ' || u.last_name as sender_name, u.avatar
+        FROM group_messages gm
+        JOIN users u ON gm.sender_id = u.id
+        WHERE gm.group_id = ?
+        ORDER BY gm.timestamp ASC
+    `, groupID)
+	if err != nil {
+		http.Error(w, "Failed to fetch messages", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var messages []models.GroupMessage // x = import alias
+
+	for rows.Next() {
+		var msg models.GroupMessage
+		if err := rows.Scan(
+			&msg.ID, &msg.GroupID, &msg.SenderID, &msg.Content, &msg.Timestamp,
+			&msg.SenderNickname, &msg.SenderAvatar,
+		); err != nil {
+			return
+		}
+		if msg.SenderAvatar != "" {
+			msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
+		}
+		messages = append(messages, msg)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
+}
+
+func InsertGroupMessage(db *sql.DB, groupID int, senderID int, content string) (int, error) {
+	result, err := db.Exec(`
+        INSERT INTO group_messages (group_id, sender_id, content, timestamp)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+		groupID, senderID, content)
+	if err != nil {
+		return 0, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return int(id), nil
 }

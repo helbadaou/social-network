@@ -91,3 +91,13 @@ type CreateCommentRequest struct {
 	PostID  int    `json:"post_id"`
 	Content string `json:"content"`
 }
+
+type GroupMessage struct {
+    ID            int       `json:"id"`
+    GroupID       int       `json:"groupId"`
+    SenderID      int       `json:"senderId"`
+    Content       string    `json:"content"`
+    Timestamp     time.Time `json:"timestamp"`
+    SenderNickname string   `json:"senderNickname"`
+    SenderAvatar  string    `json:"senderAvatar"`
+}

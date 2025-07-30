@@ -24,6 +24,7 @@ func main() {
 	go hub.Run()
 
 	follow.Hub = hub
+	chat.Hub = hub
 
 	sqlite.InitDB()
 
@@ -58,66 +59,68 @@ func main() {
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
- //////////////////////////////////////////////////////////////////////
-	
-mux.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method == http.MethodGet {
-            auth.GetGroupsHandler(sqlite.DB)(w, r)
-        } else if r.Method == http.MethodPost {
-            auth.CreateGroupHandler(sqlite.DB)(w, r)
-        }
-    })
-	
-mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
-		auth.CheckGroupAccessHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/membership/join") && r.Method == http.MethodPost:
-		auth.JoinGroupRequestHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
-		auth.AcceptGroupInviteHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/membership/invite") && r.Method == http.MethodPost:
-		auth.InviteToGroupHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
-		auth.ApproveRequestHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
-        auth.DeclineGroupInviteHandler(w, r)
-	// NOUVELLES ROUTES POUR LES POSTS
-	case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodGet:
-		auth.GetGroupPostsHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodPost:
-		auth.CreateGroupPostHandler(w, r)
-	// comments
-	case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodGet:
-		auth.GetGroupPostCommentsHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
-		auth.CreateGroupPostCommentHandler(w, r)
-	// NOUVELLES ROUTES POUR LES ÉVÉNEMENTS
-	case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodGet:
-		auth.GetGroupEventsHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodPost:
-		auth.CreateGroupEventHandler(w, r)
-	default:
-		http.NotFound(w, r)
-	}
-}))
+	//////////////////////////////////////////////////////////////////////
 
+	mux.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			auth.GetGroupsHandler(sqlite.DB)(w, r)
+		} else if r.Method == http.MethodPost {
+			auth.CreateGroupHandler(sqlite.DB)(w, r)
+		}
+	})
 
-mux.HandleFunc("/api/events/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case strings.HasSuffix(r.URL.Path, "/responses") && r.Method == http.MethodGet:
-		auth.GetEventResponsesHandler(w, r)
-	case strings.HasSuffix(r.URL.Path, "/respond") && r.Method == http.MethodPost:
-		auth.RespondToEventHandler(w, r)
-	default:
-		http.NotFound(w, r)
-	}
-}))
+	mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
+			auth.CheckGroupAccessHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/join") && r.Method == http.MethodPost:
+			auth.JoinGroupRequestHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
+			auth.AcceptGroupInviteHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/invite") && r.Method == http.MethodPost:
+			auth.InviteToGroupHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
+			auth.ApproveRequestHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
+			auth.DeclineGroupInviteHandler(w, r)
+		// NOUVELLES ROUTES POUR LES POSTS
+		case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodGet:
+			auth.GetGroupPostsHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodPost:
+			auth.CreateGroupPostHandler(w, r)
+		// comments
+		case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodGet:
+			auth.GetGroupPostCommentsHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
+			auth.CreateGroupPostCommentHandler(w, r)
+		// NOUVELLES ROUTES POUR LES ÉVÉNEMENTS
+		case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodGet:
+			auth.GetGroupEventsHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodPost:
+			auth.CreateGroupEventHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/messages") && r.Method == http.MethodPost:
+			chat.HandleGroupMessage(w, r)
+		case strings.HasSuffix(r.URL.Path, "/messages") && r.Method == http.MethodGet:
+			chat.GetGroupMessagesHandler(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
 
-//////////////////////////////////////////////////////////////////////
+	mux.HandleFunc("/api/events/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/responses") && r.Method == http.MethodGet:
+			auth.GetEventResponsesHandler(w, r)
+		case strings.HasSuffix(r.URL.Path, "/respond") && r.Method == http.MethodPost:
+			auth.RespondToEventHandler(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
 
+	//////////////////////////////////////////////////////////////////////
 
-	//mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
+	// mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
 
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
@@ -139,14 +142,12 @@ mux.HandleFunc("/api/events/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.CorsMiddleware(mux).ServeHTTP(w, r)
 	})
 
-	
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
 
 	fmt.Println("✅ Server started at :8080")
 	http.ListenAndServe(":8080", handler)
 }
-
 
 func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))

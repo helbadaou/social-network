@@ -361,3 +361,29 @@ func IsGroupMember(db *sql.DB, groupID int, userID int) (bool, error) {
 
 	return count > 0, err
 }
+
+func GetGroupMembers(db *sql.DB, groupID int) ([]int, error) {
+    var members []int
+
+    rows, err := db.Query(`
+        SELECT user_id FROM group_memberships 
+        WHERE group_id = ? AND status = 'accepted'
+        UNION
+        SELECT creator_id FROM groups WHERE id = ?
+    `, groupID, groupID)
+    
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var memberID int
+        if err := rows.Scan(&memberID); err != nil {
+            return nil, err
+        }
+        members = append(members, memberID)
+    }
+
+    return members, nil
+}
