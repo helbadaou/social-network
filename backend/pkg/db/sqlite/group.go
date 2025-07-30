@@ -81,7 +81,7 @@ func GetGroupPosts(db *sql.DB, groupID int, userID int) ([]models.GroupPost, err
 
 	rows, err := db.Query(`
 		SELECT gp.id, gp.group_id, gp.author_id, gp.content, gp.image, gp.created_at,
-			   u.first_name || ' ' || u.last_name as author_name, u.avatar as avatar,
+			   u.nickname as author_name, u.avatar as avatar,
 			   COUNT(gpc.id) as comments_count
 		FROM group_posts gp
 		JOIN users u ON gp.author_id = u.id
@@ -150,26 +150,27 @@ func GetGroupPostComments(db *sql.DB, postID int, userID int) ([]models.GroupPos
 
 	var memberCount int
 	err = db.QueryRow(`
-		SELECT COUNT(*) FROM group_memberships
-		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
-		UNION ALL
-		SELECT COUNT(*) FROM groups WHERE id = ? AND creator_id = ?`,
-		groupID, userID, groupID, userID).Scan(&memberCount)
+		SELECT COUNT(*) FROM (
+			SELECT 1 FROM group_memberships
+			WHERE group_id = ? AND user_id = ? AND status = 'accepted'
+			UNION
+			SELECT 1 FROM groups WHERE id = ? AND creator_id = ?
+		)`, groupID, userID, groupID, userID).Scan(&memberCount)
 
 	if err != nil || memberCount == 0 {
-		return nil, err
+		return []models.GroupPostComment{}, nil // Retourner un tableau vide au lieu de l'erreur
 	}
 
 	rows, err := db.Query(`
 		SELECT gpc.id, gpc.post_id, gpc.author_id, gpc.content, gpc.created_at,
-			   u.first_name || ' ' || u.last_name as author_name, u.avatar as avatar
+			   u.nickname as author_name, u.avatar as avatar
 		FROM group_post_comments gpc
 		JOIN users u ON gpc.author_id = u.id
 		WHERE gpc.post_id = ?
 		ORDER BY gpc.created_at ASC`,
 		postID)
 	if err != nil {
-		return nil, err
+		return []models.GroupPostComment{}, err // Retourner un tableau vide même en cas d'erreur
 	}
 	defer rows.Close()
 
@@ -191,131 +192,161 @@ func GetGroupPostComments(db *sql.DB, postID int, userID int) ([]models.GroupPos
 		comments = append(comments, comment)
 	}
 
+	if comments == nil {
+		comments = []models.GroupPostComment{}
+	}
+
 	return comments, nil
 }
 
 // ==================== EVENTS ====================
 
-// func CreateGroupEvent(db *sql.DB, event models.GroupEvent) (models.GroupEvent, error) {
-// 	result, err := db.Exec(`
-//         INSERT INTO group_events (group_id, creator_id, title, description, event_date)
-//         VALUES (?, ?, ?, ?, ?)`,
-// 		event.GroupID, event.CreatorID, event.Title, event.Description, event.EventDate)
-// 	if err != nil {
-// 		return models.GroupEvent{}, err
-// 	}
+func CreateGroupEvent(db *sql.DB, event models.GroupEvent) (models.GroupEvent, error) {
+	result, err := db.Exec(`
+        INSERT INTO group_events (group_id, creator_id, title, description, event_date)
+        VALUES (?, ?, ?, ?, ?)`,
+		event.GroupID, event.CreatorID, event.Title, event.Description, event.EventDate)
+	if err != nil {
+		return models.GroupEvent{}, err
+	}
 
-// 	id, err := result.LastInsertId()
-// 	if err != nil {
-// 		return models.GroupEvent{}, err
-// 	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return models.GroupEvent{}, err
+	}
 
-// 	event.ID = int(id)
-// 	event.CreatedAt = time.Now()
-// 	return event, nil
-// }
+	event.ID = int(id)
+	event.CreatedAt = time.Now()
+	return event, nil
+}
 
-// func GetGroupEvents(db *sql.DB, groupID int, userID int) ([]models.GroupEvent, error) {
-// 	// Vérifier membership
-// 	var memberCount int
-// 	err := db.QueryRow(`
-// 		SELECT COUNT(*) FROM group_memberships
-// 		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
-// 		UNION ALL
-// 		SELECT COUNT(*) FROM groups WHERE id = ? AND creator_id = ?`,
-// 		groupID, userID, groupID, userID).Scan(&memberCount)
+func GetGroupEvents(db *sql.DB, groupID int, userID int) ([]models.GroupEvent, error) {
+    log.Printf("GetGroupEvents - groupID: %d, userID: %d", groupID, userID)
 
-// 	if err != nil || memberCount == 0 {
-// 		return nil, err
-// 	}
+    // Vérifier membership
+    var memberCount int
+    err := db.QueryRow(`
+        SELECT COUNT(*) FROM (
+            SELECT 1 FROM group_memberships
+            WHERE group_id = ? AND user_id = ? AND status = 'accepted'
+            UNION
+            SELECT 1 FROM groups WHERE id = ? AND creator_id = ?
+        )`, groupID, userID, groupID, userID).Scan(&memberCount)
 
-// 	rows, err := db.Query(`
-// 		SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
-// 			   ge.event_date, ge.created_at,
-// 			   u.first_name || ' ' || u.last_name as creator_name,
-// 			   COUNT(CASE WHEN er.response = 'going' THEN 1 END) as going_count,
-// 			   COUNT(CASE WHEN er.response = 'not_going' THEN 1 END) as not_going_count,
-// 			   MAX(CASE WHEN er.user_id = ? THEN er.response END) as user_response
-// 		FROM group_events ge
-// 		JOIN users u ON ge.creator_id = u.id
-// 		LEFT JOIN event_responses er ON ge.id = er.event_id
-// 		WHERE ge.group_id = ?
-// 		GROUP BY ge.id
-// 		ORDER BY ge.event_date ASC`,
-// 		userID, groupID)
+    if err != nil {
+        log.Printf("Error checking membership: %v", err)
+        return nil, err
+    }
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
+    if memberCount == 0 {
+        log.Println("User is not a member of the group")
+        return []models.GroupEvent{}, nil
+    }
 
-// 	var events []models.GroupEvent
-// 	for rows.Next() {
-// 		var event models.GroupEvent
-// 		var userResponse sql.NullString
-// 		err := rows.Scan(
-// 			&event.ID, &event.GroupID, &event.CreatorID, &event.Title, &event.Description,
-// 			&event.EventDate, &event.CreatedAt, &event.CreatorName,
-// 			&event.GoingCount, &event.NotGoingCount, &userResponse,
-// 		)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+    // Requête principale pour les événements
+    query := `
+        SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
+               ge.event_date, ge.created_at,
+               u.first_name || ' ' || u.last_name as creator_name,
+               COUNT(CASE WHEN er.response = 'going' THEN 1 END) as going_count,
+               COUNT(CASE WHEN er.response = 'not_going' THEN 1 END) as not_going_count,
+               MAX(CASE WHEN er.user_id = ? THEN er.response END) as user_response
+        FROM group_events ge
+        JOIN users u ON ge.creator_id = u.id
+        LEFT JOIN event_responses er ON ge.id = er.event_id
+        WHERE ge.group_id = ?
+        GROUP BY ge.id
+        ORDER BY ge.event_date ASC`
 
-// 		if userResponse.Valid {
-// 			event.UserResponse = userResponse.String
-// 		}
+    rows, err := db.Query(query, userID, groupID)
+    if err != nil {
+        log.Printf("Error querying events: %v", err)
+        return nil, err
+    }
+    defer rows.Close()
 
-// 		events = append(events, event)
-// 	}
+    var events []models.GroupEvent
+    for rows.Next() {
+        var event models.GroupEvent
+        var userResponse sql.NullString
+        err := rows.Scan(
+            &event.ID, &event.GroupID, &event.CreatorID, &event.Title, &event.Description,
+            &event.EventDate, &event.CreatedAt, &event.CreatorName,
+            &event.GoingCount, &event.NotGoingCount, &userResponse,
+        )
+        if err != nil {
+            log.Printf("Error scanning event row: %v", err)
+            return nil, err
+        }
 
-// 	return events, nil
-// }
+        if userResponse.Valid {
+            event.UserResponse = userResponse.String
+        }
 
-// func CreateEventResponse(db *sql.DB, response models.EventResponse) error {
-// 	_, err := db.Exec(`
-// 		INSERT INTO event_responses (event_id, user_id, response)
-// 		VALUES (?, ?, ?)
-// 		ON CONFLICT(event_id, user_id) DO UPDATE SET response = ?, created_at = CURRENT_TIMESTAMP`,
-// 		response.EventID, response.UserID, response.Response, response.Response)
-// 	return err
-// }
+        events = append(events, event)
+    }
 
-// func GetEventResponses(db *sql.DB, eventID int) ([]models.EventResponse, error) {
-// 	rows, err := db.Query(`
-// 		SELECT er.id, er.event_id, er.user_id, er.response, er.created_at,
-// 			   u.first_name || ' ' || u.last_name as user_name, u.avatar
-// 		FROM event_responses er
-// 		JOIN users u ON er.user_id = u.id
-// 		WHERE er.event_id = ?
-// 		ORDER BY er.created_at DESC`,
-// 		eventID)
+    if err = rows.Err(); err != nil {
+        log.Printf("Error in rows: %v", err)
+        return nil, err
+    }
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
+    if events == nil {
+        events = []models.GroupEvent{}
+    }
 
-// 	var responses []models.EventResponse
-// 	for rows.Next() {
-// 		var resp models.EventResponse
-// 		err := rows.Scan(
-// 			&resp.ID, &resp.EventID, &resp.UserID, &resp.Response, &resp.CreatedAt,
-// 			&resp.UserName, &resp.UserAvatar,
-// 		)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+    log.Printf("Returning %d events", len(events))
+    return events, nil
+}
 
-// 		if resp.UserAvatar != "" {
-// 			resp.UserAvatar = "http://localhost:8080/" + resp.UserAvatar
-// 		}
+func CreateEventResponse(db *sql.DB, response models.EventResponse) error {
+	_, err := db.Exec(`
+		INSERT INTO event_responses (event_id, user_id, response)
+		VALUES (?, ?, ?)
+		ON CONFLICT(event_id, user_id) DO UPDATE SET response = ?, created_at = CURRENT_TIMESTAMP`,
+		response.EventID, response.UserID, response.Response, response.Response)
+	return err
+}
 
-// 		responses = append(responses, resp)
-// 	}
+func GetEventResponses(db *sql.DB, eventID int) ([]models.EventResponse, error) {
+	rows, err := db.Query(`
+		SELECT er.id, er.event_id, er.user_id, er.response, er.created_at,
+			   u.first_name || ' ' || u.last_name as user_name, u.avatar
+		FROM event_responses er
+		JOIN users u ON er.user_id = u.id
+		WHERE er.event_id = ?
+		ORDER BY er.created_at DESC`,
+		eventID)
 
-// 	return responses, nil
-// }
+	if err != nil {
+		return []models.EventResponse{}, err
+	}
+	defer rows.Close()
+
+	var responses []models.EventResponse
+	for rows.Next() {
+		var resp models.EventResponse
+		err := rows.Scan(
+			&resp.ID, &resp.EventID, &resp.UserID, &resp.Response, &resp.CreatedAt,
+			&resp.UserName, &resp.UserAvatar,
+		)
+		if err != nil {
+			return []models.EventResponse{}, err
+		}
+
+		if resp.UserAvatar != "" {
+			resp.UserAvatar = "http://localhost:8080/" + resp.UserAvatar
+		}
+
+		responses = append(responses, resp)
+	}
+
+	if responses == nil {
+		responses = []models.EventResponse{}
+	}
+
+	return responses, nil
+}
 
 // Vérifier si un utilisateur est membre d'un groupe
 func IsGroupMember(db *sql.DB, groupID int, userID int) (bool, error) {

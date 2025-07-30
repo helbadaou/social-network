@@ -1,10 +1,10 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
-	"database/sql"
 
 	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/chat"
@@ -92,6 +92,23 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.GetGroupPostCommentsHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
 		auth.CreateGroupPostCommentHandler(w, r)
+	// NOUVELLES ROUTES POUR LES ÉVÉNEMENTS
+	case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodGet:
+		auth.GetGroupEventsHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodPost:
+		auth.CreateGroupEventHandler(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}))
+
+
+mux.HandleFunc("/api/events/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/responses") && r.Method == http.MethodGet:
+		auth.GetEventResponsesHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/respond") && r.Method == http.MethodPost:
+		auth.RespondToEventHandler(w, r)
 	default:
 		http.NotFound(w, r)
 	}

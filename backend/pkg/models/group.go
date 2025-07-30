@@ -44,33 +44,41 @@ type GroupPostComment struct {
 }
 
 // Structures pour les événements
-// type GroupEvent struct {
-// 	ID          int       `json:"id"`
-// 	GroupID     int       `json:"group_id"`
-// 	CreatorID   int       `json:"creator_id"`
-// 	Title       string    `json:"title"`
-// 	Description string    `json:"description"`
-// 	EventDate   time.Time `json:"event_date"`
-// 	CreatedAt   time.Time `json:"created_at"`
+type GroupEvent struct {
+	ID            int       `json:"id"`
+	GroupID       int       `json:"group_id"`
+	CreatorID     int       `json:"creator_id"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	EventDate     time.Time `json:"event_date"`
+	CreatedAt     time.Time `json:"created_at"`
+	CreatorName   string    `json:"creator_name"`
+	GoingCount    int       `json:"going_count"`
+	NotGoingCount int       `json:"not_going_count"`
+	UserResponse  string    `json:"user_response"`
+}
 
-// 	// Champs calculés
-// 	CreatorName   string `json:"creator_name"`
-// 	GoingCount    int    `json:"going_count"`
-// 	NotGoingCount int    `json:"not_going_count"`
-// 	UserResponse  string `json:"user_response,omitempty"` // Pour l'utilisateur actuel
-// }
+type CreateEventRequest struct {
+	GroupID     int    `json:"group_id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	EventDate   string `json:"event_date"` // Format RFC3339
+}
 
-// type EventResponse struct {
-// 	ID        int       `json:"id"`
-// 	EventID   int       `json:"event_id"`
-// 	UserID    int       `json:"user_id"`
-// 	Response  string    `json:"response"` // "going" or "not_going"
-// 	CreatedAt time.Time `json:"created_at"`
+type EventResponse struct {
+	ID         int       `json:"id"`
+	EventID    int       `json:"event_id"`
+	UserID     int       `json:"user_id"`
+	Response   string    `json:"response"` // "going" ou "not_going"
+	CreatedAt  time.Time `json:"created_at"`
+	UserName   string    `json:"user_name"`
+	UserAvatar string    `json:"user_avatar"`
+}
 
-// 	// Champs calculés
-// 	UserName   string `json:"user_name"`
-// 	UserAvatar string `json:"user_avatar"`
-// }
+type EventResponseRequest struct {
+	EventID  int    `json:"event_id"`
+	Response string `json:"response"` // "going" ou "not_going"
+}
 
 // Requests pour les APIs
 type CreateGroupPostRequest struct {
@@ -83,15 +91,3 @@ type CreateCommentRequest struct {
 	PostID  int    `json:"post_id"`
 	Content string `json:"content"`
 }
-
-// type CreateEventRequest struct {
-// 	GroupID     int    `json:"group_id"`
-// 	Title       string `json:"title"`
-// 	Description string `json:"description"`
-// 	EventDate   string `json:"event_date"` // Format: "2006-01-02T15:04:05Z07:00"
-// }
-
-// type EventResponseRequest struct {
-// 	EventID  int    `json:"event_id"`
-// 	Response string `json:"response"` // "going" or "not_going"
-// }
