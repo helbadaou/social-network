@@ -22,8 +22,10 @@ export default function MessageSidebar({
   const [activeTab, setActiveTab] = useState('messages')
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [groupState, setGroupState] = useState("");
- 
   const [selectedGroup, setSelectedGroup] = useState(null);
+ 
+  const [isCreator, setIsCreator] = useState(false);
+  const [nonMembers, setNonMembers] = useState([]);
 
   // Référence pour l'intervalle de polling
   const pollingInterval = useRef(null);
@@ -102,6 +104,23 @@ export default function MessageSidebar({
     }
   }
 
+  useEffect(() => {
+  async function fetchNonMembers() {
+    const res = await fetch(`/api/groups/${activeGroupId}/non-members`);
+    if (res.ok) {
+      const data = await res.json();
+      setNonMembers(data);
+       console.log(data)
+       console.log(isCreator)
+    }
+  }
+  if (isCreator) fetchNonMembers();
+  setIsCreator(false);
+ 
+}, [activeGroupId]);
+
+
+
   const handleGroupClick = async (groupId) => {
     try {
       const res = await fetch(`/api/groups/${groupId}/membership`, {
@@ -129,6 +148,7 @@ export default function MessageSidebar({
           break;
         case 'creator':
           setGroupState('creator');
+          setIsCreator(true);
           break;
       }
       setShowGroupAccessModal(true);
@@ -397,7 +417,13 @@ export default function MessageSidebar({
 
                 {groupState === "creator" && (
                   <div className="group-access-ui">
-                    <GroupDashboard group={selectedGroup} onClose={() => setShowGroupAccessModal(false)}/>
+                    <GroupDashboard 
+                    group={selectedGroup} 
+                    onClose={() => setShowGroupAccessModal(false)}
+                    isCreator= {isCreator}
+                    nonMembers= {nonMembers}
+                    
+                    />
                   </div>
                 )}
 

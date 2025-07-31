@@ -210,3 +210,46 @@
   border-radius: 6px;
   cursor: pointer;
 }
+
+
+.inviteSection {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.inviteSection h3 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+.inviteUser {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  transition: background 0.3s ease;
+}
+.inviteUser:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.inviteUser span {
+  color: white;
+}
+.inviteUser button {
+  background: #00c3ff;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+.inviteUser button:hover {
+  background: #0099cc;
+}

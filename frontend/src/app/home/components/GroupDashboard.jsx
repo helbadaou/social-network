@@ -5,7 +5,7 @@ import { useState } from 'react'
 import styles from './GroupDashboard.module.css';
 
 
-export default function GroupDashboard({ group, onClose }) {
+export default function GroupDashboard({ group, onClose, isCreator, nonMembers }) {
 
 
   const [activeTab, setActiveTab] = useState('chat')
@@ -16,7 +16,7 @@ export default function GroupDashboard({ group, onClose }) {
       <div className={styles.groupDashboardPopup}>
         {/* Close button */}
         <button className={styles.closeButton} onClick={onClose}>×</button>
- 
+
         {/* Tabs */}
         <div className={styles.tabs}>
           <button
@@ -41,6 +41,21 @@ export default function GroupDashboard({ group, onClose }) {
 
         {/* Dynamic content area */}
         <div className={styles.tabContent}>
+
+          {isCreator && (
+            <div className={styles.inviteSection}>
+              <h3>Invite Members</h3>
+              {nonMembers.map(user => (
+                <div key={user.id} className={styles.inviteUser}>
+                  <span>{user.nickname}</span>
+                  <button onClick={() => inviteUser(user.id)}>Invite</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+
+
           {activeTab === 'chat' && (
             <div className={styles.chatContainer}>
               <div className={styles.chatMessages}>
@@ -71,6 +86,7 @@ export default function GroupDashboard({ group, onClose }) {
               </div>
             </div>
           )}
+
 
 
           {activeTab === 'events' && (

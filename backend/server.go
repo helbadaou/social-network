@@ -82,6 +82,8 @@ mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r
 		auth.ApproveRequestHandler(w, r)
 	case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
         auth.DeclineGroupInviteHandler(w, r)
+	case strings.HasSuffix(r.URL.Path, "/non-members"):
+        auth.GetNonGroupMembersHandler(sqlite.DB, w, r)	
 	// Add more here if needed
 	default:
 		http.NotFound(w, r)
