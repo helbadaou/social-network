@@ -1,14 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import styles from './GroupDashboard.module.css';
 
 
-export default function GroupDashboard({ group, onClose, isCreator, nonMembers }) {
+export default function GroupDashboard({ group, onClose, isCreator, nonMembers, inviteUser }) {
 
 
   const [activeTab, setActiveTab] = useState('chat')
+
+  useEffect(() => {
+    console.log(nonMembers);
+    console.log("group dash bool" , isCreator)
+  }, []);
+
 
 
   return (
@@ -37,20 +43,36 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers }
           >
             Events
           </button>
+          {(isCreator) && (
+            <button
+              onClick={() => setActiveTab('invite')}
+              className={activeTab === 'invite' ? styles.activeTab : ''}
+            >
+              Invite
+            </button>
+          )}
+
         </div>
 
         {/* Dynamic content area */}
         <div className={styles.tabContent}>
 
-          {isCreator && (
+      
+
+
+          {activeTab === 'invite' && (isCreator) && (
             <div className={styles.inviteSection}>
               <h3>Invite Members</h3>
-              {nonMembers.map(user => (
-                <div key={user.id} className={styles.inviteUser}>
-                  <span>{user.nickname}</span>
-                  <button onClick={() => inviteUser(user.id)}>Invite</button>
-                </div>
-              ))}
+              {nonMembers.length === 0 ? (
+                <p>No available users to invite.</p>
+              ) : (
+                nonMembers.map(user => (
+                  <div key={user.id} className={styles.inviteUser}>
+                    <span>{user.username}</span>
+                    <button onClick={() => inviteUser(user.id)}>Invite</button>
+                  </div>
+                ))
+              )}
             </div>
           )}
 

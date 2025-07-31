@@ -36,8 +36,8 @@ type LoginRequest struct {
 }
 
 type InviteRequest struct {
-	UserID  int `json:"user_id"`  // The user being invited
-	GroupID int `json:"group_id"` // The group to join
+	UserID  int `json:"userId"`  // The user being invited
+ 
 }
 
 type RespondToInviteRequest struct {
@@ -451,7 +451,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
-	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/invite")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/invite")
 	groupID, _ := strconv.Atoi(groupIDStr)
 
 	// Verify current user is creator of the group
@@ -469,6 +469,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("invited id", invite)
 
 	_, err = sqlite.DB.Exec(`
 		INSERT INTO group_membership (group_id, user_id, status)
@@ -478,6 +479,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
 		return
 	}
+fmt.Println("invited added to db")
 
 	w.WriteHeader(http.StatusCreated)
 }

@@ -112,10 +112,14 @@ export default function MessageSidebar({
       setNonMembers(data);
        console.log(data)
        console.log(isCreator)
+       
     }
   }
-  if (isCreator) fetchNonMembers();
-  setIsCreator(false);
+  if (isCreator) {
+    fetchNonMembers()
+  
+  };
+  
  
 }, [activeGroupId]);
 
@@ -158,44 +162,30 @@ export default function MessageSidebar({
     }
   };
 
-  const handleJoinGroup = async () => {
-    try {
-      const res = await fetch(`/api/groups/${activeGroupId}/join`, {
-        method: "POST",
-        credentials: "include",
-      })
-      if (!res.ok) throw new Error("Join request failed")
-      setGroupState("pending")
-    } catch (err) {
-      console.error("Error joining group:", err)
-    }
-  }
+ 
+ 
 
-  const handleAcceptInvite = async () => {
-    try {
-      const res = await fetch(`/api/groups/${activeGroupId}/invite/accept`, {
-        method: "POST",
-        credentials: "include",
-      })
-      if (!res.ok) throw new Error("Accept failed")
-      setGroupState("accepted")
-    } catch (err) {
-      console.error("Error accepting invite:", err)
-    }
-  }
+  const inviteUser = async (userId) => {
+  try {
+    const res = await fetch(`/api/groups/${activeGroupId}/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
 
-  const handleDeclineInvite = async () => {
-    try {
-      const res = await fetch(`/api/groups/${activeGroupId}/membership/decline`, {
-        method: "POST",
-        credentials: "include",
-      })
-      if (!res.ok) throw new Error("Decline failed")
-      setShowGroupAccessModal(false)
-    } catch (err) {
-      console.error("Error declining invite:", err)
-    }
+    if (!res.ok) throw new Error('Invite failed');
+
+    const data = await res.json();
+    alert(`User invited successfully`);
+
+    // Optional: remove from local nonMembers list if needed
+    setNonMembers(prev => prev.filter(user => user.id !== userId));
+  } catch (err) {
+    console.error('Error inviting user:', err);
+    alert('Error inviting user');
   }
+};
+
 
   // Fonction pour gérer le clic sur un utilisateur non-chatable
   const handleNonChatableUserClick = (user) => {
@@ -422,6 +412,7 @@ export default function MessageSidebar({
                     onClose={() => setShowGroupAccessModal(false)}
                     isCreator= {isCreator}
                     nonMembers= {nonMembers}
+                    inviteUser= {inviteUser}
                     
                     />
                   </div>

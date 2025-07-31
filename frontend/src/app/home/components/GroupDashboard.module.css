@@ -2,107 +2,109 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  backdrop-filter: blur(6px);
-  background-color: rgba(0, 0, 0, 0.4);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 1000;
 }
 
 .groupDashboardPopup {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 16px;
-  padding: 2rem;
+  background-color: #1e1e1e;
+  color: #ffffff;
   width: 90%;
   max-width: 700px;
-  color: #fff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
   position: relative;
-  animation: fadeIn 0.4s ease-in-out;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .closeButton {
   position: absolute;
-  top: 15px;
-  right: 20px;
-  font-size: 1.5rem;
+  top: 12px;
+  right: 16px;
   background: transparent;
   border: none;
-  color: white;
+  font-size: 24px;
+  color: #fff;
   cursor: pointer;
-  transition: color 0.3s ease;
-}
-.closeButton:hover {
-  color: #ff4d4d;
 }
 
 .tabs {
   display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .tabs button {
-  padding: 0.7rem 1.5rem;
+  flex: 1;
+  padding: 10px 12px;
+  background-color: #333;
+  color: #fff;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 1rem;
-  border-radius: 30px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
-  font-weight: 500;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
 }
 
 .tabs button:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background-color: #444;
 }
 
-.tabs button.active {
-  background: linear-gradient(135deg, #007bff, #00c3ff);
-  color: white;
-  font-weight: 600;
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.activeTab {
+  background-color: #6200ea;
 }
 
 .tabContent {
-  text-align: center;
-  color: black;
-  background-color: rgba(255, 255, 255, 0.6);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
-}
-.tabContent h2 {
-  margin-bottom: 0.5rem;
-  font-size: 1.6rem;
-}
-.tabContent p {
-  font-size: 1rem;
-  color: #222;
+  padding: 10px;
 }
 
+/* --- Invite Section --- */
+.inviteSection {
+  background-color: #2a2a2a;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px solid #444;
+}
 
+.inviteSection h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.inviteUser {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.inviteUser span {
+  font-size: 16px;
+}
+
+.inviteUser button {
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.inviteUser button:hover {
+  background-color: #43a047;
+}
+
+/* --- Chat Section --- */
 .chatContainer {
   display: flex;
   flex-direction: column;
@@ -112,144 +114,139 @@
 .chatMessages {
   flex: 1;
   overflow-y: auto;
-  background: #ffffff1a;
   padding: 10px;
-  border-radius: 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background-color: #1a1a1a;
 }
 
 .messageBubble {
-  background: #ffffffcc;
-  padding: 10px;
-  border-radius: 10px;
-  margin: 5px 0;
+  background-color: #333;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 16px;
+  margin-bottom: 8px;
   max-width: 70%;
+  word-wrap: break-word;
 }
 
 .sent {
-  background: #a3d3ff;
+  background-color: #6200ea;
   align-self: flex-end;
+  text-align: right;
 }
 
 .chatInputArea {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
 }
 
 .chatInputArea input {
   flex: 1;
-  padding: 10px;
+  padding: 8px 10px;
+  border: 1px solid #555;
   border-radius: 6px;
-  border: none;
+  background-color: #222;
+  color: #fff;
 }
 
 .chatInputArea button {
-  padding: 10px 15px;
+  padding: 8px 14px;
+  background-color: #6200ea;
   border: none;
-  background-color: #00c3ff;
-  color: white;
+  color: #fff;
   border-radius: 6px;
   cursor: pointer;
 }
 
-/* POSTS */
+.chatInputArea button:hover {
+  background-color: #7b1fa2;
+}
 
+/* --- Posts Section --- */
 .postsContainer {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
+.postForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .postForm textarea {
-  width: 100%;
-  height: 80px;
-  padding: 10px;
-  border-radius: 8px;
   resize: none;
-  border: none;
+  min-height: 80px;
+  padding: 10px;
+  border-radius: 6px;
+  background-color: #222;
+  color: #fff;
+  border: 1px solid #444;
 }
 
 .postForm button {
-  margin-top: 8px;
-  padding: 10px 20px;
-  background-color: #00c3ff;
-  color: white;
+  align-self: flex-end;
+  padding: 8px 14px;
+  background-color: #0288d1;
   border: none;
+  color: #fff;
   border-radius: 6px;
   cursor: pointer;
 }
 
-.postCard {
-  background: #ffffff1a;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+.postForm button:hover {
+  background-color: #0277bd;
 }
 
-/* EVENTS */
+.postList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
+.postCard {
+  background-color: #2c2c2c;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.postCard h4 {
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+/* --- Events Section --- */
 .eventsContainer {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .eventCard {
-  background: #ffffff1a;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  background-color: #263238;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #37474f;
+}
+
+.eventCard h3 {
+  margin-bottom: 6px;
 }
 
 .eventCard button {
   margin-top: 10px;
-  padding: 8px 16px;
-  background-color: #00c3ff;
+  background-color: #00acc1;
   color: white;
   border: none;
+  padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
 }
 
-
-.inviteSection {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-}
-.inviteSection h3 {
-  color: white;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-}
-.inviteUser {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-  transition: background 0.3s ease;
-}
-.inviteUser:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.inviteUser span {
-  color: white;
-}
-.inviteUser button {
-  background: #00c3ff;
-  color: white;
-  border: none;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-.inviteUser button:hover {
-  background: #0099cc;
+.eventCard button:hover {
+  background-color: #00838f;
 }
