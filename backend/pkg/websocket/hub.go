@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"social-network/backend/pkg/db/sqlite"
+
 	"github.com/gorilla/websocket"
 )
 
 type Message struct {
 	From      int    `json:"from"`
 	To        int    `json:"to"`
+	GroupID   int    `json:"groupId,omitempty"`
 	Content   string `json:"content"`
 	Type      string `json:"type"` // e.g., "private" or "group"
 	Timestamp string `json:"timestamp"`
@@ -38,6 +41,14 @@ type Notification struct {
 	CreatedAt      string `json:"created_at"`
 }
 
+// type GroupMessage struct {
+// 	From      int    `json:"from"`
+// 	GroupID   int    `json:"group_id"`
+// 	Content   string `json:"content"`
+// 	Type      string `json:"type"` // "group"
+// 	Timestamp string `json:"timestamp"`
+// }
+
 func NewHub() *Hub {
 	return &Hub{
 		Clients:    make(map[int]*Client),
@@ -65,17 +76,50 @@ func (h *Hub) Run() {
 				continue
 			}
 
-			// Send to recipient if connected
-			if recipient, ok := h.Clients[msg.To]; ok {
-				recipient.Send <- msgBytes
-			} else {
-				fmt.Printf("⚠️ Recipient %d not connected. Message from %d not delivered.\n", msg.To, msg.From)
-				// Optionally: buffer message for later delivery
-			}
+			switch msg.Type {
+			case "private":
+				if recipient, ok := h.Clients[msg.To]; ok {
+					select {
+					case recipient.Send <- msgBytes:
+						fmt.Printf("✅ Private message sent to user %d\n", msg.To)
+					default:
+						close(recipient.Send)
+						delete(h.Clients, recipient.ID)
+						fmt.Printf("⚠️ Failed to send private message to user %d (channel full or disconnected)\n", msg.To)
+					}
+				} else {
+					fmt.Printf("⚠️ Private message recipient user %d not connected\n", msg.To)
+				}
 
-			// Optionally send to sender for confirmation
-			if sender, ok := h.Clients[msg.From]; ok {
-				sender.Send <- msgBytes
+			case "group":
+				groupID := msg.GroupID
+				if groupID == 0 {
+					fmt.Println("❌ Group message received with GroupID 0. Skipping broadcast.")
+					continue
+				}
+
+				members, err := sqlite.GetGroupMembers(sqlite.DB, groupID)
+				if err != nil {
+					fmt.Printf("❌ Failed to get group members for group %d: %v\n", groupID, err)
+					continue
+				}
+
+				for _, memberID := range members {
+					if client, ok := h.Clients[memberID]; ok {
+						select {
+						case client.Send <- msgBytes:
+							fmt.Printf("✅ Group message sent to member %d in group %d\n", memberID, groupID)
+						default:
+							fmt.Printf("⚠️ Failed to send group message to member %d (channel full or disconnected)\n", memberID)
+							close(client.Send)
+							delete(h.Clients, client.ID)
+						}
+					} else {
+						fmt.Printf("⚠️ Group member %d not connected, skipping message.\n", memberID)
+					}
+				}
+			default:
+				fmt.Printf("❌ Unknown message type: %s\n", msg.Type)
 			}
 		}
 	}
@@ -88,7 +132,6 @@ func (h *Hub) SendNotification(notification Notification, toID int) {
 		recipient.Send <- msgBytes
 	}
 }
-
 
 func (h *Hub) SendMessageToUser(userID int, message Message) {
 	msgBytes, err := json.Marshal(message)

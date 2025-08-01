@@ -63,7 +63,7 @@ export default function MessageSidebar({
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await fetch('/api/groups')
+        const res = await fetch('http://localhost:8080/api/groups')
         if (!res.ok) throw new Error('Failed to fetch groups')
         const data = await res.json()
         setGroups(data)
@@ -82,7 +82,7 @@ export default function MessageSidebar({
 
   const handleCreateGroup = async () => {
     try {
-      const res = await fetch('/api/groups', {
+      const res = await fetch('http://localhost:8080/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,7 +127,7 @@ export default function MessageSidebar({
 
   const handleGroupClick = async (groupId) => {
     try {
-      const res = await fetch(`/api/groups/${groupId}/membership`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -161,8 +161,6 @@ export default function MessageSidebar({
       console.error('Failed to check group access', err);
     }
   };
-
- 
  
 
   const inviteUser = async (userId) => {
@@ -380,7 +378,7 @@ export default function MessageSidebar({
                 {groupState === "none" && (
                   <div>
                     <h2 className="text-xl font-semibold text-white mb-4">Join Group</h2>
-                    <p className="text-gray-300 mb-4">You're not a member of this group.</p>
+                    <p className="text-gray-300 mb-4">You are not a member of this group.</p>
                     <button onClick={handleJoinGroup}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                     >
@@ -398,7 +396,7 @@ export default function MessageSidebar({
 
                 {groupState === "invited" && (
                   <div className="group-access-ui">
-                    <h2>You've been invited!</h2>
+                    <h2>You have been invited!</h2>
                     <p>Would you like to join this group?</p>
                     <button onClick={handleAcceptInvite}>Accept</button>
                     <button onClick={handleDeclineInvite}>Decline</button>

@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	// "log"
 
@@ -252,9 +253,6 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-
 func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groups, err := sqlite.GetAllGroups(dbConn)
@@ -271,6 +269,8 @@ func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 ////////////////////////////////////////////////////////////////////////////////
 
 func CheckGroupAccessHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("function accessed !")
+
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership")
 
@@ -378,7 +378,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if already a member or request exists
 	var exists int
-	err = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM group_membership WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&exists)
+	err = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM group_memberships WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&exists)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
@@ -389,7 +389,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = sqlite.DB.Exec(`
-		INSERT INTO group_membership (group_id, user_id, status)
+		INSERT INTO group_memberships (group_id, user_id, status)
 		VALUES (?, ?, 'pending')`, groupID, userID)
 	if err != nil {
 		http.Error(w, "Failed to create join request", http.StatusInternalServerError)
@@ -418,7 +418,7 @@ func AcceptGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow if user was invited
 	var status string
 	err = sqlite.DB.QueryRow(`
-		SELECT status FROM group_membership 
+		SELECT status FROM group_memberships
 		WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&status)
 	if err != nil {
 		http.Error(w, "Membership not found", http.StatusNotFound)
@@ -432,7 +432,7 @@ func AcceptGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Update the membership to accepted
 	_, err = sqlite.DB.Exec(`
-		UPDATE group_membership 
+		UPDATE group_memberships 
 		SET status = 'accepted' 
 		WHERE group_id = ? AND user_id = ?`, groupID, userID)
 	if err != nil {
@@ -472,7 +472,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("invited id", invite)
 
 	_, err = sqlite.DB.Exec(`
-		INSERT INTO group_membership (group_id, user_id, status)
+		INSERT INTO group_memberships (group_id, user_id, status)
 		VALUES (?, ?, 'invited')
 		ON CONFLICT(group_id, user_id) DO UPDATE SET status='invited'`, groupID, invite.UserID)
 	if err != nil {
@@ -510,7 +510,7 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = sqlite.DB.Exec(`
-		UPDATE group_membership 
+		UPDATE group_memberships
 		SET status = 'accepted' 
 		WHERE group_id = ? AND user_id = ? AND status = 'pending'`, groupID, body.UserID)
 	if err != nil {
@@ -540,11 +540,422 @@ func DeclineGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove invite or update status from "invited" to "none" in DB
-	_, err = sqlite.DB.Exec("DELETE FROM group_membership WHERE group_id = ? AND user_id = ? AND status = 'invited'", groupID, userID)
+	_, err = sqlite.DB.Exec("DELETE FROM group_memberships WHERE group_id = ? AND user_id = ? AND status = 'invited'", groupID, userID)
 	if err != nil {
 		http.Error(w, "Failed to decline invite", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func CreateGroupPostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse multipart form pour gérer l'upload d'image
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
+
+	groupIDStr := r.FormValue("group_id")
+	content := r.FormValue("content")
+
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifier que l'utilisateur est membre du groupe
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil || !isMember {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	var imagePath string
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		imagePath = "uploads/group_posts/" + header.Filename
+
+		out, err := os.Create(imagePath)
+		if err != nil {
+			http.Error(w, "Unable to save file", http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, file)
+		if err != nil {
+			http.Error(w, "Failed to write file", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	post := models.GroupPost{
+		GroupID:  groupID,
+		AuthorID: userID,
+		Content:  content,
+		Image:    imagePath,
+	}
+
+	createdPost, err := sqlite.CreateGroupPost(sqlite.DB, post)
+	if err != nil {
+		http.Error(w, "Failed to create post", http.StatusInternalServerError)
+		return
+	}
+
+	// Récupérer les informations complètes de l'auteur
+	var fullPost models.GroupPost
+	err = sqlite.DB.QueryRow(`
+        SELECT gp.id, gp.group_id, gp.author_id, gp.content, gp.image, gp.created_at,
+               u.nickname as author_name, u.avatar as author_avatar
+        FROM group_posts gp
+        JOIN users u ON gp.author_id = u.id
+        WHERE gp.id = ?`, createdPost.ID).Scan(
+		&fullPost.ID, &fullPost.GroupID, &fullPost.AuthorID, &fullPost.Content,
+		&fullPost.Image, &fullPost.CreatedAt, &fullPost.AuthorName, &fullPost.AuthorAvatar,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch post details", http.StatusInternalServerError)
+		return
+	}
+
+	// Formater l'URL de l'avatar si nécessaire
+	if fullPost.AuthorAvatar != "" {
+		fullPost.AuthorAvatar = "http://localhost:8080/" + fullPost.AuthorAvatar
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(fullPost)
+}
+
+func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		log.Println("🔒 Utilisateur non authentifié")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/posts")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		log.Println("❌ ID de groupe invalide:", groupIDStr)
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("📥 Récupération des posts pour le groupe %d (user %d)\n", groupID, userID)
+
+	posts, err := sqlite.GetGroupPosts(sqlite.DB, groupID, userID)
+	if err != nil {
+		log.Println("🔥 Erreur lors de la récupération des posts:", err)
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✅ %d posts trouvés\n", len(posts))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
+// ==================== COMMENTS - CORRECTION ICI ====================
+
+func CreateGroupPostCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extraire le postID depuis l'URL
+	urlParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(urlParts) < 6 {
+		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		return
+	}
+
+	postIDStr := urlParts[4] // /api/groups/{groupID}/posts/{postID}/comments
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	var req models.CreateCommentRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	comment := models.GroupPostComment{
+		PostID:   postID, // Utiliser le postID extrait de l'URL
+		AuthorID: userID,
+		Content:  req.Content,
+	}
+
+	createdComment, err := sqlite.CreateGroupPostComment(sqlite.DB, comment)
+	if err != nil {
+		log.Printf("Erreur lors de la création du commentaire: %v", err)
+		http.Error(w, "Failed to create comment", http.StatusInternalServerError)
+		return
+	}
+
+	// Récupérer les informations complètes de l'auteur
+	var fullComment models.GroupPostComment
+	err = sqlite.DB.QueryRow(`
+        SELECT gpc.id, gpc.post_id, gpc.author_id, gpc.content, gpc.created_at,
+               u.nickname as author_name, u.avatar as author_avatar
+        FROM group_post_comments gpc
+        JOIN users u ON gpc.author_id = u.id
+        WHERE gpc.id = ?`, createdComment.ID).Scan(
+		&fullComment.ID, &fullComment.PostID, &fullComment.AuthorID, &fullComment.Content,
+		&fullComment.CreatedAt, &fullComment.AuthorName, &fullComment.AuthorAvatar,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch comment details", http.StatusInternalServerError)
+		return
+	}
+
+	// Formater l'URL de l'avatar si nécessaire
+	if fullComment.AuthorAvatar != "" {
+		fullComment.AuthorAvatar = "http://localhost:8080/" + fullComment.AuthorAvatar
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(fullComment)
+}
+
+func GetGroupPostCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extraire le postID depuis l'URL
+	urlParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(urlParts) < 6 {
+		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		return
+	}
+
+	postIDStr := urlParts[4] // /api/groups/{groupID}/posts/{postID}/comments
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	comments, err := sqlite.GetGroupPostComments(sqlite.DB, postID, userID)
+	if err != nil {
+		log.Printf("Erreur lors de la récupération des commentaires: %v", err)
+		http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
+		return
+	}
+
+	if comments == nil {
+		comments = []models.GroupPostComment{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+}
+
+// ==================== EVENTS ====================
+
+func CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req models.CreateEventRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifier que l'utilisateur est membre du groupe
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, req.GroupID, userID)
+	if err != nil || !isMember {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	eventDate, err := time.Parse(time.RFC3339, req.EventDate)
+	if err != nil {
+		http.Error(w, "Invalid date format", http.StatusBadRequest)
+		return
+	}
+
+	event := models.GroupEvent{
+		GroupID:     req.GroupID,
+		CreatorID:   userID,
+		Title:       req.Title,
+		Description: req.Description,
+		EventDate:   eventDate,
+	}
+
+	createdEvent, err := sqlite.CreateGroupEvent(sqlite.DB, event)
+	if err != nil {
+		http.Error(w, "Failed to create event", http.StatusInternalServerError)
+		return
+	}
+
+	// Récupérer les informations complètes du créateur
+	var fullEvent models.GroupEvent
+	err = sqlite.DB.QueryRow(`
+        SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
+               ge.event_date, ge.created_at,
+               u.first_name || ' ' || u.last_name as creator_name
+        FROM group_events ge
+        JOIN users u ON ge.creator_id = u.id
+        WHERE ge.id = ?`, createdEvent.ID).Scan(
+		&fullEvent.ID, &fullEvent.GroupID, &fullEvent.CreatorID, &fullEvent.Title,
+		&fullEvent.Description, &fullEvent.EventDate, &fullEvent.CreatedAt, &fullEvent.CreatorName,
+	)
+	if err != nil {
+		http.Error(w, "Failed to fetch event details", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(fullEvent)
+}
+
+func GetGroupEventsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/events")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Vérifier que l'utilisateur est membre du groupe
+	isMember, err := sqlite.IsGroupMember(sqlite.DB, groupID, userID)
+	if err != nil {
+		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
+		return
+	}
+	if !isMember {
+		// Retourner un tableau vide si l'utilisateur n'est pas membre
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]models.GroupEvent{})
+		return
+	}
+
+	events, err := sqlite.GetGroupEvents(sqlite.DB, groupID, userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch events", http.StatusInternalServerError)
+		return
+	}
+
+	// S'assurer de retourner un tableau même vide
+	// if events == nil {
+	// 	events = []models.GroupEvent{}
+	// }
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(events)
+}
+
+func RespondToEventHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req models.EventResponseRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Response != "going" && req.Response != "not_going" {
+		http.Error(w, "Invalid response type", http.StatusBadRequest)
+		return
+	}
+
+	response := models.EventResponse{
+		EventID:  req.EventID,
+		UserID:   userID,
+		Response: req.Response,
+	}
+
+	err = sqlite.CreateEventResponse(sqlite.DB, response)
+	if err != nil {
+		http.Error(w, "Failed to save response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Response saved"))
+}
+
+func GetEventResponsesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUserIDFromSession(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	eventIDStr := strings.TrimPrefix(r.URL.Path, "/api/events/")
+	eventIDStr = strings.TrimSuffix(eventIDStr, "/responses")
+	eventID, err := strconv.Atoi(eventIDStr)
+	if err != nil {
+		http.Error(w, "Invalid event ID", http.StatusBadRequest)
+		return
+	}
+
+	responses, err := sqlite.GetEventResponses(sqlite.DB, eventID)
+	if err != nil {
+		http.Error(w, "Failed to fetch responses", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responses)
 }
