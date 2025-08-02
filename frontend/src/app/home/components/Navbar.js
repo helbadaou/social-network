@@ -1,273 +1,33 @@
-// src/app/home/components/Navbar.js
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useState, useRef } from "react";
+import Link from "next/link";
 
 export default function Navbar({
   user,
+  hideSearch,
+  hideActions,
+  unreadCount,
+  notifications,
+  showNotifications,
+  notificationButtonRef,
+  notificationsRef,
+  showProfile,
+  isPrivate,
   handleSearch,
-  handleLogout,
   results,
-  openMessages,
   togglePostForm,
-  realtimeNotification,
-  fetchChatUsers,
-  hideActions = false,
-  hideSearch = false,
-  onNotificationRemoved // ✅ Nouveau callback pour supprimer les notifications
+  openMessages,
+  toggleNotifications,
+  toggleProfile,
+  togglePrivacy,
+  handleLogout,
+  handleAccept,
+  handleReject,
+  fetchUserById,
+  setSearch,
+  setResults,
 }) {
-  const [showProfile, setShowProfile] = useState(false)
-  const [isPrivate, setIsPrivate] = useState(false)
-
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const notificationsRef = useRef(null)
-  const notificationButtonRef = useRef(null)
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // ✅ Fonction pour supprimer une notification spécifique
-  const removeNotification = (criteria) => {
-    setNotifications(prev => {
-      const filtered = prev.filter(notif => {
-        // Si c'est une annulation de demande de suivi
-        if (criteria.type === 'follow_request_cancelled') {
-          return !(notif.type === 'follow_request' &&
-            notif.sender_id === criteria.sender_id);
-        }
-
-        // Autres critères de suppression peuvent être ajoutés ici
-        return true;
-      });
-
-      // Recalculer le compteur non lu
-      setUnreadCount(filtered.filter(n => !n.seen).length);
-      return filtered;
-    });
-  };
-
-  // ✅ Transmettre la fonction aux composants enfants via une prop
-  useEffect(() => {
-    if (onNotificationRemoved) {
-      onNotificationRemoved(removeNotification);
-    }
-  }, [onNotificationRemoved]);
-
-  // Fermer les notifications quand on clique ailleurs
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationsRef.current &&
-        !notificationsRef.current.contains(event.target) &&
-        !notificationButtonRef.current.contains(event.target)) {
-        setShowNotifications(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Déclarée ici pour être accessible partout dans le composant
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("http://localhost:8080/api/notifications", {
-        credentials: 'include'
-      });
-
-      const data = await res.json();
-
-      const uniqueNotifs = [];
-      const seenKeys = new Set();
-
-      for (const notif of data) {
-        const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          uniqueNotifs.push(notif);
-        }
-      }
-
-      setNotifications(uniqueNotifs);
-      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
-    } catch (err) {
-      console.error("Erreur récupération notifications", err);
-    }
-  };
-
-  // Ensuite dans ton useEffect
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const toggleNotifications = async (e) => {
-    e.stopPropagation();
-    const newState = !showNotifications;
-    setShowNotifications(newState);
-
-    if (newState) {
-      await fetchNotifications();
-
-      // Mark all as seen in backend
-      await fetch('http://localhost:8080/api/notifications/seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mark_all: true }),
-        credentials: 'include',
-      });
-
-      // Refresh notifications after marking as seen
-      await fetchNotifications();
-      setUnreadCount(0);
-    }
-  };
-
-  const handleAccept = async (notifId, senderId) => {
-    try {
-      await fetch('/api/follow/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
-      });
-
-      // Rafraîchir la liste des utilisateurs pour mettre à jour le follow_status
-      if (typeof fetchChatUsers === 'function') {
-        setTimeout(() => fetchChatUsers(), 500) // Petit délai pour laisser le temps à la DB de se mettre à jour
-      }
-
-      // Mark notification as seen in backend
-      await fetch('/api/notifications/seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      });
-
-      await fetch('/api/notifications/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      });
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
-    } catch (err) {
-      console.error('Erreur acceptation:', err);
-    }
-  };
-
-  const handleReject = async (notifId, senderId) => {
-    try {
-      const res = await fetch('/api/follow/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        // Mark notification as seen in backend
-        await fetch('/api/notifications/seen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
-
-        await fetch('/api/notifications/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
-        setNotifications(prev => prev.filter(n => n.id !== notifId));
-      }
-    } catch (err) {
-      console.error('Erreur rejet:', err);
-    }
-  };
-
-  const toggleProfile = () => {
-    setShowProfile(prev => !prev)
-  }
-
-  const togglePrivacy = async () => {
-    try {
-      const res = await fetch('/api/user/toggle-privacy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_private: !isPrivate })
-      })
-      if (res.ok) {
-        setIsPrivate(!isPrivate)
-      }
-    } catch (err) {
-      console.error('Erreur modification confidentialité', err)
-    }
-  }
-
-  useEffect(() => {
-    console.log("📦 USER reçu dans Navbar :", user);
-    if (user && typeof user.IsPrivate === 'boolean') {
-      setIsPrivate(user.IsPrivate);
-    }
-  }, [user]);
-
-  // ✅ CORRECTION : Éviter les doublons dans les notifications temps réel
-  useEffect(() => {
-    if (realtimeNotification) {
-      console.log("New realtime notification:", realtimeNotification);
-
-      // ✅ Gérer les notifications de réponse aux demandes de suivi
-      if (realtimeNotification.type === "follow_request_response") {
-        const { sender_id, recipient_id, action } = realtimeNotification;
-
-        // Si nous sommes le destinataire de la réponse (celui qui a fait la demande)
-        if (recipient_id === user?.ID) {
-          // Supprimer la notification de demande en attente de notre côté
-          setNotifications(prev => {
-            return prev.filter(n =>
-              !(n.type === 'follow_request' && n.sender_id === sender_id)
-            );
-          });
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-        return; // Ne pas traiter cette notification comme une notification normale
-      }
-
-      setNotifications(prev => {
-        const currentNotifs = prev || [];
-
-        // Vérifier si cette notification existe déjà
-        const exists = currentNotifs.some(n =>
-          n.sender_id === realtimeNotification.sender_id &&
-          n.type === realtimeNotification.type &&
-          n.message === realtimeNotification.message
-        );
-
-        // Si elle existe déjà, ne pas l'ajouter
-        if (exists) {
-          console.log("Notification déjà présente, ignorer");
-          return currentNotifs;
-        }
-
-        // Sinon, l'ajouter
-        const newNotif = {
-          id: realtimeNotification.id,
-          sender_id: realtimeNotification.sender_id,
-          type: realtimeNotification.type,
-          message: realtimeNotification.message,
-          created_at: realtimeNotification.created_at || new Date().toISOString(),
-          seen: false
-        };
-
-        const updated = [newNotif, ...currentNotifs];
-        // Always recalculate unread count based on notifications state
-        setUnreadCount(updated.filter(n => !n.seen).length);
-        return updated;
-      });
-    }
-  }, [realtimeNotification, user?.ID]);
-
   return (
     <nav className="bg-gray-900 shadow px-6 py-4 border-b border-gray-800 relative">
       <div className="flex items-center justify-between">
@@ -283,7 +43,15 @@ export default function Navbar({
             {results !== null && (
               <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
                 {results.map((u) => (
-                  <div key={u.id} className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
+                  <div
+                    key={u.id}
+                    className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
+                    onClick={() => {
+                      fetchUserById(u.id);
+                      setSearch("");
+                      setResults([]);
+                    }}
+                  >
                     <p className="font-medium text-white">
                       {u.first_name} {u.last_name}
                     </p>
@@ -294,10 +62,10 @@ export default function Navbar({
             )}
           </div>
         ) : (
-          <div /> // Place vide pour conserver l'espace de gauche
+          <div />
         )}
 
-        {/* Droite : Actions, cloche, profil */}
+        {/* Droite */}
         <div className="flex items-center gap-4 ml-4 relative">
           {!hideActions && (
             <>
@@ -311,7 +79,7 @@ export default function Navbar({
             </>
           )}
 
-          {/* Cloche notifications (toujours visible) */}
+          {/* Notifications */}
           <div className="relative">
             <button
               ref={notificationButtonRef}
@@ -347,21 +115,27 @@ export default function Navbar({
                   <div className="space-y-2">
                     {notifications.map((notif, idx) => (
                       <div
-                        key={notif.id ? notif.id : `${notif.sender_id}-${notif.type}-${notif.message}-${idx}`}
-                        className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'}`}
+                        key={
+                          notif.id
+                            ? notif.id
+                            : `${notif.sender_id}-${notif.type}-${notif.message}-${idx}`
+                        }
+                        className={`p-3 rounded border ${
+                          notif.seen
+                            ? "bg-gray-800 border-gray-700"
+                            : "bg-blue-900 border-blue-600"
+                        }`}
                       >
-                        <p className="text-sm text-white break-words">
-                          {notif.message}
-                        </p>
+                        <p className="text-sm text-white break-words">{notif.message}</p>
                         <p className="text-xs text-gray-400 mt-1">
                           {new Date(notif.created_at).toLocaleString()}
                         </p>
-                        {notif.type === 'follow_request' && (
+                        {notif.type === "follow_request" && (
                           <div className="flex gap-2 mt-2">
                             <button
                               onClick={(e) => {
-                                e.stopPropagation()
-                                handleAccept(notif.id, notif.sender_id)
+                                e.stopPropagation();
+                                handleAccept(notif.id, notif.sender_id);
                               }}
                               className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
                             >
@@ -369,8 +143,8 @@ export default function Navbar({
                             </button>
                             <button
                               onClick={(e) => {
-                                e.stopPropagation()
-                                handleReject(notif.id, notif.sender_id)
+                                e.stopPropagation();
+                                handleReject(notif.id, notif.sender_id);
                               }}
                               className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                             >
@@ -385,20 +159,22 @@ export default function Navbar({
               </div>
             )}
           </div>
+
+          {/* Groups */}
           <Link href="/groups" className="text-gray-300 hover:text-white">
             👥 Groups
           </Link>
 
-          {/* Avatar utilisateur */}
+          {/* Avatar */}
           {user && (
             <div className="relative">
               <img
                 src={
                   user.Avatar
-                    ? user.Avatar.startsWith('http')
+                    ? user.Avatar.startsWith("http")
                       ? user.Avatar
-                      : `http://localhost:8080/${user?.Avatar}`
-                    : '/avatar.png'
+                      : `http://localhost:8080/${user.Avatar}`
+                    : "/avatar.png"
                 }
                 alt="Avatar"
                 onClick={toggleProfile}
@@ -414,16 +190,16 @@ export default function Navbar({
 
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-sm text-gray-300">
-                      {isPrivate ? '🔒 Profil privé' : '🌍 Profil public'}
+                      {isPrivate ? "🔒 Profil privé" : "🌍 Profil public"}
                     </span>
                     <button
                       onClick={togglePrivacy}
                       className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out 
-              ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
+                      ${isPrivate ? "bg-red-500" : "bg-green-500"}`}
                     >
                       <div
                         className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out 
-                ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
+                        ${isPrivate ? "translate-x-6" : "translate-x-0"}`}
                       ></div>
                     </button>
                   </div>
@@ -438,9 +214,8 @@ export default function Navbar({
               )}
             </div>
           )}
-
         </div>
       </div>
     </nav>
-  )
+  );
 }

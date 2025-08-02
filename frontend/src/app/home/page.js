@@ -1,4 +1,3 @@
-// src/app/home/page.js
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -11,7 +10,7 @@ import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
 
 export default function HomePage() {
-  // ... autres états existants ...
+  // ... your existing states ...
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
@@ -38,10 +37,7 @@ export default function HomePage() {
   const [realtimeNotification, setRealtimeNotification] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ✅ Nouvelle référence pour stocker le callback de suppression de notifications
   const removeNotificationCallback = useRef(null);
-
-  // États WebSocket améliorés
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState({});
   const ws = useRef(null);
@@ -51,11 +47,9 @@ export default function HomePage() {
 
   const router = useRouter();
 
-  // Configuration WebSocket améliorée
   const setupWebSocket = useCallback(() => {
     if (!user?.ID) return;
 
-    // Fermer la connexion existante si elle existe
     if (ws.current) {
       ws.current.close();
     }
@@ -72,7 +66,6 @@ export default function HomePage() {
       console.log('❌ WebSocket disconnected', e.code, e.reason);
       ws.current = null;
 
-      // Reconnexion automatique si ce n'est pas une fermeture volontaire
       if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
         reconnectAttempts.current += 1;
@@ -89,30 +82,23 @@ export default function HomePage() {
       try {
         const msg = JSON.parse(event.data);
 
-        // Gestion des messages d'erreur du serveur
         if (msg.type === "error") {
           console.error("Erreur WebSocket:", msg.content);
           showNotification("error", msg.content);
           return;
         }
 
-        // Gérer les mises à jour de statut de suivi
         if (msg.type === "follow_status_update") {
-          console.log("📡 Mise à jour statut de suivi reçue");
-          // Rafraîchir la liste des utilisateurs de chat
           fetchChatUsers();
           return;
         }
 
-        // Check if notification has expected fields
-        if (msg.type === "notification" || msg.type === "follow_request" || 
-            msg.type === "follow_request_response" || msg.type === "follow_request_cancelled") {
+        if (msg.type === "notification" || msg.type === "follow_request" ||
+          msg.type === "follow_request_response" || msg.type === "follow_request_cancelled") {
           setNotifications(prev => [msg, ...prev]);
           setUnreadCount(prev => prev + 1);
           setRealtimeNotification(msg);
         } else if (msg.type === 'private') {
-          console.log("💬 Message privé reçu:", msg);
-          // Ajouter le message avec un timestamp unique pour éviter les doublons
           const messageWithId = {
             ...msg,
             uniqueId: `${msg.from}-${msg.to}-${msg.timestamp}-${Date.now()}`
@@ -126,7 +112,6 @@ export default function HomePage() {
             );
 
             if (existing) {
-              console.log("Message déjà existant, ignoré");
               return prev;
             }
 
@@ -143,7 +128,6 @@ export default function HomePage() {
     return socket;
   }, [user?.ID]);
 
-  // Fonction utilitaire pour afficher les notifications
   const showNotification = (type, message) => {
     if (type === "error") {
       alert(`❌ Erreur: ${message}`);
@@ -152,7 +136,6 @@ export default function HomePage() {
     }
   };
 
-  // Initialiser WebSocket quand l'utilisateur est chargé
   useEffect(() => {
     if (user?.ID) {
       const socket = setupWebSocket();
@@ -164,7 +147,6 @@ export default function HomePage() {
     }
   }, [user?.ID]);
 
-  // Nettoyage à la fermeture du composant
   useEffect(() => {
     return () => {
       if (ws.current) {
@@ -173,20 +155,16 @@ export default function HomePage() {
     };
   }, []);
 
-  // Fonction pour envoyer un message WebSocket
   const sendMessage = useCallback((message) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      console.log("📤 Envoi message WebSocket:", message);
       ws.current.send(JSON.stringify(message));
 
-      // Ajouter immédiatement le message à l'état local pour feedback instantané
       const messageWithId = {
         ...message,
         uniqueId: `${message.from}-${message.to}-${message.timestamp}-${Date.now()}-sent`
       };
 
       setMessages(prev => {
-        // Éviter d'ajouter si déjà présent
         const exists = prev.some(m =>
           m.from === message.from &&
           m.to === message.to &&
@@ -198,24 +176,20 @@ export default function HomePage() {
         return [...prev, messageWithId];
       });
     } else {
-      console.error('❌ WebSocket non connecté, impossible d\'envoyer le message');
       showNotification("error", "Connexion WebSocket fermée. Impossible d'envoyer le message.");
     }
   }, []);
 
-  // ✅ Fonction pour recevoir le callback de suppression depuis Navbar
   const handleNotificationRemoved = useCallback((removeCallback) => {
     removeNotificationCallback.current = removeCallback;
   }, []);
 
-  // ✅ Fonction pour supprimer une notification (appelée depuis UserProfilePopup)
   const onNotificationRemoved = useCallback((criteria) => {
     if (removeNotificationCallback.current) {
       removeNotificationCallback.current(criteria);
     }
   }, []);
 
-  // Fonctions existantes...
   const togglePostForm = () => {
     setShowPostForm(prev => !prev)
   }
@@ -230,7 +204,6 @@ export default function HomePage() {
     }
   };
 
-  // Charger les données initiales
   useEffect(() => {
     fetchChatUsers();
     fetchUser();
@@ -239,34 +212,32 @@ export default function HomePage() {
 
   const fetchChatUsers = async () => {
     try {
-      // console.log("🔄 Rechargement de la liste des utilisateurs de chat...");
       const res = await fetch("http://localhost:8080/api/chat-users", {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setChatUsers(data);
-      // console.log("✅ Liste des utilisateurs de chat mise à jour:", data);
     } catch (err) {
       console.error("Error fetching users:", err);
     }
   };
 
-const fetchUser = async () => {
-  try {
-    const res = await fetch("http://localhost:8080/api/profile", {
-      credentials: "include",
-    });
+  const fetchUser = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/profile", {
+        credentials: "include",
+      });
 
-    if (!res.ok) throw new Error("Unauthorized");
+      if (!res.ok) throw new Error("Unauthorized");
 
-    const data = await res.json();
-    setUser(data);
-  } catch (err) {
-    console.error("Error loading profile:", err);
-    router.push("/login"); // <-- redirect if not authenticated
-  }
-};
+      const data = await res.json();
+      setUser(data);
+    } catch (err) {
+      console.error("Error loading profile:", err);
+      router.push("/login");
+    }
+  };
 
   const fetchPosts = () => {
     setLoading(true);
@@ -380,7 +351,6 @@ const fetchUser = async () => {
 
   const handleLogout = async () => {
     try {
-      // Fermer WebSocket avant logout
       if (ws.current) {
         ws.current.close(1000, 'User logging out');
       }
@@ -412,12 +382,15 @@ const fetchUser = async () => {
         togglePostForm={togglePostForm}
         realtimeNotification={realtimeNotification}
         fetchChatUsers={fetchChatUsers}
-        hideActions={false} // ✅ on affiche les icônes
-        hideSearch={false}
-        onNotificationRemoved={handleNotificationRemoved} // ✅ Passer le callback
+        onNotificationRemoved={onNotificationRemoved}
+        fetchUserById={fetchUserById}  
+        setSearch={setSearch}          
+        setResults={setResults}        
       />
 
-      {/* MESSAGES SIDEBAR */}
+
+      {/* SEARCH RESULTS: Add clickable user items here */}
+
       {showMessages && user && (
         <MessageSidebar
           chatUsers={chatUsers}
@@ -447,7 +420,6 @@ const fetchUser = async () => {
         )}
       </div>
 
-      {/* Affichage des posts */}
       <h2 className="text-xl font-bold mb-4"></h2>
       {posts.length === 0 ? (
         <p className="text-gray-400 text-sm">Aucun post à afficher.</p>
@@ -457,7 +429,6 @@ const fetchUser = async () => {
         ))
       )}
 
-      {/* CHAT BOXES */}
       <div className="fixed bottom-4 right-4 flex gap-4 z-40">
         {openChats.map((u) => (
           <ChatBox
@@ -473,7 +444,6 @@ const fetchUser = async () => {
         ))}
       </div>
 
-      {/* USER PROFILE POPUP */}
       {showPopup && selectedUser && (
         <UserProfilePopup
           selectedUser={selectedUser}
@@ -482,8 +452,8 @@ const fetchUser = async () => {
           followStatus={followStatus}
           setFollowStatus={setFollowStatus}
           fetchChatUsers={fetchChatUsers}
-          realtimeNotification={realtimeNotification} // ✅ Passer les notifications
-          onNotificationRemoved={onNotificationRemoved} // ✅ Passer le callback
+          realtimeNotification={realtimeNotification}
+          onNotificationRemoved={onNotificationRemoved}
         />
       )}
     </div>
