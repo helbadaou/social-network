@@ -37,8 +37,7 @@ type LoginRequest struct {
 }
 
 type InviteRequest struct {
-	UserID  int `json:"userId"`  // The user being invited
- 
+	UserID int `json:"userId"` // The user being invited
 }
 
 type RespondToInviteRequest struct {
@@ -269,8 +268,6 @@ func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 ////////////////////////////////////////////////////////////////////////////////
 
 func CheckGroupAccessHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("function accessed !")
-
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership")
 
@@ -320,8 +317,7 @@ func GetNonGroupMembersHandler(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/non-members")
 
 	groupID, err := strconv.Atoi(groupIDStr)
-
-	fmt.Println("group id is", groupID)
+	// fmt.Println("group id is", groupID)
 	if err != nil {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
@@ -362,11 +358,31 @@ func GetNonGroupMembersHandler(db *sql.DB, w http.ResponseWriter, r *http.Reques
 }
 
 func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r)
+	
+	fmt.Println("function accessed ----!")
+
+	var userID int
+
+	if r.Method == http.MethodPost {
+
+		err := json.NewDecoder(r.Body).Decode(&userID)
+		
+		if err != nil {
+			http.Error(w, "error", http.StatusBadRequest)
+			return
+		}
+
+	} else {
+		userID, _ = GetUserIDFromSession(r)
+	}
+
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		fmt.Println("unauthorized funchome !")
 		return
 	}
+
+	fmt.Println("user id ---", userID)
 
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/join")
@@ -375,7 +391,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
 	}
-
+	fmt.Println("group id", groupID)
 	// Check if already a member or request exists
 	var exists int
 	err = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM group_memberships WHERE group_id = ? AND user_id = ?`, groupID, userID).Scan(&exists)
@@ -395,6 +411,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create join request", http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("user pending added")
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -479,7 +496,7 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
 		return
 	}
-fmt.Println("invited added to db")
+	fmt.Println("invited added to db")
 
 	w.WriteHeader(http.StatusCreated)
 }

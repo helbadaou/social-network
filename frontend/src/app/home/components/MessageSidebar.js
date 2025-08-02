@@ -104,6 +104,25 @@ export default function MessageSidebar({
     }
   }
 
+const handleJoinGroup = async () => {
+  try {
+
+    const res = await fetch(`/api/groups/${activeGroupId}/membership/join`, {
+     
+    })
+    
+    if (!res.ok) {throw new Error('Failed to join group')}
+    setGroupState('pending');
+          
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+
+
+      
+
   useEffect(() => {
   async function fetchNonMembers() {
     const res = await fetch(`/api/groups/${activeGroupId}/non-members`);
@@ -149,6 +168,7 @@ export default function MessageSidebar({
           break;
         case 'none':
           setGroupState('none');
+          console.log('none');
           break;
         case 'creator':
           setGroupState('creator');
@@ -165,7 +185,7 @@ export default function MessageSidebar({
 
   const inviteUser = async (userId) => {
   try {
-    const res = await fetch(`/api/groups/${activeGroupId}/invite`, {
+    const res = await fetch(`/api/groups/${activeGroupId}/membership/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
@@ -379,7 +399,7 @@ export default function MessageSidebar({
                   <div>
                     <h2 className="text-xl font-semibold text-white mb-4">Join Group</h2>
                     <p className="text-gray-300 mb-4">You are not a member of this group.</p>
-                    <button onClick={handleJoinGroup}
+                    <button onClick={() => handleJoinGroup()}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                     >
                       Request to Join

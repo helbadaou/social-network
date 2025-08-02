@@ -73,7 +73,7 @@ func main() {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
 			auth.CheckGroupAccessHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/join") && r.Method == http.MethodPost:
+		case strings.HasSuffix(r.URL.Path, "/membership/join"):
 			auth.JoinGroupRequestHandler(w, r)
 		case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
 			auth.AcceptGroupInviteHandler(w, r)

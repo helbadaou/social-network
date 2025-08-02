@@ -594,3 +594,56 @@
   font-size: 0.9rem;
   color: #888;
 }
+
+
+.inviteSection {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.inviteSection h3 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.inviteUser {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+  transition: background-color 0.2s ease;
+}
+
+.inviteUser:hover {
+  background-color: #eef6ff;
+}
+
+.inviteUser span {
+  font-size: 1rem;
+  color: #333;
+}
+
+.inviteUser button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.inviteUser button:hover {
+  background-color: #0056b3;
+}
