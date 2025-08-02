@@ -5,8 +5,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "./components/Navbar";
 import PostForm from "./components/PostForm";
-import MessageSidebar from "./components/MessageSidebar";
-import ChatBox from "./components/ChatBox";
+import MessageSidebar from "../messages/components/MessageSidebar";
+import ChatBox from "../messages/components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
 

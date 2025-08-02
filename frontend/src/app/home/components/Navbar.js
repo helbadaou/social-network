@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 
 export default function Navbar({
   user,
@@ -31,14 +32,14 @@ export default function Navbar({
       const filtered = prev.filter(notif => {
         // Si c'est une annulation de demande de suivi
         if (criteria.type === 'follow_request_cancelled') {
-          return !(notif.type === 'follow_request' && 
-                  notif.sender_id === criteria.sender_id);
+          return !(notif.type === 'follow_request' &&
+            notif.sender_id === criteria.sender_id);
         }
-        
+
         // Autres critères de suppression peuvent être ajoutés ici
         return true;
       });
-      
+
       // Recalculer le compteur non lu
       setUnreadCount(filtered.filter(n => !n.seen).length);
       return filtered;
@@ -70,8 +71,8 @@ export default function Navbar({
   const fetchNotifications = async () => {
     try {
       const res = await fetch("http://localhost:8080/api/notifications", {
-      credentials: 'include'
-    });
+        credentials: 'include'
+      });
 
       const data = await res.json();
 
@@ -219,12 +220,12 @@ export default function Navbar({
       // ✅ Gérer les notifications de réponse aux demandes de suivi
       if (realtimeNotification.type === "follow_request_response") {
         const { sender_id, recipient_id, action } = realtimeNotification;
-        
+
         // Si nous sommes le destinataire de la réponse (celui qui a fait la demande)
         if (recipient_id === user?.ID) {
           // Supprimer la notification de demande en attente de notre côté
           setNotifications(prev => {
-            return prev.filter(n => 
+            return prev.filter(n =>
               !(n.type === 'follow_request' && n.sender_id === sender_id)
             );
           });
@@ -279,7 +280,7 @@ export default function Navbar({
               onChange={handleSearch}
               className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none"
             />
-            {results.length > 0 && (
+            {results !== null && (
               <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
                 {results.map((u) => (
                   <div key={u.id} className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
@@ -384,6 +385,9 @@ export default function Navbar({
               </div>
             )}
           </div>
+          <Link href="/groups" className="text-gray-300 hover:text-white">
+            👥 Groups
+          </Link>
 
           {/* Avatar utilisateur */}
           {user && (
@@ -436,7 +440,7 @@ export default function Navbar({
           )}
 
         </div>
-        </div>
+      </div>
     </nav>
   )
 }
