@@ -2,17 +2,17 @@
 'use client'
 import { useEffect, useState } from 'react'
 import GroupCard from './GroupCard'
-import { useRouter } from 'next/navigation'
 
 export default function GroupList() {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await fetch('/api/groups')
+        const res = await fetch('/api/groups', {
+          credentials: 'include'
+        })
         const data = await res.json()
         setGroups(data)
       } catch (err) {
@@ -25,20 +25,18 @@ export default function GroupList() {
     fetchGroups()
   }, [])
 
-  const handleGroupClick = (groupId) => {
-    router.push(`/groups/${groupId}`)
-  }
-
-  if (loading) return <div>Loading groups...</div>
+  if (loading) return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-gray-800 rounded-xl p-4 h-32 animate-pulse"></div>
+      ))}
+    </div>
+  )
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {groups.map(group => (
-        <GroupCard 
-          key={group.id}
-          group={group}
-          onClick={() => handleGroupClick(group.id)}
-        />
+        <GroupCard key={group.id} group={group} />
       ))}
     </div>
   )
