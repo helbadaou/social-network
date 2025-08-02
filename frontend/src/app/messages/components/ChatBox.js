@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import EmojiPicker from './Emoji'
+import EmojiPicker from '../../home/components/Emoji'
 
 export default function ChatBox({ currentUser, recipient, onSendMessage, messages, input, setInput, onClose }) {
   const scrollRef = useRef()
