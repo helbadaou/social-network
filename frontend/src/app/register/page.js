@@ -1,12 +1,27 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-
 export default function RegisterPage() {
   const router = useRouter()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/profile', {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          router.push('/home')
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err)
+      }
+    }
+    checkAuth()
+  }, [router])
 
   const [form, setForm] = useState({
     email: '',
@@ -37,7 +52,6 @@ export default function RegisterPage() {
     try {
       const res = await fetch('http://localhost:8080/api/register', {
         method: 'POST',
-        // headers: { 'Content-Type': 'application/json' },
         body: formData,
       })
 
@@ -80,10 +94,9 @@ export default function RegisterPage() {
           type="file"
           name="avatar"
           accept="image/*"
-          onChange={(e) => setForm(prev => ({ ...prev, avatar: e.target.files[0] }))}
+          onChange={(e) => setForm((prev) => ({ ...prev, avatar: e.target.files[0] }))}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-400"
         />
-
 
         <button
           type="submit"
@@ -92,7 +105,6 @@ export default function RegisterPage() {
           Register
         </button>
 
-        {/* 👉 Lien vers le login */}
         <p className="text-center text-sm mt-4 text-gray-600">
           Vous avez déjà un compte ?{' '}
           <Link href="/login" className="text-blue-600 hover:underline">
@@ -103,8 +115,9 @@ export default function RegisterPage() {
 
       {message.text && (
         <p
-          className={`mt-4 text-center font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'
-            }`}
+          className={`mt-4 text-center font-medium ${
+            message.type === 'success' ? 'text-green-600' : 'text-red-600'
+          }`}
         >
           {message.text}
         </p>

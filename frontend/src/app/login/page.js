@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -9,6 +9,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    // 👀 Check if user is already authenticated
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/profile', {
+          credentials: 'include',
+        })
+
+        if (res.ok) {
+          router.push('/home') // ✅ Already logged in, redirect to home
+        }
+      } catch (err) {
+        // Not logged in or network error — stay on login
+        console.error('Auth check failed:', err)
+      }
+    }
+
+    checkAuth()
+  }, [])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -24,7 +44,6 @@ export default function LoginPage() {
       if (res.ok) {
         const userData = await res.json()
         localStorage.setItem('user', JSON.stringify(userData))
-
         setMessage('✅ Login successful!')
         router.push('/home')
       } else {
@@ -65,7 +84,6 @@ export default function LoginPage() {
             Login
           </button>
 
-          {/* 👉 Lien vers l'inscription */}
           <p className="text-center text-sm mt-4 text-gray-600">
             Pas encore de compte ?{' '}
             <Link href="/register" className="text-blue-600 hover:underline">

@@ -252,18 +252,21 @@ export default function HomePage() {
     }
   };
 
-  const fetchUser = async () => {
-    try {
-      const res = await fetch("http://localhost:8080/api/profile", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Unauthorized");
-      const data = await res.json();
-      setUser(data);
-    } catch (err) {
-      console.error("Error loading profile:", err);
-    }
-  };
+const fetchUser = async () => {
+  try {
+    const res = await fetch("http://localhost:8080/api/profile", {
+      credentials: "include",
+    });
+
+    if (!res.ok) throw new Error("Unauthorized");
+
+    const data = await res.json();
+    setUser(data);
+  } catch (err) {
+    console.error("Error loading profile:", err);
+    router.push("/login"); // <-- redirect if not authenticated
+  }
+};
 
   const fetchPosts = () => {
     setLoading(true);

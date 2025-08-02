@@ -119,11 +119,6 @@ func main() {
 			http.NotFound(w, r)
 		}
 	}))
-
-	//////////////////////////////////////////////////////////////////////
-
-	// mux.HandleFunc("/api/groups/invite", auth.InviteUserToGroupHandler(sqlite.DB))
-
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("🧲 ServeWS hit") // ← Ajoute un log pour debug
 		websocket.ServeWS(hub, w, r)
