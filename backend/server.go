@@ -95,7 +95,7 @@ func main() {
 		case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
 			auth.ApproveRequestHandler(w, r)
 		case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
-			auth.DeclineGroupInviteHandler(w, r)
+			auth.DeclineRequestHandler(w, r)
 		case strings.HasSuffix(r.URL.Path, "/non-members"):
 			auth.GetNonGroupMembersHandler(sqlite.DB, w, r)
 		// NOUVELLES ROUTES POUR LES POSTS
