@@ -539,6 +539,61 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func DeclineRequestHandler(w http.ResponseWriter, r *http.Request) {
+    // 1. Get and validate the user making the request
+    creatorID, _ := GetUserIDFromSession(r)
+    if creatorID == 0 {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+    
+    // 2. Extract group ID from URL path
+    groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+    groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/decline") // Fixed endpoint to match function
+    groupID, err := strconv.Atoi(groupIDStr)
+    if err != nil {
+        http.Error(w, "Invalid group ID", http.StatusBadRequest)
+        return
+    }
+    
+    // 3. Verify the user is the group creator
+    var groupCreatorID int
+    err = sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Group not found", http.StatusNotFound)
+        } else {
+            http.Error(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
+    if groupCreatorID != creatorID {
+        http.Error(w, "Forbidden", http.StatusForbidden)
+        return
+    }
+
+    // 4. Parse request body
+    var body struct {
+        UserID int `json:"user_id"`
+    }
+    err = json.NewDecoder(r.Body).Decode(&body)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // 5. Delete the membership request
+    _, err = sqlite.DB.Exec(`DELETE FROM group_memberships 
+                            WHERE group_id = ? AND user_id = ? AND status = 'pending'`, 
+                            groupID, body.UserID)
+    if err != nil {
+        http.Error(w, "Failed to decline request", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+}
+
 func DeclineGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := GetUserIDFromSession(r) // Adjust this for your session logic
 
