@@ -421,7 +421,7 @@ export default function HomePage() {
       </div>
 
       <h2 className="text-xl font-bold mb-4"></h2>
-      {posts.length === 0 ? (
+      {posts === null ? (
         <p className="text-gray-400 text-sm">Aucun post à afficher.</p>
       ) : (
         posts.map(post => (
