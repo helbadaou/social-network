@@ -121,3 +121,11 @@ type GroupWithStatus struct {
     IsCreator   bool   `json:"is_creator"`
     IsPending   bool   `json:"is_pending"`
 }
+
+type PendingRequest struct {
+	RequestID  int    `json:"request_id"`
+	UserID     int    `json:"user_id"`
+	Username   string `json:"username"`
+	Avatar     string `json:"avatar"`
+	RequestedAt string `json:"requested_at"`
+}
