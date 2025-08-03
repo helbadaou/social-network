@@ -507,11 +507,11 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
+	
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/approve")
 	groupID, _ := strconv.Atoi(groupIDStr)
-
+	
 	var groupCreatorID int
 	err := sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
 	if err != nil || groupCreatorID != creatorID {
@@ -522,6 +522,7 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	var body ApproveRequest
 	err = json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
