@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'  // Added useRouter import
 
 export default function Navbar({
   user,
@@ -20,6 +21,8 @@ export default function Navbar({
   setSearch,
   setResults
 }) {
+  const router = useRouter()  // Initialize router
+
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
 
@@ -327,19 +330,28 @@ export default function Navbar({
           <Link href="/groups" className="text-gray-300 hover:text-white">👥 Groups</Link>
 
           {user && (
-            <div className="relative">
+            <div className="flex items-center gap-3 relative">
               <img
                 src={user.Avatar ? (user.Avatar.startsWith('http') ? user.Avatar : `http://localhost:8080/${user.Avatar}`) : '/avatar.png'}
                 alt="Avatar"
                 onClick={() => {
                   toggleProfile();
                   fetchUserById?.(user.ID);
+                  setSearch?.('');
+                  setResults?.([]);
                 }}
                 className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
               />
 
+              <button
+                onClick={handleLogout}
+                className="text-sm text-red-400 hover:text-red-600 border border-red-500 px-3 py-1 rounded-lg transition"
+              >
+                Logout
+              </button>
+
               {showProfile && (
-                <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-20">
+                <div className="absolute right-0 top-12 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-20">
                   <h2 className="font-semibold text-white">{user.FirstName} {user.LastName}</h2>
                   <p className="text-sm text-blue-400 mt-1">{user.Email}</p>
 
@@ -354,10 +366,6 @@ export default function Navbar({
                       <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}></div>
                     </button>
                   </div>
-
-                  <button onClick={handleLogout} className="mt-3 w-full text-sm text-red-500 hover:underline">
-                    Logout
-                  </button>
                 </div>
               )}
             </div>
@@ -365,5 +373,6 @@ export default function Navbar({
         </div>
       </div>
     </nav>
-  )
+  );
 }
+
