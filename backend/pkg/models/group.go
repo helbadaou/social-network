@@ -113,3 +113,11 @@ type GroupResponse struct {
 	IsCreator   bool   `json:"is_creator"`
 	IsPending   bool   `json:"is_pending"`
 }
+
+type GroupWithStatus struct {
+    Group
+    MemberCount int    `json:"member_count"`
+    IsMember    bool   `json:"is_member"`
+    IsCreator   bool   `json:"is_creator"`
+    IsPending   bool   `json:"is_pending"`
+}

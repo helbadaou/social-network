@@ -9,22 +9,38 @@ import (
 	"social-network/backend/pkg/models"
 )
 
-func GetAllGroups(db *sql.DB) ([]models.Group, error) {
-	rows, err := db.Query("SELECT id, title, description FROM groups")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func GetAllGroups(db *sql.DB, userID int) ([]models.GroupWithStatus, error) {
+	  query := `
+        SELECT 
+            g.id, g.title, g.description, g.creator_id,
+            COUNT(gm.user_id) as member_count,
+            EXISTS(SELECT 1 FROM group_memberships WHERE group_id = g.id AND user_id = ? AND status = 'accepted') as is_member,
+            g.creator_id = ? as is_creator,
+            EXISTS(SELECT 1 FROM group_memberships WHERE group_id = g.id AND user_id = ? AND status = 'pending') as is_pending
+        FROM groups g
+        LEFT JOIN group_memberships gm ON g.id = gm.group_id AND gm.status = 'accepted'
+        GROUP BY g.id
+    `
 
-	var groups []models.Group
-	for rows.Next() {
-		var g models.Group
-		if err := rows.Scan(&g.ID, &g.Title, &g.Description); err != nil {
-			return nil, err
-		}
-		groups = append(groups, g)
-	}
-	return groups, nil
+    rows, err := db.Query(query, userID, userID, userID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var groups []models.GroupWithStatus
+    for rows.Next() {
+        var g models.GroupWithStatus
+        err := rows.Scan(
+            &g.ID, &g.Title, &g.Description, &g.CreatorID,
+            &g.MemberCount, &g.IsMember, &g.IsCreator, &g.IsPending,
+        )
+        if err != nil {
+            return nil, err
+        }
+        groups = append(groups, g)
+    }
+    return groups, nil
 }
 
 func CreateGroup(db *sql.DB, group models.Group) (models.Group, error) {
