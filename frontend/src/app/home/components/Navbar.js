@@ -245,7 +245,11 @@ export default function Navbar({
             {results && (
               <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
                 {results.map((u) => (
-                  <div key={u.id} className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
+                  <div
+                    key={u.id}
+                    className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
+                    onClick={() => router.push(`/profile/${u.id}`)}  // moved here, wrapped in arrow function
+                  >
                     <p className="font-medium text-white">
                       {u.first_name} {u.last_name}
                     </p>
@@ -335,7 +339,7 @@ export default function Navbar({
                 src={user.Avatar ? (user.Avatar.startsWith('http') ? user.Avatar : `http://localhost:8080/${user.Avatar}`) : '/avatar.png'}
                 alt="Avatar"
                 onClick={() => {
-                router.push(`/profile/${user.ID}`);
+                  router.push(`/profile/${user.ID}`);
                 }}
                 className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
               />
