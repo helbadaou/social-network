@@ -223,7 +223,6 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
-	log.Println("access")
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("in return")
 
@@ -233,11 +232,17 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var group models.Group
-		log.Println("good method")
 		if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		userId, ok := GetUserIDFromSession(r)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		group.CreatorID = userId
 
 		log.Println("valid body")
 		createdGroup, err := sqlite.CreateGroup(db, group)
@@ -254,7 +259,12 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 
 func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		groups, err := sqlite.GetAllGroups(dbConn)
+		userId, ok := GetUserIDFromSession(r)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		groups, err := sqlite.GetAllGroups(dbConn, userId)
 		if err != nil {
 			http.Error(w, "Failed to fetch groups", http.StatusInternalServerError)
 			return
@@ -358,7 +368,6 @@ func GetNonGroupMembersHandler(db *sql.DB, w http.ResponseWriter, r *http.Reques
 }
 
 func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
-	
 	fmt.Println("function accessed ----!")
 
 	var userID int
@@ -366,7 +375,6 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 
 		err := json.NewDecoder(r.Body).Decode(&userID)
-		
 		if err != nil {
 			http.Error(w, "error", http.StatusBadRequest)
 			return
@@ -978,28 +986,28 @@ func GetEventResponsesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
-    // Extract group ID from URL
-    pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-    groupID, err := strconv.Atoi(pathParts[len(pathParts)-1])
-    if err != nil {
-        http.Error(w, "Invalid group ID", http.StatusBadRequest)
-        return
-    }
+	// Extract group ID from URL
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	groupID, err := strconv.Atoi(pathParts[len(pathParts)-1])
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
 
-    // Get authenticated user ID from context
-    _, ok := GetUserIDFromSession(r)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+	// Get authenticated user ID from context
+	_, ok := GetUserIDFromSession(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-    // Fetch and return group data
-    group, err := sqlite.GetGroupByID(sqlite.DB, groupID)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// Fetch and return group data
+	group, err := sqlite.GetGroupByID(sqlite.DB, groupID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(group)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(group)
 }
