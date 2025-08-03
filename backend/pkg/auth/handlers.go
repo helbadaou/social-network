@@ -987,14 +987,14 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	userId, ok := GetUserIDFromSession(r)
+	userID, ok := GetUserIDFromSession(r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// Fetch and return group data
-	group, err := sqlite.GetGroupByID(sqlite.DB, groupID, userId)
+	group, err := sqlite.GetGroupByID(sqlite.DB, groupID, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1004,78 +1004,79 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(group)
 }
 
-func GetPendingRequestsHandler(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract group ID from URL
-		groupID, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/groups/"))
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
-			return
-		}
+// auth/handlers.go
+func GetPendingRequestsHandler(w http.ResponseWriter, r *http.Request) {
+    // Extract group ID from URL (e.g., /api/groups/123/membership/pending_requests)
+    pathParts := strings.Split(r.URL.Path, "/")
+    groupID, err := strconv.Atoi(pathParts[3]) // 0: "", 1: "api", 2: "groups", 3: "123"
+    if err != nil {
+        http.Error(w, "Invalid group ID", http.StatusBadRequest)
+        return
+    }
 
-		// Get user ID from session
-		userID, ok := GetUserIDFromSession(r)
-		if !ok {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+    // Get user ID from session
+    userID, ok := GetUserIDFromSession(r)
+    if !ok {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+    // Verify user is group creator
+    var creatorID int
+    err = sqlite.DB.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Group not found", http.StatusNotFound)
+        } else {
+            http.Error(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
 
-		// Verify user is group creator
-		var creatorID int
-		err = db.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				http.Error(w, "Group not found", http.StatusNotFound)
-			} else {
-				http.Error(w, "Database error", http.StatusInternalServerError)
-			}
-			return
-		}
+    if creatorID != userID {
+        http.Error(w, "Only group creator can view pending requests", http.StatusForbidden)
+        return
+    }
 
-		if creatorID != userID {
-			http.Error(w, "Only group creator can view pending requests", http.StatusForbidden)
-			return
-		}
+    // Get pending requests
+    rows, err := sqlite.DB.Query(`
+        SELECT 
+            gm.id as request_id,
+            u.id as user_id,
+            u.nickname,
+            u.avatar,
+            gm.created_at as requested_at
+        FROM group_memberships gm
+        JOIN users u ON gm.user_id = u.id
+        WHERE gm.group_id = ? AND gm.status = 'pending'
+        ORDER BY gm.created_at DESC
+    `, groupID)
 
-		// Get pending requests
-		rows, err := db.Query(`
-			SELECT 
-				gm.id as request_id,
-				u.id as user_id,
-				u.username,
-				u.avatar,
-				gm.created_at as requested_at
-			FROM group_memberships gm
-			JOIN users u ON gm.user_id = u.id
-			WHERE gm.group_id = ? AND gm.status = 'pending'
-			ORDER BY gm.created_at DESC
-		`, groupID)
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
+    if err != nil {
+		fmt.Println(err)
+        http.Error(w, "Database error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
 
-		var requests []models.PendingRequest
-		for rows.Next() {
-			var req models.PendingRequest
-			var createdAt time.Time
-			err := rows.Scan(
-				&req.RequestID,
-				&req.UserID,
-				&req.Username,
-				&req.Avatar,
-				&createdAt,
-			)
-			if err != nil {
-				http.Error(w, "Database error", http.StatusInternalServerError)
-				return
-			}
-			req.RequestedAt = createdAt.Format(time.RFC3339)
-			requests = append(requests, req)
-		}
+    var requests []models.PendingRequest
+    for rows.Next() {
+        var req models.PendingRequest
+        var createdAt time.Time
+        err := rows.Scan(
+            &req.RequestID,
+            &req.UserID,
+            &req.Username,
+            &req.Avatar,
+            &createdAt,
+        )
+        if err != nil {
+            http.Error(w, "Database error", http.StatusInternalServerError)
+            return
+        }
+        req.RequestedAt = createdAt.Format(time.RFC3339)
+        requests = append(requests, req)
+    }
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(requests)
-	}
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(requests)
 }

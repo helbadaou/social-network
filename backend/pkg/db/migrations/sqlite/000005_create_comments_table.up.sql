@@ -4,7 +4,7 @@ CREATE TABLE comments (
   user_id INTEGER NOT NULL,
   content TEXT,
   image TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (post_id) REFERENCES posts(id),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

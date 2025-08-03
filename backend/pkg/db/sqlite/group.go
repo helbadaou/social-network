@@ -10,7 +10,7 @@ import (
 )
 
 func GetAllGroups(db *sql.DB, userID int) ([]models.GroupWithStatus, error) {
-	query := `
+	  query := `
         SELECT 
             g.id, g.title, g.description, g.creator_id,
             COUNT(gm.user_id) as member_count,
@@ -22,25 +22,25 @@ func GetAllGroups(db *sql.DB, userID int) ([]models.GroupWithStatus, error) {
         GROUP BY g.id
     `
 
-	rows, err := db.Query(query, userID, userID, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+    rows, err := db.Query(query, userID, userID, userID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
 
-	var groups []models.GroupWithStatus
-	for rows.Next() {
-		var g models.GroupWithStatus
-		err := rows.Scan(
-			&g.ID, &g.Title, &g.Description, &g.CreatorID,
-			&g.MemberCount, &g.IsMember, &g.IsCreator, &g.IsPending,
-		)
-		if err != nil {
-			return nil, err
-		}
-		groups = append(groups, g)
-	}
-	return groups, nil
+    var groups []models.GroupWithStatus
+    for rows.Next() {
+        var g models.GroupWithStatus
+        err := rows.Scan(
+            &g.ID, &g.Title, &g.Description, &g.CreatorID,
+            &g.MemberCount, &g.IsMember, &g.IsCreator, &g.IsPending,
+        )
+        if err != nil {
+            return nil, err
+        }
+        groups = append(groups, g)
+    }
+    return groups, nil
 }
 
 func CreateGroup(db *sql.DB, group models.Group) (models.Group, error) {
@@ -237,29 +237,30 @@ func CreateGroupEvent(db *sql.DB, event models.GroupEvent) (models.GroupEvent, e
 }
 
 func GetGroupEvents(db *sql.DB, groupID int, userID int) ([]models.GroupEvent, error) {
-	log.Printf("GetGroupEvents - groupID: %d, userID: %d", groupID, userID)
+    log.Printf("GetGroupEvents - groupID: %d, userID: %d", groupID, userID)
 
-	// Vérifier membership
-	var memberCount int
-	err := db.QueryRow(`
+    // Vérifier membership
+    var memberCount int
+    err := db.QueryRow(`
         SELECT COUNT(*) FROM (
             SELECT 1 FROM group_memberships
             WHERE group_id = ? AND user_id = ? AND status = 'accepted'
             UNION
             SELECT 1 FROM groups WHERE id = ? AND creator_id = ?
         )`, groupID, userID, groupID, userID).Scan(&memberCount)
-	if err != nil {
-		log.Printf("Error checking membership: %v", err)
-		return nil, err
-	}
 
-	if memberCount == 0 {
-		log.Println("User is not a member of the group")
-		return []models.GroupEvent{}, nil
-	}
+    if err != nil {
+        log.Printf("Error checking membership: %v", err)
+        return nil, err
+    }
 
-	// Requête principale pour les événements
-	query := `
+    if memberCount == 0 {
+        log.Println("User is not a member of the group")
+        return []models.GroupEvent{}, nil
+    }
+
+    // Requête principale pour les événements
+    query := `
         SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
                ge.event_date, ge.created_at,
                u.first_name || ' ' || u.last_name as creator_name,
@@ -273,45 +274,45 @@ func GetGroupEvents(db *sql.DB, groupID int, userID int) ([]models.GroupEvent, e
         GROUP BY ge.id
         ORDER BY ge.event_date ASC`
 
-	rows, err := db.Query(query, userID, groupID)
-	if err != nil {
-		log.Printf("Error querying events: %v", err)
-		return nil, err
-	}
-	defer rows.Close()
+    rows, err := db.Query(query, userID, groupID)
+    if err != nil {
+        log.Printf("Error querying events: %v", err)
+        return nil, err
+    }
+    defer rows.Close()
 
-	var events []models.GroupEvent
-	for rows.Next() {
-		var event models.GroupEvent
-		var userResponse sql.NullString
-		err := rows.Scan(
-			&event.ID, &event.GroupID, &event.CreatorID, &event.Title, &event.Description,
-			&event.EventDate, &event.CreatedAt, &event.CreatorName,
-			&event.GoingCount, &event.NotGoingCount, &userResponse,
-		)
-		if err != nil {
-			log.Printf("Error scanning event row: %v", err)
-			return nil, err
-		}
+    var events []models.GroupEvent
+    for rows.Next() {
+        var event models.GroupEvent
+        var userResponse sql.NullString
+        err := rows.Scan(
+            &event.ID, &event.GroupID, &event.CreatorID, &event.Title, &event.Description,
+            &event.EventDate, &event.CreatedAt, &event.CreatorName,
+            &event.GoingCount, &event.NotGoingCount, &userResponse,
+        )
+        if err != nil {
+            log.Printf("Error scanning event row: %v", err)
+            return nil, err
+        }
 
-		if userResponse.Valid {
-			event.UserResponse = userResponse.String
-		}
+        if userResponse.Valid {
+            event.UserResponse = userResponse.String
+        }
 
-		events = append(events, event)
-	}
+        events = append(events, event)
+    }
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error in rows: %v", err)
-		return nil, err
-	}
+    if err = rows.Err(); err != nil {
+        log.Printf("Error in rows: %v", err)
+        return nil, err
+    }
 
-	if events == nil {
-		events = []models.GroupEvent{}
-	}
+    if events == nil {
+        events = []models.GroupEvent{}
+    }
 
-	log.Printf("Returning %d events", len(events))
-	return events, nil
+    log.Printf("Returning %d events", len(events))
+    return events, nil
 }
 
 func CreateEventResponse(db *sql.DB, response models.EventResponse) error {
@@ -332,6 +333,7 @@ func GetEventResponses(db *sql.DB, eventID int) ([]models.EventResponse, error) 
 		WHERE er.event_id = ?
 		ORDER BY er.created_at DESC`,
 		eventID)
+
 	if err != nil {
 		return []models.EventResponse{}, err
 	}
@@ -377,33 +379,33 @@ func IsGroupMember(db *sql.DB, groupID int, userID int) (bool, error) {
 }
 
 func GetGroupMembers(db *sql.DB, groupID int) ([]int, error) {
-	var members []int
+    var members []int
 
-	rows, err := db.Query(`
+    rows, err := db.Query(`
         SELECT user_id FROM group_memberships 
         WHERE group_id = ? AND status = 'accepted'
         UNION
         SELECT creator_id FROM groups WHERE id = ?
     `, groupID, groupID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+    
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
 
-	for rows.Next() {
-		var memberID int
-		if err := rows.Scan(&memberID); err != nil {
-			return nil, err
-		}
-		members = append(members, memberID)
-	}
+    for rows.Next() {
+        var memberID int
+        if err := rows.Scan(&memberID); err != nil {
+            return nil, err
+        }
+        members = append(members, memberID)
+    }
 
-	return members, nil
+    return members, nil
 }
 
-// Enhanced GetGroupByID function
 func GetGroupByID(db *sql.DB, groupID, userID int) (*models.GroupResponse, error) {
-	query := `
+    query := `
         SELECT 
             g.id, g.title, g.description, g.creator_id, g.created_at,
             COUNT(gm.user_id) as member_count,
@@ -416,15 +418,16 @@ func GetGroupByID(db *sql.DB, groupID, userID int) (*models.GroupResponse, error
         GROUP BY g.id
     `
 
-	var group models.GroupResponse
-	err := db.QueryRow(query, userID, userID, userID, groupID).Scan(
-		&group.ID, &group.Title, &group.Description,
-		&group.CreatorID, &group.CreatedAt, &group.MemberCount,
-		&group.IsMember, &group.IsCreator, &group.IsPending,
-	)
-	if err != nil {
-		return nil, err
-	}
+    var group models.GroupResponse
+    err := db.QueryRow(query, userID, userID, userID, groupID).Scan(
+        &group.ID, &group.Title, &group.Description, 
+        &group.CreatorID, &group.CreatedAt, &group.MemberCount,
+        &group.IsMember, &group.IsCreator, &group.IsPending,
+    )
 
-	return &group, nil
+    if err != nil {
+        return nil, err
+    }
+
+    return &group, nil
 }

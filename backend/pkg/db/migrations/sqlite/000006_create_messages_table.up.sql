@@ -7,4 +7,6 @@ CREATE TABLE messages (
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (from_id) REFERENCES users(id),
     FOREIGN KEY (to_id) REFERENCES users(id)
-CREATE INDEX idx_messages_users ON messages(from_id, to_id));
+);
+
+CREATE INDEX idx_messages_users ON messages(from_id, to_id);
