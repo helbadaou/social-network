@@ -1,10 +1,9 @@
-// src/app/groups/page.js
+//src/app/groups/page.js
 'use client'
 import { useState } from 'react'
 import GroupList from './components/GroupList'
 import CreateGroupModal from './components/CreateGroupModal'
 import Navbar from '../home/components/Navbar'
-
 export default function GroupsPage({
   user,
   handleSearch,
@@ -18,12 +17,10 @@ export default function GroupsPage({
 }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-
   const handleGroupSearch = (e) => {
     setSearchTerm(e.target.value)
     // You can add API search functionality here if needed
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       {/* Navbar with all required props */}
@@ -40,8 +37,6 @@ export default function GroupsPage({
         hideSearch={true}
         onNotificationRemoved={handleNotificationRemoved}
       />
-
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-24"> {/* Added pt-24 to account for navbar height */}
         {/* Header with animated gradient */}
@@ -53,7 +48,6 @@ export default function GroupsPage({
             Connect, share, and grow with like-minded people
           </p>
         </div>
-
         {/* Action Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <div className="relative w-full sm:w-96">
@@ -77,7 +71,6 @@ export default function GroupsPage({
               />
             </svg>
           </div>
-
           <button
             onClick={() => setShowCreateModal(true)}
             className="w-full sm:w-auto flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300"
@@ -97,13 +90,11 @@ export default function GroupsPage({
             Create New Group
           </button>
         </div>
-
         {/* Group List */}
         <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700/50 p-6 shadow-2xl">
           <GroupList searchTerm={searchTerm} />
         </div>
       </div>
-
       {/* Create Group Modal */}
       {showCreateModal && (
         <CreateGroupModal
