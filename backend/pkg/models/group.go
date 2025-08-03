@@ -101,3 +101,15 @@ type GroupMessage struct {
     SenderNickname string   `json:"senderNickname"`
     SenderAvatar  string    `json:"senderAvatar"`
 }
+
+type GroupResponse struct {
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	CreatorID   int    `json:"creator_id"`
+	CreatedAt   string `json:"created_at"`
+	MemberCount int    `json:"member_count"`
+	IsMember    bool   `json:"is_member"`
+	IsCreator   bool   `json:"is_creator"`
+	IsPending   bool   `json:"is_pending"`
+}

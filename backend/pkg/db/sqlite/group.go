@@ -387,3 +387,27 @@ func GetGroupMembers(db *sql.DB, groupID int) ([]int, error) {
 
     return members, nil
 }
+
+func GetGroupByID(db *sql.DB, groupID int) (*models.GroupResponse, error) {
+	query := `
+		SELECT 
+			g.id, g.title, g.description, g.creator_id, g.created_at,
+			COUNT(gm.user_id) as member_count
+		FROM groups g
+		LEFT JOIN group_memberships gm ON g.id = gm.group_id AND gm.status = 'accepted'
+		WHERE g.id = ?
+		GROUP BY g.id
+	`
+
+	var group models.GroupResponse
+	err := db.QueryRow(query, groupID).Scan(
+		&group.ID, &group.Title, &group.Description, 
+		&group.CreatorID, &group.CreatedAt, &group.MemberCount,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &group, nil
+}

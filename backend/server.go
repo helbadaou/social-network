@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"social-network/backend/pkg/auth"
@@ -59,7 +60,7 @@ func main() {
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
-////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////
 
 	mux.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
@@ -70,6 +71,16 @@ func main() {
 	})
 
 	mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		// Extract potential group ID from path
+		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		groupIDStr := pathParts[len(pathParts)-1]
+
+		// Default case: Handle direct group ID requests
+		if _, err := strconv.Atoi(groupIDStr); err == nil && len(pathParts) == 3 && r.Method == http.MethodGet {
+			// This is a request to /api/groups/{id}
+			auth.GetGroupHandler(w, r)
+			return
+		}
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
 			auth.CheckGroupAccessHandler(w, r)

@@ -976,3 +976,30 @@ func GetEventResponsesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(responses)
 }
+
+func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
+    // Extract group ID from URL
+    pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+    groupID, err := strconv.Atoi(pathParts[len(pathParts)-1])
+    if err != nil {
+        http.Error(w, "Invalid group ID", http.StatusBadRequest)
+        return
+    }
+
+    // Get authenticated user ID from context
+    _, ok := GetUserIDFromSession(r)
+    if !ok {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+
+    // Fetch and return group data
+    group, err := sqlite.GetGroupByID(sqlite.DB, groupID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(group)
+}
