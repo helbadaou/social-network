@@ -335,10 +335,7 @@ export default function Navbar({
                 src={user.Avatar ? (user.Avatar.startsWith('http') ? user.Avatar : `http://localhost:8080/${user.Avatar}`) : '/avatar.png'}
                 alt="Avatar"
                 onClick={() => {
-                  toggleProfile();
-                  fetchUserById?.(user.ID);
-                  setSearch?.('');
-                  setResults?.([]);
+                  router.push("/profile")
                 }}
                 className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
               />
