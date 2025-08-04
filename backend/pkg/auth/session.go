@@ -13,16 +13,15 @@ func GetUserIDFromSession(w http.ResponseWriter, r *http.Request) (int, bool) {
 	id, err := ValidateSession(r, sqlite.DB)
 	if err != nil {
 		fmt.Println("Error validating session:", err)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
-			Secure:   false,
-		})
+		Value:    fmt.Sprintf("%v", "expired"),
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false, // use true if using https
+	})
+	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return 0, false
 	}
 	w.WriteHeader(http.StatusOK)

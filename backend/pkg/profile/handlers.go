@@ -18,6 +18,15 @@ import (
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
+			Secure:   false,
+		})
 		fmt.Println("Error getting session cookie:", ok)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
