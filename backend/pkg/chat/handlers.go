@@ -51,7 +51,7 @@ func canUsersChat(userID1, userID2 int) (bool, error) {
 }
 
 func GetAllChatUsers(w http.ResponseWriter, r *http.Request) {
-	requesterID, ok := auth.GetUserIDFromSession(r)
+	requesterID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -113,7 +113,7 @@ func GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -172,7 +172,7 @@ func GetChatHistory(w http.ResponseWriter, r *http.Request) {
 
 // pkg/chat/handlers.go
 func HandleGroupMessage(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -231,7 +231,7 @@ func HandleGroupMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroupMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := auth.GetUserIDFromSession(r)
+	userID, _ := auth.GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

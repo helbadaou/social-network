@@ -22,7 +22,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := x.GetUserIDFromSession(r) // 🔐 Your own logic
+	userID, _ := x.GetUserIDFromSession(w, r) // 🔐 Your own logic
 	if userID == 0 {
 		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Authentication required"))
 		conn.Close()

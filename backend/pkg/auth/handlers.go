@@ -12,8 +12,7 @@ import (
 	"strings"
 	"time"
 
-	// "log"
-
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"social-network/backend/pkg/db/sqlite"
@@ -35,7 +34,11 @@ type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
-
+type Session struct {
+	ID        string    `json:"id"`
+	UserID    int       `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
 type InviteRequest struct {
 	UserID int `json:"userId"` // The user being invited
 }
@@ -164,28 +167,31 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		&user.ID, &user.Email, &user.FirstName, &user.LastName,
 		&user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar,
 	)
-
 	// Après récupération depuis DB
 	if user.Avatar != "" {
 		user.Avatar = "http://localhost:8080/" + user.Avatar
 	}
-
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		fmt.Println("user not found")
 		return
 	}
-
+	sessionId, expiration, err := CreateSession(sqlite.DB, user.ID)
+	if err != nil {
+		fmt.Println("Session created successfully")
+		http.Error(w, "Email already registered or DB error", http.StatusConflict)
+		return
+	}
 	// Set a simple cookie with user ID
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
-		Value:    fmt.Sprintf("%d", userID),
+		Value:    fmt.Sprintf("%v", sessionId),
+		Expires:  expiration,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Secure:   false, // use true if using https
 	})
-
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -196,8 +202,21 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"date_of_birth": user.DateOfBirth,
 		"nickname":      user.Nickname,
 		"about":         user.About,
-		"avatar":        user.Avatar, // ← IMPORTANT !
+		"avatar":        user.Avatar,
 	})
+}
+
+func CreateSession(db *sql.DB, userID int) (string, time.Time, error) {
+	sessionID := uuid.New().String()
+	expiration := time.Now().AddDate(1000, 0, 0)
+	query := `INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)`
+	_, err := db.Exec(query, sessionID, userID, expiration)
+	if err != nil {
+		log.Println("Error storing session in database:", err)
+		return "", time.Time{}, err
+	}
+	fmt.Println("Session created successfully:", sessionID)
+	return sessionID, expiration, nil
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +255,7 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		userId, ok := GetUserIDFromSession(r)
+		userId, ok := GetUserIDFromSession(w, r)
 		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -259,7 +278,7 @@ func CreateGroupHandler(db *sql.DB) http.HandlerFunc {
 
 func GetGroupsHandler(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId, ok := GetUserIDFromSession(r)
+		userId, ok := GetUserIDFromSession(w, r)
 		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -289,7 +308,7 @@ func CheckGroupAccessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -333,7 +352,7 @@ func GetNonGroupMembersHandler(db *sql.DB, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -377,7 +396,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	userID, ok := GetUserIDFromSession(r)
+	userID, ok := GetUserIDFromSession(w, r)
 
 	if !ok || userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -417,7 +436,7 @@ func JoinGroupRequestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AcceptGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r) // Adjust this for your session logic
+	userID, _ := GetUserIDFromSession(w, r) // Adjust this for your session logic
 
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -461,7 +480,7 @@ func AcceptGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
-	creatorID, _ := GetUserIDFromSession(r)
+	creatorID, _ := GetUserIDFromSession(w, r)
 	if creatorID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -502,16 +521,16 @@ func InviteToGroupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
-	creatorID, _ := GetUserIDFromSession(r)
+	creatorID, _ := GetUserIDFromSession(w, r)
 	if creatorID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	
+
 	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
 	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/approve")
 	groupID, _ := strconv.Atoi(groupIDStr)
-	
+
 	var groupCreatorID int
 	err := sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
 	if err != nil || groupCreatorID != creatorID {
@@ -540,62 +559,62 @@ func ApproveRequestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeclineRequestHandler(w http.ResponseWriter, r *http.Request) {
-    // 1. Get and validate the user making the request
-    creatorID, _ := GetUserIDFromSession(r)
-    if creatorID == 0 {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
-    
-    // 2. Extract group ID from URL path
-    groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
-    groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/decline") // Fixed endpoint to match function
-    groupID, err := strconv.Atoi(groupIDStr)
-    if err != nil {
-        http.Error(w, "Invalid group ID", http.StatusBadRequest)
-        return
-    }
-    
-    // 3. Verify the user is the group creator
-    var groupCreatorID int
-    err = sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            http.Error(w, "Group not found", http.StatusNotFound)
-        } else {
-            http.Error(w, "Database error", http.StatusInternalServerError)
-        }
-        return
-    }
-    if groupCreatorID != creatorID {
-        http.Error(w, "Forbidden", http.StatusForbidden)
-        return
-    }
+	// 1. Get and validate the user making the request
+	creatorID, _ := GetUserIDFromSession(w, r)
+	if creatorID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-    // 4. Parse request body
-    var body struct {
-        UserID int `json:"user_id"`
-    }
-    err = json.NewDecoder(r.Body).Decode(&body)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	// 2. Extract group ID from URL path
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/membership/decline") // Fixed endpoint to match function
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
 
-    // 5. Delete the membership request
-    _, err = sqlite.DB.Exec(`DELETE FROM group_memberships 
-                            WHERE group_id = ? AND user_id = ? AND status = 'pending'`, 
-                            groupID, body.UserID)
-    if err != nil {
-        http.Error(w, "Failed to decline request", http.StatusInternalServerError)
-        return
-    }
+	// 3. Verify the user is the group creator
+	var groupCreatorID int
+	err = sqlite.DB.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&groupCreatorID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Group not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+		}
+		return
+	}
+	if groupCreatorID != creatorID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
+	// 4. Parse request body
+	var body struct {
+		UserID int `json:"user_id"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// 5. Delete the membership request
+	_, err = sqlite.DB.Exec(`DELETE FROM group_memberships 
+                            WHERE group_id = ? AND user_id = ? AND status = 'pending'`,
+		groupID, body.UserID)
+	if err != nil {
+		http.Error(w, "Failed to decline request", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func DeclineGroupInviteHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r) // Adjust this for your session logic
+	userID, _ := GetUserIDFromSession(w, r) // Adjust this for your session logic
 
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -628,7 +647,7 @@ func CreateGroupPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -716,7 +735,7 @@ func CreateGroupPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		log.Println("🔒 Utilisateur non authentifié")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -755,7 +774,7 @@ func CreateGroupPostCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -821,7 +840,7 @@ func CreateGroupPostCommentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroupPostCommentsHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -864,7 +883,7 @@ func CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -926,7 +945,7 @@ func CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroupEventsHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -974,7 +993,7 @@ func RespondToEventHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -1009,7 +1028,7 @@ func RespondToEventHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetEventResponsesHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := GetUserIDFromSession(r)
+	userID, _ := GetUserIDFromSession(w, r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -1043,7 +1062,7 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	userID, ok := GetUserIDFromSession(r)
+	userID, ok := GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -1062,39 +1081,39 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 
 // auth/handlers.go
 func GetPendingRequestsHandler(w http.ResponseWriter, r *http.Request) {
-    // Extract group ID from URL (e.g., /api/groups/123/membership/pending_requests)
-    pathParts := strings.Split(r.URL.Path, "/")
-    groupID, err := strconv.Atoi(pathParts[3]) // 0: "", 1: "api", 2: "groups", 3: "123"
-    if err != nil {
-        http.Error(w, "Invalid group ID", http.StatusBadRequest)
-        return
-    }
+	// Extract group ID from URL (e.g., /api/groups/123/membership/pending_requests)
+	pathParts := strings.Split(r.URL.Path, "/")
+	groupID, err := strconv.Atoi(pathParts[3]) // 0: "", 1: "api", 2: "groups", 3: "123"
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
 
-    // Get user ID from session
-    userID, ok := GetUserIDFromSession(r)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
-    // Verify user is group creator
-    var creatorID int
-    err = sqlite.DB.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            http.Error(w, "Group not found", http.StatusNotFound)
-        } else {
-            http.Error(w, "Database error", http.StatusInternalServerError)
-        }
-        return
-    }
+	// Get user ID from session
+	userID, ok := GetUserIDFromSession(w, r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	// Verify user is group creator
+	var creatorID int
+	err = sqlite.DB.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Group not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    if creatorID != userID {
-        http.Error(w, "Only group creator can view pending requests", http.StatusForbidden)
-        return
-    }
+	if creatorID != userID {
+		http.Error(w, "Only group creator can view pending requests", http.StatusForbidden)
+		return
+	}
 
-    // Get pending requests
-    rows, err := sqlite.DB.Query(`
+	// Get pending requests
+	rows, err := sqlite.DB.Query(`
         SELECT 
             gm.id as request_id,
             u.id as user_id,
@@ -1106,33 +1125,32 @@ func GetPendingRequestsHandler(w http.ResponseWriter, r *http.Request) {
         WHERE gm.group_id = ? AND gm.status = 'pending'
         ORDER BY gm.created_at DESC
     `, groupID)
-
-    if err != nil {
+	if err != nil {
 		fmt.Println(err)
-        http.Error(w, "Database error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var requests []models.PendingRequest
-    for rows.Next() {
-        var req models.PendingRequest
-        var createdAt time.Time
-        err := rows.Scan(
-            &req.RequestID,
-            &req.UserID,
-            &req.Username,
-            &req.Avatar,
-            &createdAt,
-        )
-        if err != nil {
-            http.Error(w, "Database error", http.StatusInternalServerError)
-            return
-        }
-        req.RequestedAt = createdAt.Format(time.RFC3339)
-        requests = append(requests, req)
-    }
+	var requests []models.PendingRequest
+	for rows.Next() {
+		var req models.PendingRequest
+		var createdAt time.Time
+		err := rows.Scan(
+			&req.RequestID,
+			&req.UserID,
+			&req.Username,
+			&req.Avatar,
+			&createdAt,
+		)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		req.RequestedAt = createdAt.Format(time.RFC3339)
+		requests = append(requests, req)
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(requests)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(requests)
 }

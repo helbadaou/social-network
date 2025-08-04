@@ -16,7 +16,7 @@ import (
 )
 
 func CreatePost(w http.ResponseWriter, r *http.Request) {
-	userID, ok := GetUserIDFromSession(r)
+	userID, ok := GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -91,23 +91,21 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-	// Vérifie que l'utilisateur est connecté
-	userID, ok := GetUserIDFromSession(r)
+	// Vérifie que l'utilisateur est connec
+	userID, ok := GetUserIDFromSession(w, r)
 	if !ok {
+
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
 	posts, err := sqlite.GetPosts(userID)
 	if err != nil {
 		http.Error(w, "Failed to get posts", http.StatusInternalServerError)
 		return
 	}
-
+	
 	// ✅ Très important : définir le bon Content-Type
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-
 	// ✅ Encoder le tableau même s'il est vide
 	// fmt.Println("Posts récupérés :", posts)
 	json.NewEncoder(w).Encode(posts)

@@ -22,7 +22,7 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("📥 Création d'un commentaire...")
 
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		log.Println("❌ Utilisateur non authentifié")
 		http.Error(w, "Non autorisé", http.StatusUnauthorized)

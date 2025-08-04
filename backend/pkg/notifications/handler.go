@@ -32,7 +32,7 @@ func CreateNotification(userID, senderID int, notifType, message string) error {
 }
 
 func GetUserNotifications(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -101,7 +101,7 @@ func MarkNotificationSeen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -145,7 +145,7 @@ func DeleteNotification(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

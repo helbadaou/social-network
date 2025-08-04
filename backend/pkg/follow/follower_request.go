@@ -105,7 +105,7 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetRecipientsHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

@@ -219,7 +219,7 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -263,7 +263,7 @@ func RejectFollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := auth.GetUserIDFromSession(r)
+	userID, ok := auth.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

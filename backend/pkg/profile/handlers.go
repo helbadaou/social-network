@@ -4,32 +4,36 @@ package profile
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"social-network/backend/pkg/auth"
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/models"
 	// "fmt"
 )
 
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
+	id, ok := auth.GetUserIDFromSession(w, r)
+	if !ok {
+		fmt.Println("Error getting session cookie:", ok)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID := cookie.Value
+	userID := id
 
 	var user models.User
 
 	query := `SELECT id, email, first_name, last_name, date_of_birth, nickname, about, avatar, is_private FROM users WHERE id = ?`
 
-	err = sqlite.DB.QueryRow(query, userID).Scan(
+	err := sqlite.DB.QueryRow(query, userID).Scan(
 		&user.ID, &user.Email, &user.FirstName, &user.LastName,
 		&user.DateOfBirth, &user.Nickname, &user.About, &user.Avatar, &user.IsPrivate)
 	if err != nil {
+		fmt.Println("Error fetching user profile 1:", err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -84,6 +88,7 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		&user.Email, &user.About, &user.Avatar, &user.DateOfBirth, &user.IsPrivate,
 	)
 	if err != nil {
+		fmt.Println("Error fetching user:", err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
