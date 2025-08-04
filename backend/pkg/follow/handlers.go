@@ -28,19 +28,13 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
+	cookie, ok := auth.GetUserIDFromSession(w, r)
+	if !ok{
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	followerIDStr := cookie.Value
-	followerID, err := strconv.Atoi(followerIDStr)
-	if err != nil {
-		http.Error(w, "Invalid session ID", http.StatusBadRequest)
-		return
-	}
-
+	followerID := cookie
 	var req struct {
 		FollowedID int `json:"followed_id"`
 	}
@@ -51,7 +45,7 @@ func SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Vérifie s’il existe déjà une relation
 	var exists int
-	err = sqlite.DB.QueryRow(`
+	err := sqlite.DB.QueryRow(`
 		SELECT COUNT(*) FROM followers
 		WHERE follower_id = ? AND followed_id = ?
 	`, followerID, req.FollowedID).Scan(&exists)
@@ -144,13 +138,12 @@ func GetFollowStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
+	followerID, ok := auth.GetUserIDFromSession(w, r)
+	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	followerID := cookie.Value
-
+	
 	var status string
 	err = sqlite.DB.QueryRow(`
 		SELECT status FROM followers WHERE follower_id = ? AND followed_id = ?
@@ -179,15 +172,9 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
+	followerID, ok := auth.GetUserIDFromSession(w, r)
+	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	followerID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "Invalid session ID", http.StatusBadRequest)
 		return
 	}
 
@@ -200,7 +187,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = sqlite.DB.Exec(`
+	_, err := sqlite.DB.Exec(`
 		DELETE FROM followers 
 		WHERE follower_id = ? AND followed_id = ?
 	`, followerID, req.FollowedID)

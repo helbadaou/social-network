@@ -220,11 +220,20 @@ func CreateSession(db *sql.DB, userID int) (string, time.Time, error) {
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	db := sqlite.DB
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "No session cookie found", http.StatusUnauthorized)
+	}
+	_, err = db.Exec(`DELETE FROM sessions WHERE id = ?`, cookie.Value)
+	if err != nil {
+		http.Error(w, "Failed to log out", http.StatusInternalServerError)
+		return
+	}
 	// Clear cookie by setting MaxAge to -1
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",

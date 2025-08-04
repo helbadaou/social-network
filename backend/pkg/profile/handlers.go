@@ -52,17 +52,11 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get requester ID from session
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
+	id, ok := auth.GetUserIDFromSession(w, r)
+	if !ok{
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	requesterID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "Invalid session ID", http.StatusBadRequest)
-		return
-	}
-
 	db := sqlite.GetDB()
 	var user struct {
 		ID          int    `json:"id"`
@@ -94,7 +88,7 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Détermine si c'est son propre profil
-	user.IsOwner = (requesterID == user.ID)
+	user.IsOwner = (id == user.ID)
 
 	// Vérifie si l'utilisateur connecté suit ce profil (si ce n'est pas lui-même)
 	if !user.IsOwner {
@@ -102,7 +96,7 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		err := db.QueryRow(`
 			SELECT status FROM followers
 			WHERE follower_id = ? AND followed_id = ?
-		`, requesterID, user.ID).Scan(&status)
+		`, id, user.ID).Scan(&status)
 		if err == nil && status == "accepted" {
 			user.IsFollowed = true
 		}
