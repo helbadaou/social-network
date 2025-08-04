@@ -8,16 +8,27 @@ import (
 
 	"social-network/backend/pkg/db/sqlite"
 )
+
 func GetUserIDFromSession(w http.ResponseWriter, r *http.Request) (int, bool) {
 	id, err := ValidateSession(r, sqlite.DB)
 	if err != nil {
 		fmt.Println("Error validating session:", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
+			Secure:   false,
+		})
 		return 0, false
 	}
 	w.WriteHeader(http.StatusOK)
 	return id, true
 }
+
 func ValidateSession(r *http.Request, db *sql.DB) (int, error) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
