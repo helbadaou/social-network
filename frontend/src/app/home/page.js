@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "./components/Navbar";
 import PostForm from "./components/PostForm";
@@ -10,7 +10,7 @@ import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
 
 export default function HomePage() {
-  // ... your existing states ...
+  // States for posts, user, UI, etc.
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
@@ -38,146 +38,79 @@ export default function HomePage() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const removeNotificationCallback = useRef(null);
-  const [messages, setMessages] = useState([])
+
+  // --- SharedWorker related ---
+  const workerRef = useRef(null);
+  // messages for chat, keyed by chat user ID or global array (your choice)
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState({});
-  const ws = useRef(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const fileInputRef = useRef()
 
   const router = useRouter();
 
-  const setupWebSocket = useCallback(() => {
+  // Setup SharedWorker connection once user is set
+  useEffect(() => {
     if (!user?.ID) return;
 
-    if (ws.current) {
-      ws.current.close();
-    }
+    if (!workerRef.current) {
+      workerRef.current = new SharedWorker('/sharedWorker.js');
+      const port = workerRef.current.port;
 
-    const socket = new WebSocket('ws://localhost:8080/ws');
+      port.start();
+      port.postMessage({ type: "INIT", userId: user.ID });
 
-    socket.onopen = () => {
-      console.log('✅ WebSocket connected');
-      reconnectAttempts.current = 0;
-      ws.current = socket;
-    };
-
-    socket.onclose = (e) => {
-      console.log('❌ WebSocket disconnected', e.code, e.reason);
-      ws.current = null;
-
-      if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-        reconnectAttempts.current += 1;
-        console.log(`🔄 Tentative de reconnexion ${reconnectAttempts.current}/${maxReconnectAttempts} dans ${delay}ms`);
-        setTimeout(setupWebSocket, delay);
-      }
-    };
-
-    socket.onerror = (err) => {
-      console.error('❌ WebSocket error:', err);
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-
-        if (msg.type === "error") {
-          console.error("Erreur WebSocket:", msg.content);
-          showNotification("error", msg.content);
-          return;
+      port.onmessage = (event) => {
+        const { type, message } = event.data;
+        if (type === "message"  || type ===  "private") {
+          setMessages((prev) => [...prev, message]);
         }
 
-        if (msg.type === "follow_status_update") {
-          fetchChatUsers();
-          return;
-        }
-
-        if (msg.type === "notification" || msg.type === "follow_request" ||
-          msg.type === "follow_request_response" || msg.type === "follow_request_cancelled") {
-          setNotifications(prev => [msg, ...prev]);
+        if (type === "notification" || type === "follow_request" ||
+          type === "follow_request_response" || type === "follow_request_cancelled") {
+          setNotifications(prev => [message, ...prev]);
           setUnreadCount(prev => prev + 1);
-          setRealtimeNotification(msg);
-        } else if (msg.type === 'private') {
-          const messageWithId = {
-            ...msg,
-            uniqueId: `${msg.from}-${msg.to}-${msg.timestamp}-${Date.now()}`
-          };
-          setMessages(prev => {
-            const existing = prev.find(m =>
-              m.from === msg.from &&
-              m.to === msg.to &&
-              m.content === msg.content &&
-              Math.abs(new Date(m.timestamp) - new Date(msg.timestamp)) < 1000
-            );
-
-            if (existing) {
-              return prev;
-            }
-
-            return [...prev, messageWithId];
-          });
-        } else {
-          console.warn('Type de message WebSocket inconnu:', msg.type);
+          setRealtimeNotification(message);
         }
-      } catch (err) {
-        console.error('Erreur parsing message WebSocket:', err);
-      }
-    };
 
-    return socket;
-  }, [user?.ID]);
-
-  const showNotification = (type, message) => {
-    if (type === "error") {
-      alert(`❌ Erreur: ${message}`);
-    } else {
-      alert(`ℹ️ ${message}`);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.ID) {
-      const socket = setupWebSocket();
-      return () => {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.close(1000, 'Component unmounting');
+        if (type === "status" || type === "error") {
+          console.log(`[Worker]: ${message}`);
         }
       };
     }
-  }, [user?.ID]);
 
-  useEffect(() => {
+    // Cleanup on unmount or user change
     return () => {
-      if (ws.current) {
-        ws.current.close(1000, 'Page closing');
-      }
+      workerRef.current?.port?.close();
+      workerRef.current = null;
     };
-  }, []);
+  }, [user?.ID]);
 
-  const sendMessage = useCallback((message) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(message));
-
-      const messageWithId = {
-        ...message,
-        uniqueId: `${message.from}-${message.to}-${message.timestamp}-${Date.now()}-sent`
-      };
-
-      setMessages(prev => {
-        const exists = prev.some(m =>
-          m.from === message.from &&
-          m.to === message.to &&
-          m.content === message.content &&
-          Math.abs(new Date(m.timestamp) - new Date(message.timestamp)) < 1000
-        );
-
-        if (exists) return prev;
-        return [...prev, messageWithId];
-      });
-    } else {
-      showNotification("error", "Connexion WebSocket fermée. Impossible d'envoyer le message.");
+  // Send chat message through SharedWorker
+  const sendMessage = useCallback((chatMsg) => {
+    if (!workerRef.current) {
+      console.error("SharedWorker not initialized.");
+      return;
     }
+
+    workerRef.current.port.postMessage({ type: "SEND", message: chatMsg });
+
+    // Optimistic update for sent message:
+    const messageWithId = {
+      ...chatMsg,
+      uniqueId: `${chatMsg.from}-${chatMsg.to}-${chatMsg.timestamp}-${Date.now()}-sent`
+    };
+
+    setMessages(prev => {
+      // Avoid duplicates if very close timestamp
+      const exists = prev.some(m =>
+        m.from === chatMsg.from &&
+        m.to === chatMsg.to &&
+        m.content === chatMsg.content &&
+        Math.abs(new Date(m.timestamp) - new Date(chatMsg.timestamp)) < 1000
+      );
+
+      if (exists) return prev;
+      return [...prev, messageWithId];
+    });
   }, []);
 
   const handleNotificationRemoved = useCallback((removeCallback) => {
@@ -351,8 +284,9 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     try {
-      if (ws.current) {
-        ws.current.close(1000, 'User logging out');
+      if (workerRef.current) {
+        workerRef.current.port.close();
+        workerRef.current = null;
       }
 
       const res = await fetch("http://localhost:8080/api/logout", {
@@ -371,6 +305,8 @@ export default function HomePage() {
     }
   };
 
+  const fileInputRef = useRef();
+
   return (
     <div className="min-h-screen bg-black text-gray-100">
       <Navbar
@@ -383,13 +319,10 @@ export default function HomePage() {
         realtimeNotification={realtimeNotification}
         fetchChatUsers={fetchChatUsers}
         onNotificationRemoved={onNotificationRemoved}
-        fetchUserById={fetchUserById}  
-        setSearch={setSearch}          
-        setResults={setResults}        
+        fetchUserById={fetchUserById}
+        setSearch={setSearch}
+        setResults={setResults}
       />
-
-
-      {/* SEARCH RESULTS: Add clickable user items here */}
 
       {showMessages && user && (
         <MessageSidebar
