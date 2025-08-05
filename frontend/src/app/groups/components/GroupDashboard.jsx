@@ -8,6 +8,8 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   const [events, setEvents] = useState([])
   const [newPost, setNewPost] = useState('')
   const [newPostImage, setNewPostImage] = useState(null)
+  // Add this to your existing state declarations
+  const [showPostForm, setShowPostForm] = useState(false)
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
@@ -438,7 +440,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
 
   useEffect(() => {
     console.log(nonMembers);
-    console.log("group dash bool" , isCreator)
+    console.log("group dash bool", isCreator)
   }, []);
 
 
@@ -491,7 +493,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
         {/* Dynamic content area */}
         <div className={styles.tabContent}>
 
-      
+
 
 
           {activeTab === 'invite' && (isCreator) && (
