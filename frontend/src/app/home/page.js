@@ -8,6 +8,7 @@ import MessageSidebar from "../messages/components/MessageSidebar";
 import ChatBox from "../messages/components/ChatBox";
 import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
+import styles from './HomePage.module.css'
 
 export default function HomePage() {
   // States for posts, user, UI, etc.
@@ -308,7 +309,7 @@ export default function HomePage() {
   const fileInputRef = useRef();
 
   return (
-    <div className="min-h-screen bg-black text-gray-100">
+    <div className={styles.pageContainer}>
       <Navbar
         user={user}
         handleSearch={handleSearch}
@@ -335,9 +336,9 @@ export default function HomePage() {
         />
       )}
 
-      <div className="max-w-2xl mx-auto px-4 mt-6">
+      <div className={styles.postFormContainer}>
         {showPostForm && (
-          <div className="max-w-2xl mx-auto px-4 mt-6">
+          <div className={styles.postFormWrapper}>
             <PostForm
               content={content}
               setContent={setContent}
@@ -353,16 +354,16 @@ export default function HomePage() {
         )}
       </div>
 
-      <h2 className="text-xl font-bold mb-4"></h2>
+      <h2 className={styles.postsHeading}></h2>
       {posts === null ? (
-        <p className="text-gray-400 text-sm">Aucun post à afficher.</p>
+        <p className={styles.noPosts}>Aucun post à afficher.</p>
       ) : (
         posts.map(post => (
           <Post key={post.id} post={post} fetchUserById={fetchUserById} />
         ))
       )}
 
-      <div className="fixed bottom-4 right-4 flex gap-4 z-40">
+      <div className={styles.chatBoxContainer}>
         {openChats.map((u) => (
           <ChatBox
             key={u.id || u.ID}
