@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"social-network/backend/pkg/auth"
@@ -12,10 +11,6 @@ import (
 	"social-network/backend/pkg/comments"
 	"social-network/backend/pkg/db/sqlite"
 	"social-network/backend/pkg/follow"
-	"social-network/backend/pkg/notifications"
-	"social-network/backend/pkg/profile"
-	"social-network/backend/pkg/search"
-	"social-network/backend/pkg/user"
 	"social-network/backend/pkg/websocket"
 )
 
@@ -31,32 +26,34 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/login", auth.LoginHandler)
-	mux.HandleFunc("/api/register", auth.RegisterHandler)
-	mux.HandleFunc("/api/logout", auth.LogoutHandler)
-	mux.HandleFunc("/api/profile/", profile.ProfileHandler)
+	// mux.HandleFunc("/api/login", auth.LoginHandler)
+	// mux.HandleFunc("/api/register", auth.RegisterHandler)
+	// mux.HandleFunc("/api/logout", auth.LogoutHandler)
+	// mux.HandleFunc("/api/profile/", profile.ProfileHandler)
 
-	mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
+	// mux.Handle("/api/posts", auth.CorsMiddleware(http.HandlerFunc(auth.PostsHandler)))
 
-	mux.HandleFunc("/api/users/", profile.GetUserByIDHandler)
-	mux.HandleFunc("/api/user-posts/", auth.GetUserPostsHandler)
+	// mux.HandleFunc("/api/users/", profile.GetUserByIDHandler)
+	// mux.HandleFunc("/api/user-posts/", auth.GetUserPostsHandler)
+	// mux.HandleFunc("/api/search", search.SearchUsersHandler)
+	// mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
 
-	mux.HandleFunc("/api/search", search.SearchUsersHandler)
-	mux.HandleFunc("/api/follow", follow.SendFollowRequest)
-	mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
-	mux.HandleFunc("/api/follow/accept", follow.AcceptFollowHandler)
-	mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
-	mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
-	mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
-	mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
-	mux.HandleFunc("/api/recipients", follow.GetRecipientsHandler)
+	// mux.HandleFunc("/api/follow", follow.SendFollowRequest)
+	// mux.HandleFunc("/api/follow/status/", follow.GetFollowStatus)
+	// mux.HandleFunc("/api/follow/accept", follow.AcceptFollowHandler)
+	// mux.HandleFunc("/api/follow/reject", follow.RejectFollowHandler)
+	// mux.HandleFunc("/api/unfollow", follow.UnfollowUser)
+	// mux.HandleFunc("/api/users-followers/", follow.GetFollowersHandler)
+	// mux.HandleFunc("/api/users-following/", follow.GetFollowingHandler)
+	// mux.HandleFunc("/api/recipients", follow.GetRecipientsHandler)
 
-	mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
-	mux.HandleFunc("/api/chat/history", chat.GetChatHistory)
-	mux.HandleFunc("/api/user/toggle-privacy", user.TogglePrivacy)
-	mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
-	mux.HandleFunc("/api/notifications/seen", notifications.MarkNotificationSeen)
-	mux.HandleFunc("/api/notifications/delete", notifications.DeleteNotification)
+	// mux.HandleFunc("/api/chat-users", chat.GetAllChatUsers)
+	// mux.HandleFunc("/api/chat/history", chat.GetChatHistory)
+
+	// mux.HandleFunc("/api/notifications", notifications.GetUserNotifications)
+	// mux.HandleFunc("/api/notifications/seen", notifications.MarkNotificationSeen)
+	// mux.HandleFunc("/api/notifications/delete", notifications.DeleteNotification)
+
 	mux.HandleFunc("/api/comments", comments.CreateCommentHandler)
 	mux.HandleFunc("/api/comments/post", comments.GetCommentsByPostHandler)
 
@@ -72,49 +69,49 @@ func main() {
 
 	mux.HandleFunc("/api/groups/", auth.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		// Extract potential group ID from path
-		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		groupIDStr := pathParts[len(pathParts)-1]
+		// pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		// groupIDStr := pathParts[len(pathParts)-1]
 
 		// Default case: Handle direct group ID requests
-		if _, err := strconv.Atoi(groupIDStr); err == nil && len(pathParts) == 3 && r.Method == http.MethodGet {
-			// This is a request to /api/groups/{id}
-			auth.GetGroupHandler(w, r)
-			return
-		}
+		// if _, err := strconv.Atoi(groupIDStr); err == nil && len(pathParts) == 3 && r.Method == http.MethodGet {
+		// 	// This is a request to /api/groups/{id}
+		// 	auth.GetGroupHandler(w, r)
+		// 	return
+		// }
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
-			auth.CheckGroupAccessHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/pending_requests") && r.Method == http.MethodGet:
-			auth.GetPendingRequestsHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/join"):
-			auth.JoinGroupRequestHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
-			auth.AcceptGroupInviteHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/invite") && r.Method == http.MethodPost:
-			auth.InviteToGroupHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
-			auth.ApproveRequestHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
-			auth.DeclineRequestHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/non-members"):
-			auth.GetNonGroupMembersHandler(sqlite.DB, w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
+		// auth.CheckGroupAccessHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/pending_requests") && r.Method == http.MethodGet:
+		// 	auth.GetPendingRequestsHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/join"):
+		// 	auth.JoinGroupRequestHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/accept") && r.Method == http.MethodPost:
+		// 	auth.AcceptGroupInviteHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/invite") && r.Method == http.MethodPost:
+		// 	auth.InviteToGroupHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/approve") && r.Method == http.MethodPost:
+		// 	auth.ApproveRequestHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/membership/decline") && r.Method == http.MethodPost:
+		// 	auth.DeclineRequestHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/non-members"):
+		// 	auth.GetNonGroupMembersHandler(sqlite.DB, w, r)
 		// NOUVELLES ROUTES POUR LES POSTS
-		case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodGet:
-			auth.GetGroupPostsHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodPost:
-			auth.CreateGroupPostHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodGet:
+		// 	auth.GetGroupPostsHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/posts") && r.Method == http.MethodPost:
+		// 	auth.CreateGroupPostHandler(w, r)
 		// comments
-		case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodGet:
-			auth.GetGroupPostCommentsHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
-			auth.CreateGroupPostCommentHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodGet:
+		// 	auth.GetGroupPostCommentsHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/comments") && r.Method == http.MethodPost:
+		// 	auth.CreateGroupPostCommentHandler(w, r)
 		// NOUVELLES ROUTES POUR LES ÉVÉNEMENTS
-		case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodGet:
-			auth.GetGroupEventsHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodPost:
-			auth.CreateGroupEventHandler(w, r)
-		case strings.HasSuffix(r.URL.Path, "/messages") && r.Method == http.MethodPost:
-			chat.HandleGroupMessage(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodGet:
+		// 	auth.GetGroupEventsHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/events") && r.Method == http.MethodPost:
+		// 	auth.CreateGroupEventHandler(w, r)
+		// case strings.HasSuffix(r.URL.Path, "/messages") && r.Method == http.MethodPost:
+		// 	chat.HandleGroupMessage(w, r)
 		case strings.HasSuffix(r.URL.Path, "/messages") && r.Method == http.MethodGet:
 			chat.GetGroupMessagesHandler(w, r)
 		default:

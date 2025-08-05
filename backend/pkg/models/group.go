@@ -16,7 +16,6 @@ type GroupMembership struct {
 	Status  string `json:"status"` // "pending", "accepted", or "invited"
 }
 
-
 type GroupPost struct {
 	ID        int       `json:"id"`
 	GroupID   int       `json:"group_id"`
@@ -93,13 +92,13 @@ type CreateCommentRequest struct {
 }
 
 type GroupMessage struct {
-    ID            int       `json:"id"`
-    GroupID       int       `json:"groupId"`
-    SenderID      int       `json:"senderId"`
-    Content       string    `json:"content"`
-    Timestamp     time.Time `json:"timestamp"`
-    SenderNickname string   `json:"senderNickname"`
-    SenderAvatar  string    `json:"senderAvatar"`
+	ID             int       `json:"id"`
+	GroupID        int       `json:"groupId"`
+	SenderID       int       `json:"senderId"`
+	Content        string    `json:"content"`
+	Timestamp      time.Time `json:"timestamp"`
+	SenderNickname string    `json:"senderNickname"`
+	SenderAvatar   string    `json:"senderAvatar"`
 }
 
 type GroupResponse struct {
@@ -115,17 +114,17 @@ type GroupResponse struct {
 }
 
 type GroupWithStatus struct {
-    Group
-    MemberCount int    `json:"member_count"`
-    IsMember    bool   `json:"is_member"`
-    IsCreator   bool   `json:"is_creator"`
-    IsPending   bool   `json:"is_pending"`
+	Group
+	MemberCount int  `json:"member_count"`
+	IsMember    bool `json:"is_member"`
+	IsCreator   bool `json:"is_creator"`
+	IsPending   bool `json:"is_pending"`
 }
 
 type PendingRequest struct {
-	RequestID  int    `json:"request_id"`
-	UserID     int    `json:"user_id"`
-	Username   string `json:"username"`
-	Avatar     string `json:"avatar"`
+	RequestID   int    `json:"request_id"`
+	UserID      int    `json:"user_id"`
+	Username    string `json:"username"`
+	Avatar      string `json:"avatar"`
 	RequestedAt string `json:"requested_at"`
 }
