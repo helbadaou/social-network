@@ -34,88 +34,93 @@ func NewGroupHandler(service *services.GroupService, session *services.SessionSe
 }
 
 func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	method := r.Method
+    path := r.URL.Path
+    method := r.Method
 
-	// Trim prefix and split into parts
-	pathParts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(pathParts) < 3 {
-		http.NotFound(w, r)
-		return
-	}
+    // Trim prefix and split into parts
+    pathParts := strings.Split(strings.Trim(path, "/"), "/")
+    if len(pathParts) < 3 {
+        http.NotFound(w, r)
+        return
+    }
 
-	groupIDStr := pathParts[2]
+    groupIDStr := pathParts[2]
 
-	// Handle /api/groups/{id} direct GET
-	if len(pathParts) == 3 {
-		if _, err := strconv.Atoi(groupIDStr); err == nil && method == http.MethodGet {
-			h.GetGroupByIDHandler(w, r)
-			return
-		}
-	}
+    // Handle /api/groups/{id} direct GET
+    if len(pathParts) == 3 {
+        if _, err := strconv.Atoi(groupIDStr); err == nil && method == http.MethodGet {
+            h.GetGroupByIDHandler(w, r)
+            return
+        }
+    }
 
-	// Build suffix for routing
-	suffix := strings.Join(pathParts[3:], "/")
+    // Build suffix for routing
+    suffix := strings.Join(pathParts[3:], "/")
 
-	switch {
-	case suffix == "membership" && method == http.MethodGet:
-		h.CheckGroupAccessHandler(w, r)
+    // Handle posts/{postID}/comments routes first
+    if len(pathParts) >= 5 && pathParts[3] == "posts" {
+        postIDStr := pathParts[4]
+        if _, err := strconv.Atoi(postIDStr); err == nil {
+            if len(pathParts) == 6 && pathParts[5] == "comments" {
+                switch method {
+                case http.MethodGet:
+                    h.GetGroupPostCommentsHandler(w, r)
+                    return
+                case http.MethodPost:
+                    h.CreateGroupPostCommentHandler(w, r)
+                    return
+                }
+            }
+        }
+    }
 
-	case suffix == "membership/pending_requests" && method == http.MethodGet:
-		h.GetPendingRequestsHandler(w, r)
+    // Handle other routes
+    switch {
+    case suffix == "membership" && method == http.MethodGet:
+        h.CheckGroupAccessHandler(w, r)
 
-	case suffix == "membership/join":
-		h.JoinGroupRequestHandler(w, r)
+    case suffix == "membership/pending_requests" && method == http.MethodGet:
+        h.GetPendingRequestsHandler(w, r)
 
-	case suffix == "membership/accept" && method == http.MethodPost:
-		h.AcceptGroupInviteHandler(w, r)
+    case suffix == "membership/join":
+        h.JoinGroupRequestHandler(w, r)
 
-	case suffix == "membership/invite" && method == http.MethodPost:
-		h.InviteToGroupHandler(w, r)
-	case suffix == "membership/approve" && method == http.MethodPost:
-		h.ApproveRequestHandler(w, r)
+    case suffix == "membership/accept" && method == http.MethodPost:
+        h.AcceptGroupInviteHandler(w, r)
 
-	case suffix == "membership/decline" && method == http.MethodPost:
-		h.DeclineRequestHandler(w, r)
+    case suffix == "membership/invite" && method == http.MethodPost:
+        h.InviteToGroupHandler(w, r)
+    case suffix == "membership/approve" && method == http.MethodPost:
+        h.ApproveRequestHandler(w, r)
 
-	case suffix == "non-members":
-		h.GetNonGroupMembersHandler(w, r)
+    case suffix == "membership/decline" && method == http.MethodPost:
+        h.DeclineRequestHandler(w, r)
 
-	// GROUP POSTS
-	case suffix == "posts" && method == http.MethodGet:
-		h.GetGroupPostsHandler(w, r)
+    case suffix == "non-members":
+        h.GetNonGroupMembersHandler(w, r)
 
-	case suffix == "posts" && method == http.MethodPost:
-		fmt.Println("hkjhkjhkjhkjh")
-		h.CreateGroupPostHandler(w, r)
-	// COMMENTS
-	case suffix == "comments" && method == http.MethodGet:
-		h.GetGroupPostCommentsHandler(w, r)
+    // GROUP POSTS
+    case suffix == "posts" && method == http.MethodGet:
+        h.GetGroupPostsHandler(w, r)
 
-	case suffix == "comments" && method == http.MethodPost:
-		h.CreateGroupPostCommentHandler(w, r)
+    case suffix == "posts" && method == http.MethodPost:
+        h.CreateGroupPostHandler(w, r)
 
-	// EVENTS
-	case suffix == "events" && method == http.MethodGet:
-		h.GetGroupEventsHandler(w, r)
+    // EVENTS
+    case suffix == "events" && method == http.MethodGet:
+        h.GetGroupEventsHandler(w, r)
 
-	case suffix == "events" && method == http.MethodPost:
-		fmt.Println("fhfhfh")
+    case suffix == "events" && method == http.MethodPost:
+        h.CreateGroupEventHandler(w, r)
 
-		h.CreateGroupEventHandler(w, r)
+    // CHAT MESSAGES
+    case suffix == "messages" && method == http.MethodPost:
+        h.HandleGroupMessage(w, r)
 
-	// CHAT MESSAGES
-	case suffix == "messages" && method == http.MethodPost:
-		h.HandleGroupMessage(w, r)
-
-	// case suffix == "messages" && method == http.MethodGet:
-	// 	chat.GetGroupMessagesHandler(w, r)
-	default:
-		fmt.Println("njnjnjnjnjn")
-		http.NotFound(w, r)
-	}
+    default:
+        http.NotFound(w, r)
+    }
 }
-
 func (h *GroupHandler) GetGroupByIDHandler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	groupID, err := strconv.Atoi(pathParts[len(pathParts)-1])

@@ -1,4 +1,3 @@
-// src/app/groups/[groupId]/page.js
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -25,6 +24,12 @@ export default function GroupDetailPage({ params }) {
   const [creating, setCreating] = useState(false)
   const [creatingEvent, setCreatingEvent] = useState(false)
   const fileInputRef = useRef()
+
+  // Comment related state
+  const [comments, setComments] = useState({})
+  const [commentInputs, setCommentInputs] = useState({})
+  const [loadingComments, setLoadingComments] = useState({})
+  const [postingComment, setPostingComment] = useState({})
 
   // Event form state
   const [eventForm, setEventForm] = useState({
@@ -62,8 +67,36 @@ export default function GroupDetailPage({ params }) {
       if (!res.ok) throw new Error('Failed to fetch posts')
       const data = await res.json()
       setPosts(data || [])
+
+      // Fetch comments for each post
+      if (data?.length) {
+        data.forEach(post => {
+          fetchComments(post.id)
+        })
+      }
     } catch (err) {
       console.error('Failed to fetch posts', err)
+    }
+  }
+
+  const fetchComments = async (postId) => {
+    try {
+      setLoadingComments(prev => ({ ...prev, [postId]: true }))
+      const res = await fetch(`/api/groups/${groupId}/posts/${postId}/comments`, {
+        credentials: 'include'
+      })
+
+      if (!res.ok) throw new Error('Failed to fetch comments')
+
+      const data = await res.json()
+      setComments(prev => ({
+        ...prev,
+        [postId]: data || []
+      }))
+    } catch (err) {
+      console.error('Failed to fetch comments', err)
+    } finally {
+      setLoadingComments(prev => ({ ...prev, [postId]: false }))
     }
   }
 
@@ -109,51 +142,92 @@ export default function GroupDetailPage({ params }) {
     }
   }
 
-const handleEventSubmit = async (e) => {
-  e.preventDefault();
-  setCreatingEvent(true);
+  const handleCommentSubmit = async (postId) => {
+    const content = commentInputs[postId]?.trim();
+    if (!content) return;
 
-  try {
-    // Create the request object matching exactly the Go struct
-    const requestBody = {
-      group_id: parseInt(groupId), // Ensure it's a number
-      title: eventForm.title,
-      description: eventForm.description,
-      event_date: new Date(eventForm.eventDate).toISOString()
-    };
+    try {
+      setPostingComment(prev => ({ ...prev, [postId]: true }));
 
-    console.log("Request payload:", requestBody); // For debugging
+      const res = await fetch(`/api/groups/${groupId}/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content  // Matching your CreateCommentRequest struct
+        }),
+        credentials: 'include'
+      });
 
-    const res = await fetch(`/api/groups/${groupId}/events`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-      credentials: 'include'
-    });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to post comment');
+      }
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Error response:", errorText);
-      throw new Error('Failed to create event: ' + errorText);
+      const newComment = await res.json();
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), newComment]
+      }));
+      setCommentInputs(prev => ({
+        ...prev,
+        [postId]: ''
+      }));
+    } catch (err) {
+      console.error('Error posting comment:', err);
+    } finally {
+      setPostingComment(prev => ({ ...prev, [postId]: false }));
     }
+  };
 
-    const newEvent = await res.json();
-    setEvents(prev => [newEvent, ...prev]);
-    setEventForm({
-      title: '',
-      description: '',
-      eventDate: ''
-    });
-    setShowEventForm(false);
-  } catch (err) {
-    console.error('Error creating event:', err);
-    // Optionally show error to user
-  } finally {
-    setCreatingEvent(false);
+  const handleCommentChange = (postId, value) => {
+    setCommentInputs(prev => ({
+      ...prev,
+      [postId]: value
+    }))
   }
-};
+
+  const handleEventSubmit = async (e) => {
+    e.preventDefault()
+    setCreatingEvent(true)
+
+    try {
+      const requestBody = {
+        group_id: parseInt(groupId),
+        title: eventForm.title,
+        description: eventForm.description,
+        event_date: new Date(eventForm.eventDate).toISOString()
+      }
+
+      const res = await fetch(`/api/groups/${groupId}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        credentials: 'include'
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        throw new Error('Failed to create event: ' + errorText)
+      }
+
+      const newEvent = await res.json()
+      setEvents(prev => [newEvent, ...prev])
+      setEventForm({
+        title: '',
+        description: '',
+        eventDate: ''
+      })
+      setShowEventForm(false)
+    } catch (err) {
+      console.error('Error creating event:', err)
+    } finally {
+      setCreatingEvent(false)
+    }
+  }
 
   const handleEventChange = (e) => {
     const { name, value } = e.target
@@ -191,7 +265,6 @@ const handleEventSubmit = async (e) => {
       })
       if (!res.ok) throw new Error('Failed to join group')
 
-      // Refresh group data
       const refreshRes = await fetch(`/api/groups/${groupId}`)
       if (refreshRes.ok) {
         setGroup(await refreshRes.json())
@@ -340,7 +413,6 @@ const handleEventSubmit = async (e) => {
       )}
 
       <div className="max-w-4xl mx-auto p-4 pt-24">
-        {/* Group Header */}
         <div className="bg-gray-800/50 backdrop-blur-lg rounded-xl p-6 mb-6 border border-gray-700/50">
           <h1 className="text-3xl font-bold text-white mb-2">{group.title}</h1>
           <p className="text-gray-300 mb-4">{group.description}</p>
@@ -356,7 +428,6 @@ const handleEventSubmit = async (e) => {
           </div>
         </div>
 
-        {/* Membership Status */}
         {!group.is_member && !group.is_pending && !group.is_creator && (
           <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4 mb-6">
             <p className="text-blue-300">You're not a member of this group</p>
@@ -375,7 +446,6 @@ const handleEventSubmit = async (e) => {
           </div>
         )}
 
-        {/* Group Content Tabs */}
         <div className="flex border-b border-gray-700 mb-6">
           <button
             onClick={() => setActiveTab('posts')}
@@ -399,10 +469,8 @@ const handleEventSubmit = async (e) => {
           )}
         </div>
 
-        {/* Group Content */}
         {group.is_member || group.is_creator ? (
           <div className="space-y-4">
-            {/* Create Post Button (only visible in posts tab) */}
             {activeTab === 'posts' && (
               <button
                 onClick={togglePostForm}
@@ -412,7 +480,6 @@ const handleEventSubmit = async (e) => {
               </button>
             )}
 
-            {/* Create Event Button (only visible in events tab) */}
             {activeTab === 'events' && (
               <button
                 onClick={toggleEventForm}
@@ -422,14 +489,12 @@ const handleEventSubmit = async (e) => {
               </button>
             )}
 
-            {/* Pending Requests Tab */}
             {activeTab === 'requests' && group.is_creator && (
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
                 <PendingRequests groupId={group.id} />
               </div>
             )}
 
-            {/* Posts Tab */}
             {activeTab === 'posts' && (
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
                 {posts.length > 0 ? (
@@ -443,6 +508,41 @@ const handleEventSubmit = async (e) => {
                           className="mt-2 rounded-lg max-w-full h-auto"
                         />
                       )}
+
+                      {/* Comments section */}
+                      <div className="mt-4">
+                        {loadingComments[post.id] ? (
+                          <div className="text-gray-400 text-sm">Loading comments...</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {comments[post.id]?.map(comment => (
+                              <div key={comment.id} className="p-3 bg-gray-600/30 rounded">
+                                <p className="text-sm text-white">{comment.content}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {comment.creator_name} • {new Date(comment.created_at).toLocaleString()}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 mt-3">
+                          <input
+                            type="text"
+                            placeholder="Add a comment..."
+                            value={commentInputs[post.id] || ''}
+                            onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                            className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => handleCommentSubmit(post.id)}
+                            disabled={postingComment[post.id]}
+                            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          >
+                            {postingComment[post.id] ? 'Posting...' : 'Post'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -451,7 +551,6 @@ const handleEventSubmit = async (e) => {
               </div>
             )}
 
-            {/* Events Tab */}
             {activeTab === 'events' && (
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
                 {events.length > 0 ? (
@@ -460,7 +559,7 @@ const handleEventSubmit = async (e) => {
                       <h3 className="text-xl font-bold text-white">{event.title}</h3>
                       <p className="text-gray-300 mt-1">{event.description}</p>
                       <p className="text-gray-400 text-sm mt-2">
-                        📅 {new Date(event.eventDate).toLocaleString()}
+                        📅 {new Date(event.event_date).toLocaleString()}
                       </p>
                       <p className="text-gray-400 text-sm">
                         👤 Created by {event.creator_name}
