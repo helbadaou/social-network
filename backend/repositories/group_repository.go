@@ -533,12 +533,12 @@ func (r *GroupRepository) CreateGroup(group models.Group) (models.Group, error) 
 	if err != nil {
 		return models.Group{}, err
 	}
-
+	
 	id, err := result.LastInsertId()
 	if err != nil {
 		return models.Group{}, err
 	}
-
+	
 	group.ID = int(id)
 	return group, nil
 }

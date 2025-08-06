@@ -83,23 +83,19 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 	file, header, err := r.FormFile("image")
 	if err == nil && header != nil {
 		defer file.Close()
-
 		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), header.Filename)
 		dst := fmt.Sprintf("uploads/%s", filename)
-
 		outFile, err := os.Create(dst)
 		if err != nil {
 			http.Error(w, "Could not save image", http.StatusInternalServerError)
 			return
 		}
 		defer outFile.Close()
-
 		_, err = io.Copy(outFile, file)
 		if err != nil {
 			http.Error(w, "Could not write image", http.StatusInternalServerError)
 			return
 		}
-
 		imageURL = "/uploads/" + filename
 	}
 

@@ -35,7 +35,9 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   const removeNotificationCallback = useRef(null);
   const ws = useRef(null);
   const fileInputRef = useRef();
-
+  const togglePostForm = () => {
+    setShowPostForm(prev => !prev)
+  }
   // Fetch group posts
   const fetchPosts = async () => {
     try {
@@ -78,26 +80,6 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
       console.error('Failed to fetch group members', err);
     }
   };
-
-  // Search users
-  const handleSearch = async (e) => {
-    const value = e.target.value;
-    setSearch(value);
-    if (value.length > 1) {
-      try {
-        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
-          credentials: 'include',
-        });
-        const data = await res.json();
-        setResults(data);
-      } catch (err) {
-        console.error("Search error:", err);
-      }
-    } else {
-      setResults([]);
-    }
-  };
-
   // Handle post submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -177,7 +159,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   // Load data when tab changes
   useEffect(() => {
     if (!group?.id) return;
-    
+
     if (activeTab === 'posts') fetchPosts();
     else if (activeTab === 'events') fetchEvents();
     else if (activeTab === 'chat') fetchChatUsers();
@@ -186,30 +168,17 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   return (
     <div className={styles.groupDashboardOverlay}>
       <Navbar
-        user={currentUser}
+        user={user}
         handleSearch={handleSearch}
-        handleLogout={async () => {
-          await fetch('http://localhost:8080/api/logout', { 
-            method: 'POST', 
-            credentials: 'include' 
-          });
-        }}
+        handleLogout={handleLogout}
         results={results}
-        openMessages={() => setShowMessages(true)}
-        togglePostForm={() => setShowPostForm(true)}
+        openMessages={openMessages}
+        togglePostForm={togglePostForm}
         realtimeNotification={realtimeNotification}
         fetchChatUsers={fetchChatUsers}
-        onNotificationRemoved={useCallback((cb) => {
-          removeNotificationCallback.current = cb;
-        }, [])}
-        fetchUserById={async (userId) => {
-          const res = await fetch(`http://localhost:8080/api/users/${userId}`);
-          return await res.json();
-        }}
-        setSearch={setSearch}
-        setResults={setResults}
-        hideActions={false}
-        hideSearch={false}
+        hideActions={true}
+        hideSearch={true}
+        onNotificationRemoved={handleNotificationRemoved}
       />
 
       {showMessages && (
@@ -246,8 +215,6 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
       )}
 
       <div className={styles.groupDashboardPopup}>
-        {/* Rest of your group dashboard UI */}
-        {/* ... [keep all your existing tab content] ... */}
       </div>
     </div>
   );

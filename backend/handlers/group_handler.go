@@ -86,8 +86,8 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		h.GetGroupPostsHandler(w, r)
 
 	case suffix == "posts" && method == http.MethodPost:
+		fmt.Println("hkjhkjhkjhkjh")
 		h.CreateGroupPostHandler(w, r)
-
 	// COMMENTS
 	case suffix == "comments" && method == http.MethodGet:
 		h.GetGroupPostCommentsHandler(w, r)
@@ -108,8 +108,8 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 
 	// case suffix == "messages" && method == http.MethodGet:
 	// 	chat.GetGroupMessagesHandler(w, r)
-
 	default:
+		fmt.Println("njnjnjnjnjn")
 		http.NotFound(w, r)
 	}
 }
@@ -498,8 +498,9 @@ func (h *GroupHandler) CreateGroupPostHandler(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Failed to write file", http.StatusInternalServerError)
 			return
 		}
+		imagePath = "http://localhost:8080/uploads/group_posts/" + header.Filename
 	}
-
+	fmt.Println("pth", imagePath)
 	post := models.GroupPost{
 		GroupID:  groupID,
 		AuthorID: userID,
@@ -748,10 +749,10 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusCreated, group)
 }
 
-func (h *GroupHandler) DynamicMethods(w http.ResponseWriter, r *http.Request){
+func (h *GroupHandler) DynamicMethods(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-			h.GetGroups(w, r)
-		} else if r.Method == http.MethodPost {
-			h.CreateGroup(w, r)
-		}
+		h.GetGroups(w, r)
+	} else if r.Method == http.MethodPost {
+		h.CreateGroup(w, r)
+	}
 }

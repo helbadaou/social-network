@@ -99,7 +99,7 @@ func main() {
 	mux.HandleFunc("/api/groups", groupHandler.DynamicMethods)
 
 	mux.HandleFunc("/api/groups/", groupHandler.GroupRouterHandler)
-	// 	switch {
+	//switch {
 	// 	case strings.HasSuffix(r.URL.Path, "/membership") && r.Method == http.MethodGet:
 	// 		auth.CheckGroupAccessHandler(w, r)
 	// 	case strings.HasSuffix(r.URL.Path, "/membership/pending_requests") && r.Method == http.MethodGet:
