@@ -182,7 +182,10 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   };
 
-  const fetchUserById = async (userId) => {
+  const 
+  
+  
+  fetchUserById = async (userId) => {
     try {
       const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
         credentials: 'include',

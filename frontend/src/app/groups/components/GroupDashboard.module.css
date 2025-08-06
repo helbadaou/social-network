@@ -1,5 +1,4 @@
-/* pop up post creation */
-/* Add these to your GroupDashboard.module.css */
+/* Post Form Popup Styles */
 .postFormPopupOverlay {
   position: fixed;
   top: 0;
@@ -28,59 +27,23 @@
   right: 10px;
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 1.5rem;
   cursor: pointer;
 }
 
-.popupTextarea {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: vertical;
-  min-height: 100px;
-}
-
-.fileInputContainer {
-  margin-bottom: 15px;
-}
-
-.fileInput {
-  margin-top: 5px;
-  display: block;
-}
-
-.fileName {
-  display: inline-block;
-  margin-left: 10px;
-  padding: 5px;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-
-.removeFileButton {
-  margin-left: 5px;
-  background: none;
-  border: none;
-  color: #ff4444;
-  cursor: pointer;
-}
-
-.submitPostButton {
+.showPostFormButton {
   background-color: #4CAF50;
   color: white;
-  padding: 8px 16px;
   border: none;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+  margin-top: 10px;
 }
 
-.submitPostButton:hover {
+.showPostFormButton:hover {
   background-color: #45a049;
 }
-
-
 .groupDashboardOverlay {
   position: fixed;
   top: 0;
