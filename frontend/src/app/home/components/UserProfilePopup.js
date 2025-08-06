@@ -247,7 +247,7 @@ export default function UserProfilePopup({
     );
   }
   return (
-    <div className={styles.popupOverlay}>
+    <div className={styles.popup}>
       <div className={styles.popupContainer}>
         <button
           onClick={() => setShowPopup(false)}
@@ -259,7 +259,7 @@ export default function UserProfilePopup({
         <div className={styles.popupContent}>
           <img
             src={
-              selectedUser.author_avatar
+              selectedUser.author_avatar            
                 ? selectedUser.author_avatar.startsWith('http')
                   ? selectedUser.author_avatar
                   : `http://localhost:8080/${selectedUser.author_avatar}`

@@ -365,7 +365,6 @@ export default function HomePage() {
           <Post key={post.id} post={post} fetchUserById={fetchUserById} />
         ))
       )}
-
       <div className={styles.chatBoxContainer}>
         {openChats.map((u) => (
           <ChatBox
@@ -380,7 +379,6 @@ export default function HomePage() {
           />
         ))}
       </div>
-
       {showPopup && selectedUser && (
         <UserProfilePopup
           selectedUser={selectedUser}

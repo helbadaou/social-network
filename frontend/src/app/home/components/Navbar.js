@@ -370,7 +370,6 @@ export default function Navbar({
                     {user.FirstName} {user.LastName}
                   </h2>
                   <p className="text-sm text-blue-400 mt-1">{user.Email}</p>
-
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-sm text-gray-300">
                       {isPrivate ? '🔒 Profil privé' : '🌍 Profil public'}
