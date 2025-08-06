@@ -281,3 +281,31 @@ func (s *GroupService) CreateGroup(userID int, req models.CreateGroupRequest) (m
 
 	return s.repo.CreateGroup(group)
 }
+
+// Add this to your service methods
+func (s *GroupService) SetEventResponse(userID, eventID int, response string) error {
+    // Validate response type
+    if response != "going" && response != "not_going" {
+        return fmt.Errorf("invalid response type")
+    }
+
+    // Get event to verify group membership
+    event, err := s.repo.GetGroupEventWithCreator(eventID)
+    if err != nil {
+        return fmt.Errorf("event lookup failed: %w", err)
+    }
+
+    // Check if user is member of the group
+    isMember, err := s.repo.IsGroupMember(event.GroupID, userID)
+    if err != nil || !isMember {
+        return ErrUnauthorized
+    }
+
+    // Set the response
+    err = s.repo.SetEventResponse(eventID, userID, response)
+    if err != nil {
+        return fmt.Errorf("failed to set response: %w", err)
+    }
+
+    return nil
+}

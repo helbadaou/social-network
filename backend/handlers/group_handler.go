@@ -86,7 +86,6 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		h.GetGroupPostsHandler(w, r)
 
 	case suffix == "posts" && method == http.MethodPost:
-		fmt.Println("hkjhkjhkjhkjh")
 		h.CreateGroupPostHandler(w, r)
 	// COMMENTS
 	case suffix == "comments" && method == http.MethodGet:
@@ -100,9 +99,9 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		h.GetGroupEventsHandler(w, r)
 
 	case suffix == "events" && method == http.MethodPost:
-		fmt.Println("fhfhfh")
-
 		h.CreateGroupEventHandler(w, r)
+	case strings.HasSuffix(suffix, "/vote") && method == http.MethodPost:
+		h.HandleEventVote(w, r)
 
 	// CHAT MESSAGES
 	case suffix == "messages" && method == http.MethodPost:
@@ -761,4 +760,56 @@ func (h *GroupHandler) DynamicMethods(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		h.CreateGroup(w, r)
 	}
+}
+
+// Add this to your handler methods
+func (h *GroupHandler) HandleEventVote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := h.Session.GetUserIDFromSession(w, r)
+	if !ok || userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract event ID from URL: /api/groups/{groupID}/events/{eventID}/vote
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	eventID, err := strconv.Atoi(parts[len(parts)-2])
+	if err != nil {
+		http.Error(w, "Invalid event ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Service.SetEventResponse(userID, eventID, req.Response)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrUnauthorized):
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		case strings.Contains(err.Error(), "invalid response type"):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, "Failed to process vote", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Vote recorded successfully",
+	})
 }

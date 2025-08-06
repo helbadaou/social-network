@@ -391,19 +391,22 @@ func (r *GroupRepository) GetGroupEvents(groupID, userID int) ([]models.GroupEve
 
 	// Step 2: Fetch events
 	rows, err := r.db.Query(`
-		SELECT ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
-			   ge.event_date, ge.created_at,
-			   u.first_name || ' ' || u.last_name as creator_name,
-			   COUNT(CASE WHEN er.response = 'going' THEN 1 END) as going_count,
-			   COUNT(CASE WHEN er.response = 'not_going' THEN 1 END) as not_going_count,
-			   MAX(CASE WHEN er.user_id = ? THEN er.response END) as user_response
-		FROM group_events ge
-		JOIN users u ON ge.creator_id = u.id
-		LEFT JOIN event_responses er ON ge.id = er.event_id
-		WHERE ge.group_id = ?
-		GROUP BY ge.id
-		ORDER BY ge.event_date ASC
-	`, userID, groupID)
+	SELECT 
+		ge.id, ge.group_id, ge.creator_id, ge.title, ge.description,
+		ge.event_date, ge.created_at,
+		u.first_name || ' ' || u.last_name as creator_name,
+		-- going count
+		(SELECT COUNT(*) FROM event_responses er1 WHERE er1.event_id = ge.id AND er1.response = 'going') AS going_count,
+		-- not going count
+		(SELECT COUNT(*) FROM event_responses er2 WHERE er2.event_id = ge.id AND er2.response = 'not_going') AS not_going_count,
+		-- user's response
+		(SELECT er3.response FROM event_responses er3 WHERE er3.event_id = ge.id AND er3.user_id = ?) AS user_response
+	FROM group_events ge
+	JOIN users u ON ge.creator_id = u.id
+	WHERE ge.group_id = ?
+	ORDER BY ge.event_date ASC
+`, userID, groupID)
+
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
@@ -427,6 +430,7 @@ func (r *GroupRepository) GetGroupEvents(groupID, userID int) ([]models.GroupEve
 		}
 
 		events = append(events, event)
+
 	}
 
 	return events, nil
@@ -544,4 +548,39 @@ func (r *GroupRepository) CreateGroup(group models.Group) (models.Group, error) 
 	
 	group.ID = int(id)
 	return group, nil
+}
+
+// Add this to your existing repository methods
+func (r *GroupRepository) SetEventResponse(eventID, userID int, response string) error {
+    // First check if response exists
+    var exists bool
+    err := r.db.QueryRow(`
+        SELECT EXISTS(
+            SELECT 1 FROM event_responses 
+            WHERE event_id = ? AND user_id = ?
+        )`, eventID, userID).Scan(&exists)
+    if err != nil {
+        return fmt.Errorf("check existing response failed: %w", err)
+    }
+
+    if exists {
+        // Update existing response
+        _, err = r.db.Exec(`
+            UPDATE event_responses 
+            SET response = ?
+            WHERE event_id = ? AND user_id = ?`,
+            response, eventID, userID)
+    } else {
+        // Insert new response
+        _, err = r.db.Exec(`
+            INSERT INTO event_responses (event_id, user_id, response)
+            VALUES (?, ?, ?)`,
+            eventID, userID, response)
+    }
+
+    if err != nil {
+        return fmt.Errorf("failed to set event response: %w", err)
+    }
+
+    return nil
 }
