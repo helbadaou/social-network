@@ -239,14 +239,17 @@ func (r *GroupRepository) GetGroupPosts(groupID, userID int) ([]models.GroupPost
 func (r *GroupRepository) IsGroupMember(groupID, userID int) (bool, error) {
 	var exists int
 	err := r.db.QueryRow(`
-		SELECT COUNT(*) FROM group_memberships
-		WHERE group_id = ? AND user_id = ? AND status = 'accepted'`,
-		groupID, userID).Scan(&exists)
+		SELECT COUNT(*)
+		FROM groups g
+		LEFT JOIN group_memberships gm ON g.id = gm.group_id AND gm.user_id = ? AND gm.status = 'accepted'
+		WHERE g.id = ? AND (g.creator_id = ? OR gm.id IS NOT NULL)
+	`, userID, groupID, userID).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
 	return exists > 0, nil
 }
+
 
 func (r *GroupRepository) CreateGroupPost(post models.GroupPost) (*models.GroupPost, error) {
 	result, err := r.db.Exec(`
