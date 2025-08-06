@@ -17,14 +17,28 @@ export default function GroupDetailPage({ params }) {
   const [realtimeNotification, setRealtimeNotification] = useState(null)
   const [chatUsers, setChatUsers] = useState([])
   const [showPostForm, setShowPostForm] = useState(false)
+  const [showEventForm, setShowEventForm] = useState(false)
   const [posts, setPosts] = useState([])
+  const [events, setEvents] = useState([])
   const [content, setContent] = useState('')
   const [image, setImage] = useState(null)
   const [creating, setCreating] = useState(false)
+  const [creatingEvent, setCreatingEvent] = useState(false)
   const fileInputRef = useRef()
+
+  // Event form state
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    description: '',
+    eventDate: ''
+  })
 
   const togglePostForm = () => {
     setShowPostForm(prev => !prev)
+  }
+
+  const toggleEventForm = () => {
+    setShowEventForm(prev => !prev)
   }
 
   const handleNotificationRemoved = () => {
@@ -50,6 +64,17 @@ export default function GroupDetailPage({ params }) {
       setPosts(data || [])
     } catch (err) {
       console.error('Failed to fetch posts', err)
+    }
+  }
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch(`/api/groups/${groupId}/events`)
+      if (!res.ok) throw new Error('Failed to fetch events')
+      const data = await res.json()
+      setEvents(data || [])
+    } catch (err) {
+      console.error('Failed to fetch events', err)
     }
   }
 
@@ -84,6 +109,58 @@ export default function GroupDetailPage({ params }) {
     }
   }
 
+  const handleEventSubmit = async (e) => {
+    e.preventDefault();
+    setCreatingEvent(true);
+
+    try {
+      // Convert the datetime-local input to RFC3339 format
+      const eventDate = new Date(eventForm.eventDate).toISOString();
+
+      const res = await fetch(`/api/groups/${groupId}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          group_id: groupId,
+          title: eventForm.title,
+          description: eventForm.description,
+          event_date: eventDate, // Now in RFC3339 format
+        }),
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Error response:", errorData);
+        throw new Error(errorData.message || 'Failed to create event');
+      }
+
+      const newEvent = await res.json();
+      setEvents(prev => [newEvent, ...prev]);
+      setEventForm({
+        title: '',
+        description: '',
+        eventDate: ''
+      });
+      setShowEventForm(false);
+    } catch (err) {
+      console.error('Error creating event:', err);
+      // Optionally show error to user
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
+
+  const handleEventChange = (e) => {
+    const { name, value } = e.target
+    setEventForm(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
   useEffect(() => {
     const fetchGroup = async () => {
       try {
@@ -100,6 +177,7 @@ export default function GroupDetailPage({ params }) {
 
     fetchGroup()
     fetchPosts()
+    fetchEvents()
   }, [groupId])
 
   const handleJoin = async (e) => {
@@ -120,6 +198,7 @@ export default function GroupDetailPage({ params }) {
       console.error('Error joining group:', err)
     }
   }
+
   if (loading) return (
     <div className="min-h-screen bg-gray-900">
       <Navbar
@@ -181,6 +260,79 @@ export default function GroupDetailPage({ params }) {
               onClose={() => setShowPostForm(false)}
               isGroupPost={true}
             />
+          </div>
+        </div>
+      )}
+
+      {showEventForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl">
+            <form onSubmit={handleEventSubmit} className="space-y-4">
+              <h2 className="text-xl font-bold text-white mb-4">Create New Event</h2>
+
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
+                  Event Title
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={eventForm.title}
+                  onChange={handleEventChange}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={eventForm.description}
+                  onChange={handleEventChange}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="eventDate" className="block text-sm font-medium text-gray-300 mb-1">
+                  Event Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  id="eventDate"
+                  name="eventDate"
+                  value={eventForm.eventDate}
+                  onChange={handleEventChange}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEventForm(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  disabled={creatingEvent}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  disabled={creatingEvent}
+                >
+                  {creatingEvent ? 'Creating...' : 'Create Event'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -258,6 +410,16 @@ export default function GroupDetailPage({ params }) {
               </button>
             )}
 
+            {/* Create Event Button (only visible in events tab) */}
+            {activeTab === 'events' && (
+              <button
+                onClick={toggleEventForm}
+                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Create Event
+              </button>
+            )}
+
             {/* Pending Requests Tab */}
             {activeTab === 'requests' && group.is_creator && (
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
@@ -290,7 +452,22 @@ export default function GroupDetailPage({ params }) {
             {/* Events Tab */}
             {activeTab === 'events' && (
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                <p className="text-gray-400">Group events will appear here</p>
+                {events.length > 0 ? (
+                  events.map(event => (
+                    <div key={event.id} className="mb-4 p-4 bg-gray-700/50 rounded-lg">
+                      <h3 className="text-xl font-bold text-white">{event.title}</h3>
+                      <p className="text-gray-300 mt-1">{event.description}</p>
+                      <p className="text-gray-400 text-sm mt-2">
+                        📅 {new Date(event.eventDate).toLocaleString()}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        👤 Created by {event.creator_name}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-400">No events yet. Create the first one!</p>
+                )}
               </div>
             )}
           </div>

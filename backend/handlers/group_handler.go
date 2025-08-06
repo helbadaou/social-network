@@ -100,6 +100,8 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		h.GetGroupEventsHandler(w, r)
 
 	case suffix == "events" && method == http.MethodPost:
+		fmt.Println("fhfhfh")
+
 		h.CreateGroupEventHandler(w, r)
 
 	// CHAT MESSAGES
@@ -621,13 +623,16 @@ func (h *GroupHandler) GetGroupEventsHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *GroupHandler) CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("nothin")
 	if r.Method != http.MethodPost {
+		fmt.Println("dddlldld")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	userID, ok := h.Session.GetUserIDFromSession(w, r)
 	if !ok || userID == 0 {
+		fmt.Println("hna")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -640,6 +645,7 @@ func (h *GroupHandler) CreateGroupEventHandler(w http.ResponseWriter, r *http.Re
 
 	event, err := h.Service.CreateGroupEvent(userID, req)
 	if err != nil {
+		fmt.Println("aaaa")
 		switch err {
 		case ErrUnauthorized:
 			http.Error(w, "Not authorized", http.StatusForbidden)
