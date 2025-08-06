@@ -109,49 +109,51 @@ export default function GroupDetailPage({ params }) {
     }
   }
 
-  const handleEventSubmit = async (e) => {
-    e.preventDefault();
-    setCreatingEvent(true);
+const handleEventSubmit = async (e) => {
+  e.preventDefault();
+  setCreatingEvent(true);
 
-    try {
-      // Convert the datetime-local input to RFC3339 format
-      const eventDate = new Date(eventForm.eventDate).toISOString();
+  try {
+    // Create the request object matching exactly the Go struct
+    const requestBody = {
+      group_id: parseInt(groupId), // Ensure it's a number
+      title: eventForm.title,
+      description: eventForm.description,
+      event_date: new Date(eventForm.eventDate).toISOString()
+    };
 
-      const res = await fetch(`/api/groups/${groupId}/events`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          group_id: groupId,
-          title: eventForm.title,
-          description: eventForm.description,
-          event_date: eventDate, // Now in RFC3339 format
-        }),
-        credentials: 'include'
-      });
+    console.log("Request payload:", requestBody); // For debugging
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("Error response:", errorData);
-        throw new Error(errorData.message || 'Failed to create event');
-      }
+    const res = await fetch(`/api/groups/${groupId}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+      credentials: 'include'
+    });
 
-      const newEvent = await res.json();
-      setEvents(prev => [newEvent, ...prev]);
-      setEventForm({
-        title: '',
-        description: '',
-        eventDate: ''
-      });
-      setShowEventForm(false);
-    } catch (err) {
-      console.error('Error creating event:', err);
-      // Optionally show error to user
-    } finally {
-      setCreatingEvent(false);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Error response:", errorText);
+      throw new Error('Failed to create event: ' + errorText);
     }
-  };
+
+    const newEvent = await res.json();
+    setEvents(prev => [newEvent, ...prev]);
+    setEventForm({
+      title: '',
+      description: '',
+      eventDate: ''
+    });
+    setShowEventForm(false);
+  } catch (err) {
+    console.error('Error creating event:', err);
+    // Optionally show error to user
+  } finally {
+    setCreatingEvent(false);
+  }
+};
 
   const handleEventChange = (e) => {
     const { name, value } = e.target
