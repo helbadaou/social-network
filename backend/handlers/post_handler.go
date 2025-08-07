@@ -81,6 +81,8 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 	privacy := r.FormValue("privacy")
 	recipientIDsStr := r.Form["recipient_ids"]
 
+	fmt.Println("reciepents are : ", recipientIDsStr)
+
 	if content == "" || privacy == "" {
 		http.Error(w, "Missing content or privacy", http.StatusBadRequest)
 		return
@@ -118,6 +120,7 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = h.service.CreatePost(userID, content, imageURL, privacy, recipientIDs)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to create post", http.StatusInternalServerError)
 		return
 	}

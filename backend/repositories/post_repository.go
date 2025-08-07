@@ -168,7 +168,7 @@ func (r *PostRepository) CreatePost(post models.PostFetch, recipients []int) err
 
 	if post.Privacy == "custom" {
 		stmt, err := tx.Prepare(`
-			INSERT INTO post_recipients (post_id, recipient_id) VALUES (?, ?)
+			INSERT INTO post_permissions (post_id, user_id) VALUES (?, ?)
 		`)
 		if err != nil {
 			return err

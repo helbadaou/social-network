@@ -85,11 +85,11 @@
                 <label key={user.id} className="flex items-center gap-2 bg-gray-700 text-white p-2 rounded">
                   <input
                     type="checkbox"
-                    checked={recipientIds.includes(user.id)}
-                    onChange={() => handleCheckboxChange(user.id)}
+                    checked={recipientIds.includes(user.ID)}
+                    onChange={() => handleCheckboxChange(user.ID)}
                     className="accent-blue-600"
                   />
-                  <span>{user.name}</span>
+                  <span>{user.Nickname}</span>
                 </label>
               ))
             )}
