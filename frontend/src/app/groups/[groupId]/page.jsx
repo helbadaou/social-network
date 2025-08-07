@@ -52,6 +52,26 @@ export default function GroupDetailPage({ params }) {
     setRealtimeNotification(null)
   }
 
+  const handleVote = async (eventId, response) => {
+    try {
+      const res = await fetch(`/api/groups/${groupId}/events/${eventId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ response }),
+        credentials: 'include'
+      });
+
+      if (!res.ok) throw new Error('Failed to submit response');
+
+      // Refresh events after voting
+      fetchEvents();
+    } catch (err) {
+      console.error('Error submitting response:', err);
+    }
+  };
+
   const fetchChatUsers = async () => {
     try {
       const res = await fetch(`/api/groups/${groupId}/membership`)
@@ -191,8 +211,8 @@ export default function GroupDetailPage({ params }) {
   }
 
   const handleEventSubmit = async (e) => {
-    e.preventDefault()
-    setCreatingEvent(true)
+    e.preventDefault();
+    setCreatingEvent(true);
 
     try {
       const requestBody = {
@@ -200,7 +220,7 @@ export default function GroupDetailPage({ params }) {
         title: eventForm.title,
         description: eventForm.description,
         event_date: new Date(eventForm.eventDate).toISOString()
-      }
+      };
 
       const res = await fetch(`/api/groups/${groupId}/events`, {
         method: 'POST',
@@ -209,27 +229,27 @@ export default function GroupDetailPage({ params }) {
         },
         body: JSON.stringify(requestBody),
         credentials: 'include'
-      })
+      });
 
       if (!res.ok) {
-        const errorText = await res.text()
-        throw new Error('Failed to create event: ' + errorText)
+        const errorText = await res.text();
+        throw new Error('Failed to create event: ' + errorText);
       }
 
-      const newEvent = await res.json()
-      setEvents(prev => [newEvent, ...prev])
+      const newEvent = await res.json();
+      setEvents(prev => [newEvent, ...prev]);
       setEventForm({
         title: '',
         description: '',
         eventDate: ''
-      })
-      setShowEventForm(false)
+      });
+      setShowEventForm(false);
     } catch (err) {
-      console.error('Error creating event:', err)
+      console.error('Error creating event:', err);
     } finally {
-      setCreatingEvent(false)
+      setCreatingEvent(false);
     }
-  }
+  };
 
   const handleEventChange = (e) => {
     const { name, value } = e.target
@@ -554,22 +574,112 @@ export default function GroupDetailPage({ params }) {
             )}
 
             {activeTab === 'events' && (
-              <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+              <div className="space-y-4">
                 {events.length > 0 ? (
-                  events.map(event => (
-                    <div key={event.id} className="mb-4 p-4 bg-gray-700/50 rounded-lg">
-                      <h3 className="text-xl font-bold text-white">{event.title}</h3>
-                      <p className="text-gray-300 mt-1">{event.description}</p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        📅 {new Date(event.event_date).toLocaleString()}
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        👤 Created by {event.creator_name}
-                      </p>
+                  events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-gray-600 transition-all duration-200"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xl font-bold text-white">{event.title}</h3>
+                          {group.is_creator && (
+                            <span className="bg-purple-600/30 text-purple-300 px-2 py-1 rounded text-xs">
+                              Organizer
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-gray-300">{event.description}</p>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                          <div className="flex items-center text-blue-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {new Date(event.event_date).toLocaleString([], {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+
+                          <div className="flex items-center text-green-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            {event.creator_name}
+                          </div>
+                        </div>
+
+                        {/* Voting section */}
+                        <div className="mt-4 pt-4 border-t border-gray-700">
+                          <div className="flex items-center gap-4">
+                            {/* Going button */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleVote(event.id, 'going')}
+                                className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${event.user_response === 'going'
+                                    ? 'bg-green-600/20 text-green-400 border border-green-600/50'
+                                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+                                  }`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Going
+                              </button>
+                              <span className="text-gray-300 text-sm px-2 py-1 bg-gray-700/50 rounded-lg">
+                                {event.going_count || 0}
+                              </span>
+                            </div>
+
+                            {/* Not Going button */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleVote(event.id, 'not_going')}
+                                className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${event.user_response === 'not_going'
+                                    ? 'bg-red-600/20 text-red-400 border border-red-600/50'
+                                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+                                  }`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Not Going
+                              </button>
+                              <span className="text-gray-300 text-sm px-2 py-1 bg-gray-700/50 rounded-lg">
+                                {event.not_going_count || 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-400">No events yet. Create the first one!</p>
+                  <div className="bg-gray-800/50 rounded-xl p-8 text-center border border-gray-700/50">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-400">No events yet</h3>
+                      <p className="text-gray-500">Be the first to create an event!</p>
+                      <button
+                        onClick={toggleEventForm}
+                        className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Create Event
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

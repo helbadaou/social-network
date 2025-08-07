@@ -34,92 +34,104 @@ func NewGroupHandler(service *services.GroupService, session *services.SessionSe
 }
 
 func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request) {
-    path := r.URL.Path
-    method := r.Method
+	path := r.URL.Path
+	method := r.Method
 
-    // Trim prefix and split into parts
-    pathParts := strings.Split(strings.Trim(path, "/"), "/")
-    if len(pathParts) < 3 {
-        http.NotFound(w, r)
-        return
-    }
+	// Trim prefix and split into parts
+	pathParts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(pathParts) < 3 {
+		http.NotFound(w, r)
+		return
+	}
 
-    groupIDStr := pathParts[2]
+	groupIDStr := pathParts[2]
 
-    // Handle /api/groups/{id} direct GET
-    if len(pathParts) == 3 {
-        if _, err := strconv.Atoi(groupIDStr); err == nil && method == http.MethodGet {
-            h.GetGroupByIDHandler(w, r)
-            return
-        }
-    }
+	// Handle /api/groups/{id} direct GET
+	if len(pathParts) == 3 {
+		if _, err := strconv.Atoi(groupIDStr); err == nil && method == http.MethodGet {
+			h.GetGroupByIDHandler(w, r)
+			return
+		}
+	}
 
-    // Build suffix for routing
-    suffix := strings.Join(pathParts[3:], "/")
+	// Build suffix for routing
+	suffix := strings.Join(pathParts[3:], "/")
 
-    // Handle posts/{postID}/comments routes first
-    if len(pathParts) >= 5 && pathParts[3] == "posts" {
-        postIDStr := pathParts[4]
-        if _, err := strconv.Atoi(postIDStr); err == nil {
-            if len(pathParts) == 6 && pathParts[5] == "comments" {
-                switch method {
-                case http.MethodGet:
-                    h.GetGroupPostCommentsHandler(w, r)
-                    return
-                case http.MethodPost:
-                    h.CreateGroupPostCommentHandler(w, r)
-                    return
-                }
-            }
-        }
-    }
+	// Handle posts/{postID}/comments routes first
+	if len(pathParts) >= 5 && pathParts[3] == "posts" {
+		postIDStr := pathParts[4]
+		if _, err := strconv.Atoi(postIDStr); err == nil {
+			if len(pathParts) == 6 && pathParts[5] == "comments" {
+				switch method {
+				case http.MethodGet:
+					h.GetGroupPostCommentsHandler(w, r)
+					return
+				case http.MethodPost:
+					h.CreateGroupPostCommentHandler(w, r)
+					return
+				}
+			}
+		}
+	}
 
-    // Handle other routes
-    switch {
-    case suffix == "membership" && method == http.MethodGet:
-        h.CheckGroupAccessHandler(w, r)
+	// Handle other routes
+	switch {
+	case suffix == "membership" && method == http.MethodGet:
+		h.CheckGroupAccessHandler(w, r)
 
-    case suffix == "membership/pending_requests" && method == http.MethodGet:
-        h.GetPendingRequestsHandler(w, r)
+	case suffix == "membership/pending_requests" && method == http.MethodGet:
+		h.GetPendingRequestsHandler(w, r)
 
-    case suffix == "membership/join":
-        h.JoinGroupRequestHandler(w, r)
+	case suffix == "membership/join":
+		h.JoinGroupRequestHandler(w, r)
 
-    case suffix == "membership/accept" && method == http.MethodPost:
-        h.AcceptGroupInviteHandler(w, r)
+	case suffix == "membership/accept" && method == http.MethodPost:
+		h.AcceptGroupInviteHandler(w, r)
 
-    case suffix == "membership/invite" && method == http.MethodPost:
-        h.InviteToGroupHandler(w, r)
-    case suffix == "membership/approve" && method == http.MethodPost:
-        h.ApproveRequestHandler(w, r)
+	case suffix == "membership/invite" && method == http.MethodPost:
+		h.InviteToGroupHandler(w, r)
+	case suffix == "membership/approve" && method == http.MethodPost:
+		h.ApproveRequestHandler(w, r)
 
-    case suffix == "membership/decline" && method == http.MethodPost:
-        h.DeclineRequestHandler(w, r)
+	case suffix == "membership/decline" && method == http.MethodPost:
+		h.DeclineRequestHandler(w, r)
 
-    case suffix == "non-members":
-        h.GetNonGroupMembersHandler(w, r)
+	case suffix == "non-members":
+		h.GetNonGroupMembersHandler(w, r)
 
-    // GROUP POSTS
-    case suffix == "posts" && method == http.MethodGet:
-        h.GetGroupPostsHandler(w, r)
+	// GROUP POSTS
+	case suffix == "posts" && method == http.MethodGet:
+		h.GetGroupPostsHandler(w, r)
 
-    case suffix == "posts" && method == http.MethodPost:
-        h.CreateGroupPostHandler(w, r)
+	case suffix == "posts" && method == http.MethodPost:
+		fmt.Println("hkjhkjhkjhkjh")
+		h.CreateGroupPostHandler(w, r)
+		// COMMENTS
+	case suffix == "comments" && method == http.MethodGet:
+		h.GetGroupPostCommentsHandler(w, r)
 
-    // EVENTS
-    case suffix == "events" && method == http.MethodGet:
-        h.GetGroupEventsHandler(w, r)
+	case suffix == "comments" && method == http.MethodPost:
+		h.CreateGroupPostCommentHandler(w, r)
 
-    case suffix == "events" && method == http.MethodPost:
-        h.CreateGroupEventHandler(w, r)
+		// EVENTS
+	case suffix == "events" && method == http.MethodGet:
+		h.GetGroupEventsHandler(w, r)
 
-    // CHAT MESSAGES
-    case suffix == "messages" && method == http.MethodPost:
-        h.HandleGroupMessage(w, r)
+	case suffix == "events" && method == http.MethodPost:
 
-    default:
-        http.NotFound(w, r)
-    }
+		h.CreateGroupEventHandler(w, r)
+		fmt.Println("fhfhfh")
+
+	case strings.HasSuffix(suffix, "/vote") && method == http.MethodPost:
+		h.HandleEventVote(w, r)
+
+		// CHAT MESSAGES
+	case suffix == "messages" && method == http.MethodPost:
+		h.HandleGroupMessage(w, r)
+
+	default:
+		http.NotFound(w, r)
+	}
 }
 func (h *GroupHandler) GetGroupByIDHandler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -766,4 +778,56 @@ func (h *GroupHandler) DynamicMethods(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		h.CreateGroup(w, r)
 	}
+}
+
+// Add this to your handler methods
+func (h *GroupHandler) HandleEventVote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := h.Session.GetUserIDFromSession(w, r)
+	if !ok || userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract event ID from URL: /api/groups/{groupID}/events/{eventID}/vote
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	eventID, err := strconv.Atoi(parts[len(parts)-2])
+	if err != nil {
+		http.Error(w, "Invalid event ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Service.SetEventResponse(userID, eventID, req.Response)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrUnauthorized):
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		case strings.Contains(err.Error(), "invalid response type"):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, "Failed to process vote", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Vote recorded successfully",
+	})
 }
