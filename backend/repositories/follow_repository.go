@@ -94,7 +94,7 @@ func (r *FollowRepository) UpdateFollowNotificationStatus(senderID, userID int, 
 }
 
 func (r *FollowRepository) UnfollowUser(followerID, followedID int) error {
-	query := `DELETE FROM follows WHERE follower_id = ? AND followed_id = ?`
+	query := `DELETE FROM followers WHERE follower_id = ? AND followed_id = ?`
 	_, err := r.DB.Exec(query, followerID, followedID)
 	return err
 }

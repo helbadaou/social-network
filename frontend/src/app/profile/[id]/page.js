@@ -433,7 +433,6 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
         credentials: 'include',
         body: JSON.stringify({
           followed_id: profile.id,
-          cancel_request: profile.is_pending // Use profile.is_pending instead of followStatus
         }),
       })
 
