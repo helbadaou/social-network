@@ -16,89 +16,6 @@ export default function PublicProfilePage() {
   const [following, setFollowing] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // WebSocket and notifications states
-  const [realtimeNotification, setRealtimeNotification] = useState(null)
-  const ws = useRef(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-
-  // WebSocket configuration
-  const setupWebSocket = useCallback(() => {
-    if (!currentUser?.ID) return;
-
-    // Close existing connection if any
-    if (ws.current) {
-      ws.current.close();
-    }
-
-    const socket = new WebSocket('ws://localhost:8080/ws');
-
-    socket.onopen = () => {
-      console.log('✅ WebSocket connected');
-      reconnectAttempts.current = 0;
-      ws.current = socket;
-    };
-
-    socket.onclose = (e) => {
-      console.log('❌ WebSocket disconnected', e.code, e.reason);
-      ws.current = null;
-
-      // Reconnect if not a voluntary closure
-      if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-        reconnectAttempts.current += 1;
-        console.log(`🔄 Tentative de reconnexion ${reconnectAttempts.current}/${maxReconnectAttempts} dans ${delay}ms`);
-        setTimeout(setupWebSocket, delay);
-      }
-    };
-
-    socket.onerror = (err) => {
-      console.error('❌ WebSocket error:', err);
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-
-        // Handle server error messages
-        if (msg.type === "error") {
-          console.error("Erreur WebSocket:", msg.content);
-          return;
-        }
-
-        // Check if notification has expected fields
-        if (msg.type === "notification" || msg.type === "follow_request") {
-          setRealtimeNotification(msg);
-        }
-      } catch (err) {
-        console.error('Erreur parsing message WebSocket:', err);
-      }
-    };
-
-    return socket;
-  }, [currentUser?.ID]);
-
-  // Initialize WebSocket when user is loaded
-  useEffect(() => {
-    if (currentUser?.ID) {
-      const socket = setupWebSocket();
-      return () => {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.close(1000, 'Component unmounting');
-        }
-      };
-    }
-  }, [currentUser?.ID, setupWebSocket]);
-
-  // Cleanup on component unmount
-  useEffect(() => {
-    return () => {
-      if (ws.current) {
-        ws.current.close(1000, 'Page closing');
-      }
-    };
-  }, []);
-
   // Load current user on mount
   useEffect(() => {
     fetchCurrentUser();
@@ -140,6 +57,8 @@ export default function PublicProfilePage() {
         setProfile(data)
         if (!data.is_private || data.is_followed || data.is_owner) {
           loadPosts(id)
+          loadFollowers();
+          loadFollowing();
         }
       })
       .catch((err) => {
@@ -209,28 +128,17 @@ export default function PublicProfilePage() {
 
   const handleTabClick = (newTab) => {
     setTab(newTab);
-
-    if (newTab === 'followers' && (!Array.isArray(followers) || followers.length === 0)) {
-      loadFollowers();
-    }
-
-    if (newTab === 'following' && (!Array.isArray(following) || following.length === 0)) {
-      loadFollowing();
-    }
   };
 
   if (error) return <p className="text-red-600">{error}</p>
   if (!profile) return <p>Chargement du profil...</p>
-
+  console.error(currentUser.ID);
   return (
     <>
       <Navbar
         user={currentUser}
         handleSearch={() => { }}
         handleLogout={() => {
-          if (ws.current) {
-            ws.current.close(1000, 'User logging out');
-          }
           fetch("http://localhost:8080/api/logout", {
             method: "POST",
             credentials: "include",
@@ -241,7 +149,6 @@ export default function PublicProfilePage() {
         results={[]}
         openMessages={() => { }}
         togglePostForm={() => { }}
-        realtimeNotification={realtimeNotification}
         fetchChatUsers={fetchChatUsers}
         hideActions={true}
         hideSearch={true}
@@ -349,18 +256,23 @@ export default function PublicProfilePage() {
                 <p className="text-gray-400">Aucun abonné pour l'instant.</p>
               ) : (
                 followers.map(user => (
-                  <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                  <div
+                    key={user.ID}
+                    className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/profile/${user.ID}`)}
+                  >
                     <img
-                      src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                      src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
                       className="w-10 h-10 rounded-full object-cover"
                       alt="avatar"
                     />
                     <div>
-                      <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                      <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                      <p className="text-white font-medium">{user.FirstName} {user.LastName}</p>
+                      <p className="text-gray-400 text-sm">@{user.Nickname}</p>
                     </div>
                   </div>
                 ))
+
               )}
             </div>
           )}
@@ -373,15 +285,19 @@ export default function PublicProfilePage() {
                 <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
               ) : (
                 following.map(user => (
-                  <div key={user.id} className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                  <div
+                    key={user.ID}
+                    className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/profile/${user.ID}`)}
+                  >
                     <img
-                      src={user.avatar ? `http://localhost:8080/${user.avatar}` : '/avatar.png'}
+                      src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
                       className="w-10 h-10 rounded-full object-cover"
                       alt="avatar"
                     />
                     <div>
-                      <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
-                      <p className="text-gray-400 text-sm">@{user.nickname}</p>
+                      <p className="text-white font-medium">{user.FirstName} {user.LastName}</p>
+                      <p className="text-gray-400 text-sm">@{user.Nickname}</p>
                     </div>
                   </div>
                 ))
