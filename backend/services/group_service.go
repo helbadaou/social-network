@@ -309,3 +309,30 @@ func (s *GroupService) SetEventResponse(userID, eventID int, response string) er
 
     return nil
 }
+
+func (s *GroupService) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
+    // Add any business logic/validation here before calling the repository
+    if groupID <= 0 {
+        return nil, fmt.Errorf("invalid group ID")
+    }
+
+    // You might want to check if the group exists first
+    exists, err := s.repo.GroupExists(groupID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to check group existence: %w", err)
+    }
+    if !exists {
+        return nil, fmt.Errorf("group not found")
+    }
+
+    // Call the repository method
+    members, err := s.repo.GetGroupMembers(groupID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get group members: %w", err)
+    }
+
+    // You could add additional processing here if needed
+    // For example, filtering sensitive information, enriching data, etc.
+
+    return members, nil
+}

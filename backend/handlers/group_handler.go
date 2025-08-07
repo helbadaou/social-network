@@ -15,6 +15,8 @@ import (
 	"social/utils"
 	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var (
@@ -830,4 +832,32 @@ func (h *GroupHandler) HandleEventVote(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Vote recorded successfully",
 	})
+}
+
+func (h *GroupHandler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
+	// Extract group ID from URL params or query string
+	groupIDStr := chi.URLParam(r, "groupID")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Call service layer
+	members, err := h.Service.GetGroupMembers(groupID)
+	if err != nil {
+		// Handle different error types appropriately
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Group not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to get group members", http.StatusInternalServerError)
+		return
+	}
+
+	// Return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(members); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }

@@ -55,33 +55,34 @@ func (h *Hub) Run() {
 					fmt.Printf("⚠️ Private message recipient user %d not connected\n", msg.To)
 				}
 
-			// case "group":
-			// 	groupID := msg.GroupID
-			// 	if groupID == 0 {
-			// 		fmt.Println("❌ Group message received with GroupID 0. Skipping broadcast.")
-			// 		continue
-			// 	}
+			case "group":
+				groupID := msg.GroupID
+				if groupID == 0 {
+					fmt.Println("❌ Group message received with GroupID 0. Skipping broadcast.")
+					continue
+				}
 
-			// 	members, err := sqlite.GetGroupMembers(sqlite.DB, groupID)
-			// 	if err != nil {
-			// 		fmt.Printf("❌ Failed to get group members for group %d: %v\n", groupID, err)
-			// 		continue
-			// 	}
+				members, err := h.handlers.g
 
-			// 	for _, memberID := range members {
-			// 		if client, ok := h.Clients[memberID]; ok {
-			// 			select {
-			// 			case client.Send <- msgBytes:
-			// 				fmt.Printf("✅ Group message sent to member %d in group %d\n", memberID, groupID)
-			// 			default:
-			// 				fmt.Printf("⚠️ Failed to send group message to member %d (channel full or disconnected)\n", memberID)
-			// 				close(client.Send)
-			// 				delete(h.Clients, client.ID)
-			// 			}
-			// 		} else {
-			// 			fmt.Printf("⚠️ Group member %d not connected, skipping message.\n", memberID)
-			// 		}
-			// 	}
+				if err != nil {
+					fmt.Printf("❌ Failed to get group members for group %d: %v\n", groupID, err)
+					continue
+				}
+
+				for _, memberID := range members {
+					if client, ok := h.Clients[memberID]; ok {
+						select {
+						case client.Send <- msgBytes:
+							fmt.Printf("✅ Group message sent to member %d in group %d\n", memberID, groupID)
+						default:
+							fmt.Printf("⚠️ Failed to send group message to member %d (channel full or disconnected)\n", memberID)
+							close(client.Send)
+							delete(h.Clients, client.ID)
+						}
+					} else {
+						fmt.Printf("⚠️ Group member %d not connected, skipping message.\n", memberID)
+					}
+				}
 			default:
 				fmt.Printf("❌ Unknown message type: %s\n", msg.Type)
 			}

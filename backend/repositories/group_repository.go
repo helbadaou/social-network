@@ -584,3 +584,72 @@ func (r *GroupRepository) SetEventResponse(eventID, userID int, response string)
 
     return nil
 }
+func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
+    query := `
+        SELECT 
+            u.id,
+            u.nickname,
+            u.avatar,
+            CASE 
+                WHEN g.creator_id = u.id THEN 'creator'
+                ELSE 'member'
+            END as role,
+            gm.joined_at
+        FROM group_memberships gm
+        JOIN users u ON gm.user_id = u.id
+        JOIN groups g ON gm.group_id = g.id
+        WHERE gm.group_id = ? AND gm.status = 'accepted'
+        UNION
+        SELECT 
+            u.id,
+            u.nickname,
+            u.avatar,
+            'creator' as role,
+            g.created_at as joined_at
+        FROM groups g
+        JOIN users u ON g.creator_id = u.id
+        WHERE g.id = ?
+        ORDER BY role DESC, joined_at ASC
+    `
+
+    rows, err := r.db.Query(query, groupID, groupID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query group members: %w", err)
+    }
+    defer rows.Close()
+
+    var members []models.GroupMember
+    for rows.Next() {
+        var member models.GroupMember
+        var joinedAt time.Time
+        
+        err := rows.Scan(
+            &member.ID,
+            &member.Username,
+            &member.Avatar,
+            &member.Role,
+            &joinedAt,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan member row: %w", err)
+        }
+        
+        member.JoinedAt = joinedAt.Format(time.RFC3339)
+        if member.Avatar != "" {
+            member.Avatar = "http://localhost:8080/" + member.Avatar
+        }
+        
+        members = append(members, member)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+
+    return members, nil
+}
+func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
+    var exists bool
+    err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)
+    return exists, err
+}
