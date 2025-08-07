@@ -1,7 +1,3 @@
 social.db
 # Ignore all files in uploads directory except the directory itself
 uploads/*
-!uploads/avatars/
-!uploads/group_posts/
-uploads/avatars/*
-uploads/group_posts/*
