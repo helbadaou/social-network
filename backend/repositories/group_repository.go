@@ -653,3 +653,64 @@ func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
     err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)
     return exists, err
 }
+
+func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.GroupMessage, error) {
+    query := `
+        SELECT 
+            gm.id, 
+            gm.group_id, 
+            gm.sender_id, 
+            gm.content, 
+            gm.timestamp,
+            u.nickname as sender_nickname,
+            u.avatar as sender_avatar
+        FROM group_messages gm
+        JOIN users u ON gm.sender_id = u.id
+        WHERE gm.group_id = ?
+        ORDER BY gm.timestamp DESC
+        LIMIT ?
+    `
+
+    rows, err := r.db.Query(query, groupID, limit)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query group chat history: %w", err)
+    }
+    defer rows.Close()
+
+    var messages []models.GroupMessage
+    for rows.Next() {
+        var msg models.GroupMessage
+        var timestamp time.Time
+        
+        err := rows.Scan(
+            &msg.ID,
+            &msg.GroupID,
+            &msg.SenderID,
+            &msg.Content,
+            &timestamp,
+            &msg.SenderNickname,
+            &msg.SenderAvatar,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan message row: %w", err)
+        }
+        
+        msg.Timestamp = timestamp
+        if msg.SenderAvatar != "" {
+            msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
+        }
+        
+        messages = append(messages, msg)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+
+    // Reverse the order to have oldest messages first
+    for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+        messages[i], messages[j] = messages[j], messages[i]
+    }
+
+    return messages, nil
+}

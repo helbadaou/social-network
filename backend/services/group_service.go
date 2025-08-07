@@ -336,3 +336,7 @@ func (s *GroupService) GetGroupMembers(groupID int) ([]models.GroupMember, error
 
     return members, nil
 }
+
+func (s *GroupService) GetGroupChatHistory(groupID, limit int) ([]models.GroupMessage, error) {
+	return s.repo.GetGroupChatHistory(groupID, limit)
+}
