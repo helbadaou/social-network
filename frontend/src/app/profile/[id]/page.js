@@ -132,7 +132,6 @@ export default function PublicProfilePage() {
 
   if (error) return <p className="text-red-600">{error}</p>
   if (!profile) return <p>Chargement du profil...</p>
-  console.error(currentUser.ID);
   return (
     <>
       <Navbar

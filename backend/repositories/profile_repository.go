@@ -72,6 +72,19 @@ func (r *SqliteProfileRepo) IsFollowing(followerID, followedID int) (bool, error
 	return status == "accepted", nil
 }
 
+func (r *SqliteProfileRepo) IsPending(followerID, followedID int) (bool, error) {
+	var status string
+	err := r.db.QueryRow(`
+		SELECT status FROM followers
+		WHERE follower_id = ? AND followed_id = ?
+	`, followerID, followedID).Scan(&status)
+
+	if err != nil {
+		return false, err
+	}
+	return status == "pending", nil
+}
+
 func (ur *SqliteProfileRepo) SearchUsers(query string) ([]models.SearchResult, error) {
 	search := "%" + strings.ToLower(query) + "%"
 	rows, err := ur.db.Query(`

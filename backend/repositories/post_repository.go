@@ -15,30 +15,134 @@ func NewPostRepository(db *sql.DB) *PostRepository {
 	return &PostRepository{DB: db}
 }
 
-func (r *PostRepository) GetPostsByUserID(userID int) ([]models.Post, error) {
-	rows, err := r.DB.Query(`
-		SELECT id, content, image_url, created_at 
-		FROM posts 
-		WHERE author_id = ? 
-		ORDER BY created_at DESC
-	`, userID)
-	if err != nil {
-		log.Println("⛔ SQL error in GetPostsByUserID:", err)
-		return nil, err
-	}
-	defer rows.Close()
+// repository/post_repository.go
+func (r *PostRepository) IsUserFollowing(authorID, followerID int) (bool, error) {
+    var exists bool
+    err := r.DB.QueryRow(`
+        SELECT EXISTS(
+            SELECT 1 FROM followers 
+            WHERE followed_id = ? AND follower_id = ?
+        )`, authorID, followerID).Scan(&exists)
+    if err != nil {
+        return false, err
+    }
+    return exists, nil
+}
 
-	var posts []models.Post
-	for rows.Next() {
-		var post models.Post
-		err := rows.Scan(&post.ID, &post.Content, &post.Image, &post.CreatedAt)
-		if err != nil {
-			log.Println("⛔ Scan error in GetPostsByUserID:", err)
-			continue
-		}
-		posts = append(posts, post)
-	}
-	return posts, nil
+func (r *PostRepository) IsAccountPrivate(userID int) (bool, error) {
+    var isPrivate bool
+    err := r.DB.QueryRow(`
+        SELECT is_private FROM users WHERE id = ?
+    `, userID).Scan(&isPrivate)
+    if err != nil {
+        return false, err
+    }
+    return isPrivate, nil
+}
+
+func (r *PostRepository) GetPublicPostsByUserID(userID int) ([]models.PostFetch, error) {
+    return r.getPostsByPrivacy(userID, "public")
+}
+
+func (r *PostRepository) GetFollowersPostsByUserID(userID int) ([]models.PostFetch, error) {
+    return r.getPostsByPrivacy(userID, "followers")
+}
+
+// repository/post_repository.go
+func (r *PostRepository) GetAllPostsByUserID(userID int) ([]models.PostFetch, error) {
+    rows, err := r.DB.Query(`
+        SELECT 
+            p.id, p.author_id, p.content, p.image_url, 
+            p.privacy, p.created_at, u.avatar as author_avatar
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.author_id = ?
+        ORDER BY p.created_at DESC
+    `, userID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var posts []models.PostFetch
+    for rows.Next() {
+        var post models.PostFetch
+        err := rows.Scan(
+            &post.ID, &post.AuthorID, &post.Content, 
+            &post.ImageURL, &post.Privacy, &post.CreatedAt, &post.AuthorAvatar,
+        )
+        if err != nil {
+            log.Println("❌ scan error:", err)
+            continue
+        }
+        posts = append(posts, post)
+    }
+    return posts, nil
+}
+
+func (r *PostRepository) GetCustomPostsForUser(authorID, viewerID int) ([]models.PostFetch, error) {
+    rows, err := r.DB.Query(`
+        SELECT 
+            p.id, p.author_id, p.content, p.image_url, 
+            p.privacy, p.created_at, u.avatar as author_avatar
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.author_id = ? AND p.privacy = 'custom'
+        AND p.id IN (
+            SELECT post_id FROM post_permissions WHERE user_id = ?
+        )
+        ORDER BY p.created_at DESC
+    `, authorID, viewerID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var posts []models.PostFetch
+    for rows.Next() {
+        var post models.PostFetch
+        err := rows.Scan(
+            &post.ID, &post.AuthorID, &post.Content, 
+            &post.ImageURL, &post.Privacy, &post.CreatedAt, &post.AuthorAvatar,
+        )
+        if err != nil {
+            log.Println("❌ scan error:", err)
+            continue
+        }
+        posts = append(posts, post)
+    }
+    return posts, nil
+}
+
+func (r *PostRepository) getPostsByPrivacy(userID int, privacy string) ([]models.PostFetch, error) {
+    rows, err := r.DB.Query(`
+        SELECT 
+            p.id, p.author_id, p.content, p.image_url, 
+            p.privacy, p.created_at, u.avatar as author_avatar
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.author_id = ? AND p.privacy = ?
+        ORDER BY p.created_at DESC
+    `, userID, privacy)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var posts []models.PostFetch
+    for rows.Next() {
+        var post models.PostFetch
+        err := rows.Scan(
+            &post.ID, &post.AuthorID, &post.Content, 
+            &post.ImageURL, &post.Privacy, &post.CreatedAt, &post.AuthorAvatar,
+        )
+        if err != nil {
+            log.Println("❌ scan error:", err)
+            continue
+        }
+        posts = append(posts, post)
+    }
+    return posts, nil
 }
 
 func (r *PostRepository) CreatePost(post models.PostFetch, recipients []int) error {

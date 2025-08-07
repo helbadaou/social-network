@@ -33,8 +33,15 @@ func (h *PostHandler) GetUserPostsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	posts, err := h.service.GetUserPosts(userID)
+	currentUser, ok := h.session.GetUserIDFromSession(w, r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	posts, err := h.service.GetUserPosts(userID, currentUser)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Could not fetch posts", http.StatusInternalServerError)
 		return
 	}

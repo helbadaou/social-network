@@ -26,6 +26,10 @@ func (s *ProfileService) GetUserProfile(requesterID, targetID int) (*models.Prof
 		if err == nil {
 			user.IsFollowed = isFollowed
 		}
+		isPending, err := s.ProfileRepo.IsPending(requesterID, user.ID)
+		if err == nil {
+			user.IsPending = isPending
+		}
 	}
 
 	if user.IsPrivate && !user.IsOwner && !user.IsFollowed {

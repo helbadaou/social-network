@@ -14,8 +14,8 @@ type Profile struct {
 	// Meta info (not stored in DB)
 	IsOwner    bool `json:"is_owner"`
 	IsFollowed bool `json:"is_followed"`
+	IsPending  bool `json:"is_pending"`
 }
-
 
 type SearchResult struct {
 	ID        int    `json:"id"`
