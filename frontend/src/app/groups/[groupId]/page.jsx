@@ -7,6 +7,8 @@ import PostForm from '../../home/components/PostForm'
 import { use } from 'react'
 
 export default function GroupDetailPage({ params }) {
+  const [showGroupChat, setShowGroupChat] = useState(false)
+  const [groupChatInput, setGroupChatInput] = useState('')
   const { groupId } = use(params)
   const [group, setGroup] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -578,6 +580,60 @@ export default function GroupDetailPage({ params }) {
           </div>
         )}
       </div>
+      <button
+        onClick={() => setShowGroupChat(true)}
+        className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition-colors z-40"
+        title="Group Chat"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </button>
+
+      {/* Group Chat Popup - Add this near your other modals */}
+      {showGroupChat && (
+        <div className="fixed inset-0 z-40 pointer-events-none">
+          <div className="absolute right-0 top-0 h-full w-96 bg-gray-800 shadow-lg border-l border-gray-700 flex flex-col pointer-events-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h3 className="text-xl font-bold text-white">Group Chat</h3>
+              <button
+                onClick={() => setShowGroupChat(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {/* Chat messages would go here */}
+              <p className="text-gray-400 text-center py-10">Group chat messages will appear here</p>
+            </div>
+
+            <div className="p-4 border-t border-gray-700">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={groupChatInput}
+                  onChange={(e) => setGroupChatInput(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <button
+                  onClick={() => {
+                    // In a real implementation, you would send the message here
+                    setGroupChatInput('')
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
