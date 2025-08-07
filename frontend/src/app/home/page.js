@@ -145,16 +145,16 @@ export default function HomePage() {
   }, []);
 
   const fetchChatUsers = async () => {
-    try {
-      const res = await fetch("http://localhost:8080/api/chat-users", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
-      setChatUsers(data);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-    }
+    // try {
+    //   const res = await fetch("http://localhost:8080/api/chat-users", {
+    //     credentials: "include",
+    //   });
+    //   if (!res.ok) throw new Error("Failed to fetch users");
+    //   const data = await res.json();
+    //   //setChatUsers(data);
+    // } catch (err) {
+    //   console.error("Error fetching users:", err);
+    // }
   };
 
   const fetchUser = async () => {

@@ -1,3 +1,4 @@
+
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,31 +8,36 @@ import PostForm from '../../home/components/PostForm'
 import { use } from 'react'
 
 export default function GroupDetailPage({ params }) {
-  const [showGroupChat, setShowGroupChat] = useState(false)
-  const [groupChatInput, setGroupChatInput] = useState('')
+  // Group and UI state
   const { groupId } = use(params)
   const [group, setGroup] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('posts')
-  const router = useRouter()
-  const [realtimeNotification, setRealtimeNotification] = useState(null)
-  const [chatUsers, setChatUsers] = useState([])
+  const [showGroupChat, setShowGroupChat] = useState(false)
   const [showPostForm, setShowPostForm] = useState(false)
   const [showEventForm, setShowEventForm] = useState(false)
+
+  // Content state
   const [posts, setPosts] = useState([])
   const [events, setEvents] = useState([])
   const [content, setContent] = useState('')
   const [image, setImage] = useState(null)
   const [creating, setCreating] = useState(false)
   const [creatingEvent, setCreatingEvent] = useState(false)
-  const fileInputRef = useRef()
 
-  // Comment related state
+  // Comment state
   const [comments, setComments] = useState({})
   const [commentInputs, setCommentInputs] = useState({})
   const [loadingComments, setLoadingComments] = useState({})
   const [postingComment, setPostingComment] = useState({})
+
+  // Chat state
+  const [groupChatInput, setGroupChatInput] = useState('')
+  const [groupChatMessages, setGroupChatMessages] = useState([])
+  const [isWsConnected, setIsWsConnected] = useState(false)
+  const [sharedWorker, setSharedWorker] = useState(null)
+  const [userId, setUserId] = useState(null)
 
   // Event form state
   const [eventForm, setEventForm] = useState({
@@ -40,6 +46,125 @@ export default function GroupDetailPage({ params }) {
     eventDate: ''
   })
 
+  // Other hooks and refs
+  const router = useRouter()
+  const fileInputRef = useRef()
+  const workerRef = useRef(null)
+  const [chatUsers, setChatUsers] = useState([])
+  const [realtimeNotification, setRealtimeNotification] = useState(null)
+
+  // Initialize shared worker
+  useEffect(() => {
+    // Get current user ID
+    const fetchUserId = async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          credentials: 'include'
+        })
+        if (res.ok) {
+          const user = await res.json()
+          setUserId(user.id)
+        } else {
+          console.error('Failed to fetch user ID')
+        }
+      } catch (err) {
+        console.error('Error fetching user ID:', err)
+      }
+    }
+
+    fetchUserId()
+
+    return () => {
+      // Cleanup worker when component unmounts
+      if (workerRef.current) {
+        workerRef.current.port.close()
+      }
+    }
+  }, [])
+
+  // Initialize worker when userId is available
+  useEffect(() => {
+    if (userId && !sharedWorker) {
+      if (typeof SharedWorker !== 'undefined') {
+        const worker = new SharedWorker('/sharedWorker.js')
+        workerRef.current = worker
+
+        worker.port.onmessage = (event) => {
+          const { type, data, message, connected } = event.data
+
+          switch (type) {
+            case 'status':
+              setIsWsConnected(connected)
+              console.log('WebSocket status:', message)
+              break
+
+            case 'message':
+              // Handle incoming group chat messages
+              if (data.group_id === parseInt(groupId)) {
+                setGroupChatMessages(prev => [...prev, {
+                  ...data,
+                  isCurrentUser: data.sender_id === userId
+                }])
+              }
+              // Handle other message types (notifications, etc.)
+              break
+
+            case 'error':
+              console.error('Worker error:', message)
+              break
+
+            default:
+              console.log('Unknown message type from worker:', type)
+          }
+        }
+
+        worker.port.postMessage({
+          type: 'INIT',
+          userId: userId
+        })
+
+        setSharedWorker(worker)
+      } else {
+        console.warn('SharedWorker not supported in this browser')
+        // Fallback to direct WebSocket connection
+      }
+    }
+  }, [userId, groupId])
+
+  // Send group chat message through shared worker
+  const sendGroupChatMessage = () => {
+    if (!groupChatInput.trim() || !sharedWorker || !isWsConnected) return
+
+    const message = {
+      type: "group",
+      group_id: parseInt(groupId),
+      sender_id: userId,
+      content: groupChatInput.trim(),
+      timestamp: new Date().toISOString()
+    }
+
+    sharedWorker.port.postMessage({
+      type: 'SEND',
+      message: message
+    })
+
+    // Optimistically update UI
+    setGroupChatMessages(prev => [...prev, {
+      ...message,
+      sender_name: 'You',
+      isCurrentUser: true
+    }])
+
+    setGroupChatInput('')
+  }
+
+  // Handle key press in chat input
+  const handleChatKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendGroupChatMessage()
+    }
+  }
   const togglePostForm = () => {
     setShowPostForm(prev => !prev)
   }
@@ -624,8 +749,8 @@ export default function GroupDetailPage({ params }) {
                               <button
                                 onClick={() => handleVote(event.id, 'going')}
                                 className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${event.user_response === 'going'
-                                    ? 'bg-green-600/20 text-green-400 border border-green-600/50'
-                                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+                                  ? 'bg-green-600/20 text-green-400 border border-green-600/50'
+                                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
                                   }`}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -643,8 +768,8 @@ export default function GroupDetailPage({ params }) {
                               <button
                                 onClick={() => handleVote(event.id, 'not_going')}
                                 className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${event.user_response === 'not_going'
-                                    ? 'bg-red-600/20 text-red-400 border border-red-600/50'
-                                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+                                  ? 'bg-red-600/20 text-red-400 border border-red-600/50'
+                                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
                                   }`}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -705,7 +830,10 @@ export default function GroupDetailPage({ params }) {
         <div className="fixed inset-0 z-40 pointer-events-none">
           <div className="absolute right-0 top-0 h-full w-96 bg-gray-800 shadow-lg border-l border-gray-700 flex flex-col pointer-events-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h3 className="text-xl font-bold text-white">Group Chat</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-white">Group Chat: {group?.title}</h3>
+                <span className={`h-2 w-2 rounded-full ${isWsConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              </div>
               <button
                 onClick={() => setShowGroupChat(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700"
@@ -716,9 +844,28 @@ export default function GroupDetailPage({ params }) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              {/* Chat messages would go here */}
-              <p className="text-gray-400 text-center py-10">Group chat messages will appear here</p>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {groupChatMessages.length === 0 ? (
+                <p className="text-gray-400 text-center py-10">
+                  {isWsConnected ? "No messages yet. Start the conversation!" : "Connecting to chat..."}
+                </p>
+              ) : (
+                groupChatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs p-3 rounded-lg ${msg.isCurrentUser ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}
+                    >
+                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-xs mt-1 opacity-70">
+                        {msg.isCurrentUser ? 'You' : msg.sender_name || 'User'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="p-4 border-t border-gray-700">
@@ -727,15 +874,15 @@ export default function GroupDetailPage({ params }) {
                   type="text"
                   value={groupChatInput}
                   onChange={(e) => setGroupChatInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                  onKeyPress={handleChatKeyPress}
+                  placeholder={isWsConnected ? "Type a message..." : "Connecting..."}
+                  disabled={!isWsConnected}
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                 />
                 <button
-                  onClick={() => {
-                    // In a real implementation, you would send the message here
-                    setGroupChatInput('')
-                  }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  onClick={sendGroupChatMessage}
+                  disabled={!groupChatInput.trim() || !isWsConnected}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
                   Send
                 </button>

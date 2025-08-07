@@ -3,6 +3,8 @@ package hub
 import (
 	"log"
 	"net/http"
+
+	"social/models"
 	"social/services"
 
 	"github.com/gorilla/websocket"
@@ -11,6 +13,7 @@ import (
 type Handler struct {
 	service *services.AuthService
 	session *services.SessionService
+	group   *services.GroupService
 	hub     *Hub
 }
 
@@ -49,4 +52,8 @@ func (h *Handler) ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	go client.writePump()
 	go client.readPump(hub)
+}
+
+func (h *Handler) GetGroupMembers(id int) ([]models.GroupMember, error) {
+	return h.group.GetGroupMembers(id)
 }
