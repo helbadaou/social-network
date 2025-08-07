@@ -75,3 +75,11 @@ func (r *NotificationRepository) DeleteNotification(userID, notificationID int) 
 	_, err := r.DB.Exec(`DELETE FROM notifications WHERE id = ? AND user_id = ?`, notificationID, userID)
 	return err
 }
+
+func (r *NotificationRepository) CreateFollowRequestNotification(userID, senderID int, senderName string) error {
+    _, err := r.DB.Exec(`
+        INSERT INTO notifications (user_id, sender_id, type, message, created_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        userID, senderID, "follow_request", senderName+" sent you a follow request")
+    return err
+}
