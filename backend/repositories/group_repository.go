@@ -584,3 +584,133 @@ func (r *GroupRepository) SetEventResponse(eventID, userID int, response string)
 
     return nil
 }
+func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
+    query := `
+        SELECT 
+            u.id,
+            u.nickname,
+            u.avatar,
+            CASE 
+                WHEN g.creator_id = u.id THEN 'creator'
+                ELSE 'member'
+            END as role,
+            gm.joined_at
+        FROM group_memberships gm
+        JOIN users u ON gm.user_id = u.id
+        JOIN groups g ON gm.group_id = g.id
+        WHERE gm.group_id = ? AND gm.status = 'accepted'
+        UNION
+        SELECT 
+            u.id,
+            u.nickname,
+            u.avatar,
+            'creator' as role,
+            g.created_at as joined_at
+        FROM groups g
+        JOIN users u ON g.creator_id = u.id
+        WHERE g.id = ?
+        ORDER BY role DESC, joined_at ASC
+    `
+
+    rows, err := r.db.Query(query, groupID, groupID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query group members: %w", err)
+    }
+    defer rows.Close()
+
+    var members []models.GroupMember
+    for rows.Next() {
+        var member models.GroupMember
+        var joinedAt time.Time
+        
+        err := rows.Scan(
+            &member.ID,
+            &member.Username,
+            &member.Avatar,
+            &member.Role,
+            &joinedAt,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan member row: %w", err)
+        }
+        
+        member.JoinedAt = joinedAt.Format(time.RFC3339)
+        if member.Avatar != "" {
+            member.Avatar = "http://localhost:8080/" + member.Avatar
+        }
+        
+        members = append(members, member)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+
+    return members, nil
+}
+func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
+    var exists bool
+    err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)
+    return exists, err
+}
+
+func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.GroupMessage, error) {
+    query := `
+        SELECT 
+            gm.id, 
+            gm.group_id, 
+            gm.sender_id, 
+            gm.content, 
+            gm.timestamp,
+            u.nickname as sender_nickname,
+            u.avatar as sender_avatar
+        FROM group_messages gm
+        JOIN users u ON gm.sender_id = u.id
+        WHERE gm.group_id = ?
+        ORDER BY gm.timestamp DESC
+        LIMIT ?
+    `
+
+    rows, err := r.db.Query(query, groupID, limit)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query group chat history: %w", err)
+    }
+    defer rows.Close()
+
+    var messages []models.GroupMessage
+    for rows.Next() {
+        var msg models.GroupMessage
+        var timestamp time.Time
+        
+        err := rows.Scan(
+            &msg.ID,
+            &msg.GroupID,
+            &msg.SenderID,
+            &msg.Content,
+            &timestamp,
+            &msg.SenderNickname,
+            &msg.SenderAvatar,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan message row: %w", err)
+        }
+        
+        msg.Timestamp = timestamp
+        if msg.SenderAvatar != "" {
+            msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
+        }
+        
+        messages = append(messages, msg)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+
+    // Reverse the order to have oldest messages first
+    for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+        messages[i], messages[j] = messages[j], messages[i]
+    }
+
+    return messages, nil
+}

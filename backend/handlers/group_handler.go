@@ -15,6 +15,8 @@ import (
 	"social/utils"
 	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var (
@@ -99,6 +101,9 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 	case suffix == "non-members":
 		h.GetNonGroupMembersHandler(w, r)
 
+	case suffix == "chat" && method == http.MethodGet:
+		fmt.Println("dsmfksdmflksmk")
+		h.GetGroupChat(w, r)
 	// GROUP POSTS
 	case suffix == "posts" && method == http.MethodGet:
 		h.GetGroupPostsHandler(w, r)
@@ -132,6 +137,42 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 	default:
 		http.NotFound(w, r)
 	}
+}
+func (h *GroupHandler) GetGroupChat(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from session
+	userID, ok := h.Session.GetUserIDFromSession(w, r)
+	if !ok || userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get group ID from URL
+	groupIDStr := strings.TrimPrefix(r.URL.Path, "/api/groups/")
+	groupIDStr = strings.TrimSuffix(groupIDStr, "/chat")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get limit from query params (default to 50)
+	limit := 50
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	// Get chat history
+	messages, err := h.Service.GetGroupChatHistory(groupID, limit)
+	if err != nil {
+		http.Error(w, "Failed to get chat history", http.StatusInternalServerError)
+		return
+	}
+
+	// Return messages
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
 }
 func (h *GroupHandler) GetGroupByIDHandler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -830,4 +871,32 @@ func (h *GroupHandler) HandleEventVote(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Vote recorded successfully",
 	})
+}
+
+func (h *GroupHandler) GetGroupMembers(w http.ResponseWriter, r *http.Request) {
+	// Extract group ID from URL params or query string
+	groupIDStr := chi.URLParam(r, "groupID")
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Call service layer
+	members, err := h.Service.GetGroupMembers(groupID)
+	if err != nil {
+		// Handle different error types appropriately
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Group not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to get group members", http.StatusInternalServerError)
+		return
+	}
+
+	// Return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(members); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
