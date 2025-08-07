@@ -6,7 +6,6 @@ import Navbar from "./components/Navbar";
 import PostForm from "./components/PostForm";
 import MessageSidebar from "../messages/components/MessageSidebar";
 import ChatBox from "../messages/components/ChatBox";
-import UserProfilePopup from "./components/UserProfilePopup";
 import Post from './components/Post'
 import styles from './HomePage.module.css'
 
@@ -22,15 +21,10 @@ export default function HomePage() {
   const [success, setSuccess] = useState("");
 
   const [user, setUser] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
 
   const [showMessages, setShowMessages] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
-
-  const [followStatus, setFollowStatus] = useState("");
   const [chatUsers, setChatUsers] = useState([]);
   const [openChats, setOpenChats] = useState([]);
   const [showPostForm, setShowPostForm] = useState(false)
@@ -42,7 +36,6 @@ export default function HomePage() {
 
   // --- SharedWorker related ---
   const workerRef = useRef(null);
-  // messages for chat, keyed by chat user ID or global array (your choice)
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState({});
 
@@ -182,33 +175,9 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   };
 
-  const 
-  
-  
-  fetchUserById = async (userId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Erreur chargement profil')
-      const data = await res.json()
-      setSelectedUser(data)
-
-      const followRes = await fetch(`http://localhost:8080/api/follow/status/${userId}`, {
-        credentials: 'include',
-      })
-      if (followRes.ok) {
-        const { status } = await followRes.json()
-        setFollowStatus(status)
-      } else {
-        setFollowStatus('')
-      }
-
-      setShowPopup(true)
-    } catch (err) {
-      console.error('Erreur chargement profil utilisateur:', err)
-    }
-  }
+  const fetchUserById = async (userId) => {
+    router.push(`/profile/${userId}`);
+  };
 
   const handleSubmit = async (e, selectedRecipientIds = []) => {
     e.preventDefault();
@@ -299,7 +268,6 @@ export default function HomePage() {
       });
       if (res.ok) {
         setUser(null);
-        setShowProfile(false);
         router.push("/login");
       } else {
         throw new Error("Logout failed");
@@ -379,18 +347,6 @@ export default function HomePage() {
           />
         ))}
       </div>
-      {showPopup && selectedUser && (
-        <UserProfilePopup
-          selectedUser={selectedUser}
-          currentUser={user}
-          setShowPopup={setShowPopup}
-          followStatus={followStatus}
-          setFollowStatus={setFollowStatus}
-          fetchChatUsers={fetchChatUsers}
-          realtimeNotification={realtimeNotification}
-          onNotificationRemoved={onNotificationRemoved}
-        />
-      )}
     </div>
   )
 }

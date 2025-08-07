@@ -10,13 +10,14 @@ type Post struct {
 }
 
 type PostFetch struct {
-	ID         int       `json:"id"`
-	AuthorID   int       `json:"author_id"`
-	Content    string    `json:"content"`
-	ImageURL   string    `json:"image_url"`
-	Privacy    string    `json:"privacy"`
-	CreatedAt  time.Time `json:"created_at"`
-	Recipients []int     `json:"recipients,omitempty"`
+    ID           int       `json:"id"`
+    AuthorID     int       `json:"author_id"`
+    Content      string    `json:"content"`
+    ImageURL     string    `json:"image_url"`
+    Privacy      string    `json:"privacy"`
+    CreatedAt    time.Time `json:"created_at"`
+    AuthorAvatar string    `json:"author_avatar"`
+    Recipients   []int     `json:"recipients,omitempty"`
 }
 
 type CommentWithUser struct {

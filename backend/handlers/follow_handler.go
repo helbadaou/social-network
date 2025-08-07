@@ -154,24 +154,20 @@ func (h *FollowHandler) UnfollowUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
+	
 	var payload struct {
-		FollowedID string `json:"followed_id"`
+		FollowedID int `json:"followed_id"`
 	}
-
+	
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		fmt.Println("called : ", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	followedID, err := strconv.Atoi(payload.FollowedID)
+	
+	err := h.Service.UnfollowUser(sessionUserID, payload.FollowedID)
 	if err != nil {
-		http.Error(w, "Invalid followed ID", http.StatusBadRequest)
-		return
-	}
-
-	err = h.Service.UnfollowUser(sessionUserID, followedID)
-	if err != nil {
+		fmt.Println("called : ", err)
 		http.Error(w, "Error unfollowing user", http.StatusInternalServerError)
 		return
 	}
