@@ -38,21 +38,22 @@ func main() {
 	postService := services.NewPostService(postRepo)
 	postHandler := handlers.NewPostHandler(postService, sessionService)
 
-	// follow layers
-	followRepo := repositories.NewFollowRepository(sqlite.GetDB())
-	followService := services.NewFollowService(followRepo)
-	followHandler := handlers.NewFollowHandler(followService, sessionService, hub)
-
+	
 	// chat layers
 	chatRepo := repositories.NewChatRepository(sqlite.GetDB())
 	chatService := services.NewChatService(chatRepo)
 	chatHandler := handlers.NewChatHandler(chatService, sessionService)
-
+	
 	// notification layers
 	notifRepo := repositories.NewNotificationRepository(sqlite.GetDB())
 	notifService := services.NewNotificationService(notifRepo)
 	notifHandler := handlers.NewNotificationHandler(notifService, sessionService)
 
+	// follow layers
+	followRepo := repositories.NewFollowRepository(sqlite.GetDB())
+	followService := services.NewFollowService(followRepo, notifRepo)
+	followHandler := handlers.NewFollowHandler(followService, sessionService, hub)
+	
 	// groups layers
 	groupRepo := repositories.NewGroupRepository(sqlite.GetDB())
 	groupService := services.NewGroupService(groupRepo)

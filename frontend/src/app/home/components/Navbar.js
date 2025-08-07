@@ -141,34 +141,37 @@ export default function Navbar({
   };
 
   const handleReject = async (notifId, senderId) => {
-    try {
-      const res = await fetch('/api/follow/reject', {
+  try {
+    const [rejectRes, seenRes, deleteRes] = await Promise.all([
+      fetch('/api/follow/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender_id: senderId }),
         credentials: 'include',
-      });
+      }),
+      fetch('/api/notifications/seen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
+      }),
+      fetch('/api/notifications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
+      })
+    ]);
 
-      if (res.ok) {
-        await fetch('/api/notifications/seen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
-
-        await fetch('/api/notifications/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
-        setNotifications(prev => prev.filter(n => n.id !== notifId));
-      }
-    } catch (err) {
-      console.error('Erreur rejet:', err);
+    if (rejectRes.ok && seenRes.ok && deleteRes.ok) {
+      setNotifications(prev => prev.filter(n => n.id !== notifId));
+    } else {
+      console.error('One or more requests failed', rejectRes.status, seenRes.status);
     }
-  };
+  } catch (err) {
+    console.error('Erreur rejet:', err);
+  }
+};
 
   const toggleProfile = () => {
     setShowProfile(prev => !prev)

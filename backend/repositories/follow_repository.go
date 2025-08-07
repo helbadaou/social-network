@@ -87,9 +87,9 @@ func (r *FollowRepository) RejectFollowRequest(followerID, followedID int) error
 func (r *FollowRepository) UpdateFollowNotificationStatus(senderID, userID int, status string) error {
 	_, err := r.DB.Exec(`
 		UPDATE notifications 
-		SET seen = 1, status = ?
+		SET seen = 1
 		WHERE sender_id = ? AND user_id = ? AND type = 'follow_request'
-	`, status, senderID, userID)
+	`, senderID, userID)
 	return err
 }
 

@@ -41,7 +41,7 @@ func (h *FollowHandler) SendFollowRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	status, err := h.Service.SendFollowRequest(userID, req.FollowedID)
+	notification, status, err := h.Service.SendFollowRequest(userID, req.FollowedID)
 	if err != nil {
 		http.Error(w, "Error sending follow request", http.StatusInternalServerError)
 		return
@@ -51,6 +51,9 @@ func (h *FollowHandler) SendFollowRequest(w http.ResponseWriter, r *http.Request
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": status})
 		return
+	}
+	if status == "pending" && h.hub != nil {
+		h.hub.SendNotification(notification, req.FollowedID)
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -136,6 +139,7 @@ func (h *FollowHandler) RejectFollow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.RejectFollowRequest(req.SenderID, userID); err != nil {
+		fmt.Println("error 1 : ", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
