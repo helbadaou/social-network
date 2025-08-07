@@ -16,17 +16,17 @@ export default function PublicProfilePage() {
   const [following, setFollowing] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // ✅ Ajout des états WebSocket et notifications
+  // WebSocket and notifications states
   const [realtimeNotification, setRealtimeNotification] = useState(null)
   const ws = useRef(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // ✅ Configuration WebSocket (copié depuis la page d'accueil)
+  // WebSocket configuration
   const setupWebSocket = useCallback(() => {
     if (!currentUser?.ID) return;
 
-    // Fermer la connexion existante si elle existe
+    // Close existing connection if any
     if (ws.current) {
       ws.current.close();
     }
@@ -43,7 +43,7 @@ export default function PublicProfilePage() {
       console.log('❌ WebSocket disconnected', e.code, e.reason);
       ws.current = null;
 
-      // Reconnexion automatique si ce n'est pas une fermeture volontaire
+      // Reconnect if not a voluntary closure
       if (e.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
         reconnectAttempts.current += 1;
@@ -60,7 +60,7 @@ export default function PublicProfilePage() {
       try {
         const msg = JSON.parse(event.data);
 
-        // Gestion des messages d'erreur du serveur
+        // Handle server error messages
         if (msg.type === "error") {
           console.error("Erreur WebSocket:", msg.content);
           return;
@@ -78,7 +78,7 @@ export default function PublicProfilePage() {
     return socket;
   }, [currentUser?.ID]);
 
-  // ✅ Initialiser WebSocket quand l'utilisateur est chargé
+  // Initialize WebSocket when user is loaded
   useEffect(() => {
     if (currentUser?.ID) {
       const socket = setupWebSocket();
@@ -90,7 +90,7 @@ export default function PublicProfilePage() {
     }
   }, [currentUser?.ID, setupWebSocket]);
 
-  // ✅ Nettoyage à la fermeture du composant
+  // Cleanup on component unmount
   useEffect(() => {
     return () => {
       if (ws.current) {
@@ -99,7 +99,7 @@ export default function PublicProfilePage() {
     };
   }, []);
 
-  // ✅ Charger l'utilisateur actuel au démarrage
+  // Load current user on mount
   useEffect(() => {
     fetchCurrentUser();
   }, []);
@@ -114,12 +114,10 @@ export default function PublicProfilePage() {
       setCurrentUser(data);
     } catch (err) {
       console.error("Error loading profile:", err);
-      // Si l'utilisateur n'est pas connecté, rediriger vers login
       router.push('/login');
     }
   };
 
-  // ✅ Fonction fetchChatUsers (même si pas utilisée sur cette page, nécessaire pour la Navbar)
   const fetchChatUsers = async () => {
     try {
       const res = await fetch("http://localhost:8080/api/chat-users", {
@@ -127,7 +125,6 @@ export default function PublicProfilePage() {
       });
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
-      // Pas besoin de stocker dans un state sur cette page
     } catch (err) {
       console.error("Error fetching users:", err);
     }
@@ -142,9 +139,7 @@ export default function PublicProfilePage() {
       .then(data => {
         setProfile(data)
         if (!data.is_private || data.is_followed || data.is_owner) {
-          // Si je peux voir le contenu : charger posts + followers
           loadPosts(id)
-          // loadFollowData(id)
         }
       })
       .catch((err) => {
@@ -230,10 +225,9 @@ export default function PublicProfilePage() {
   return (
     <>
       <Navbar
-        user={currentUser} // ✅ Passer l'utilisateur actuel au lieu de null
+        user={currentUser}
         handleSearch={() => { }}
         handleLogout={() => {
-          // ✅ Fonction de logout appropriée
           if (ws.current) {
             ws.current.close(1000, 'User logging out');
           }
@@ -247,9 +241,9 @@ export default function PublicProfilePage() {
         results={[]}
         openMessages={() => { }}
         togglePostForm={() => { }}
-        realtimeNotification={realtimeNotification} // ✅ Passer les notifications en temps réel
-        fetchChatUsers={fetchChatUsers} // ✅ Passer la fonction fetchChatUsers
-        hideActions={true} // ← ✅ ici on cache les icônes
+        realtimeNotification={realtimeNotification}
+        fetchChatUsers={fetchChatUsers}
+        hideActions={true}
         hideSearch={true}
       />
 
@@ -282,9 +276,26 @@ export default function PublicProfilePage() {
             <p><strong className="text-blue-400">Email :</strong> {profile.email}</p>
             <p><strong className="text-blue-400">À propos :</strong> {profile.about || 'N/A'}</p>
             <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>
+
+            {/* Follow button section */}
+            {!profile.is_owner && (
+              <div className="mt-4">
+                <FollowButton
+                  profile={profile}
+                  currentUser={currentUser}
+                  onFollowChange={(newStatus) => {
+                    setProfile(prev => ({
+                      ...prev,
+                      is_followed: newStatus.is_followed,
+                      is_pending: newStatus.is_pending
+                    }))
+                  }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* 🔄 Onglets */}
+          {/* Tabs */}
           <div className="flex space-x-4 mt-8 mb-4 text-sm font-semibold">
             <button
               onClick={() => handleTabClick('posts')}
@@ -381,4 +392,94 @@ export default function PublicProfilePage() {
       </main>
     </>
   )
+}
+
+function FollowButton({ profile, currentUser, onFollowChange }) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleFollow = async () => {
+    if (!currentUser?.ID || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://localhost:8080/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ followed_id: profile.id }),
+      })
+
+      if (res.ok) {
+        onFollowChange({
+          is_followed: !profile.is_private,
+          is_pending: profile.is_private
+        });
+      }
+    } catch (err) {
+      console.error('Follow error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!currentUser?.ID || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://localhost:8080/api/unfollow', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          followed_id: profile.id,
+          cancel_request: profile.is_pending // Use profile.is_pending instead of followStatus
+        }),
+      })
+
+      if (res.ok) {
+        onFollowChange({
+          is_followed: false,
+          is_pending: false
+        });
+      }
+    } catch (err) {
+      console.error('Unfollow error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (profile.is_followed) {
+    return (
+      <button
+        onClick={handleUnfollow}
+        disabled={isLoading}
+        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+      >
+        {isLoading ? 'Chargement...' : 'Se désabonner'}
+      </button>
+    );
+  }
+
+  if (profile.is_pending) {
+    return (
+      <button
+        disabled
+        className="px-4 py-2 bg-yellow-600 text-white rounded-lg opacity-75"
+      >
+        En attente d'approbation
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleFollow}
+      disabled={isLoading}
+      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+    >
+      {isLoading ? 'Chargement...' : profile.is_private ? 'Demander à suivre' : 'Suivre'}
+    </button>
+  );
 }
