@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import GroupList from './components/GroupList'
 import CreateGroupModal from './components/CreateGroupModal'
-import Navbar from '../home/components/Navbar'
 export default function GroupsPage({
   user,
   handleSearch,
@@ -23,20 +22,7 @@ export default function GroupsPage({
   }
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      {/* Navbar with all required props */}
-      <Navbar
-        user={user}
-        handleSearch={handleSearch}
-        handleLogout={handleLogout}
-        results={results}
-        openMessages={openMessages}
-        togglePostForm={togglePostForm}
-        realtimeNotification={realtimeNotification}
-        fetchChatUsers={fetchChatUsers}
-        hideActions={false}
-        hideSearch={true}
-        onNotificationRemoved={handleNotificationRemoved}
-      />
+  
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-24"> {/* Added pt-24 to account for navbar height */}
         {/* Header with animated gradient */}

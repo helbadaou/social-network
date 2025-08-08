@@ -19,7 +19,6 @@ function connectWebSocket() {
     try {
       
       const parsed = JSON.parse(msg.data);
-      console.log("data from server : ", parsed);
 
       // Forward all messages to all ports
       broadcast({

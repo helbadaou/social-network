@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Navbar from '../../home/components/Navbar';
 
 export default function PublicProfilePage() {
   const { id } = useParams()
@@ -134,24 +133,6 @@ export default function PublicProfilePage() {
   if (!profile) return <p>Chargement du profil...</p>
   return (
     <>
-      <Navbar
-        user={currentUser}
-        handleSearch={() => { }}
-        handleLogout={() => {
-          fetch("http://localhost:8080/api/logout", {
-            method: "POST",
-            credentials: "include",
-          }).then(() => {
-            router.push("/login");
-          });
-        }}
-        results={[]}
-        openMessages={() => { }}
-        togglePostForm={() => { }}
-        fetchChatUsers={fetchChatUsers}
-        hideActions={true}
-        hideSearch={true}
-      />
 
       <main className="min-h-screen bg-black text-gray-100 px-4 py-6">
         <button

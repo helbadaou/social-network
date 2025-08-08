@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "./components/Navbar";
 import PostForm from "./components/PostForm";
 import MessageSidebar from "../messages/components/MessageSidebar";
 import ChatBox from "../messages/components/ChatBox";
@@ -281,20 +280,6 @@ export default function HomePage() {
 
   return (
     <div className={styles.pageContainer}>
-      <Navbar
-        user={user}
-        handleSearch={handleSearch}
-        handleLogout={handleLogout}
-        results={results}
-        openMessages={openMessages}
-        togglePostForm={togglePostForm}
-        realtimeNotification={realtimeNotification}
-        fetchChatUsers={fetchChatUsers}
-        onNotificationRemoved={onNotificationRemoved}
-        fetchUserById={fetchUserById}
-        setSearch={setSearch}
-        setResults={setResults}
-      />
 
       {showMessages && user && (
         <MessageSidebar
