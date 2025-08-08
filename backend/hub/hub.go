@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"social/models"
+	"social/services"
 )
 
 type Hub struct {
@@ -17,14 +18,17 @@ type Hub struct {
 	// Add group members cache
 	groupMembersCache map[int][]int // groupID -> []userIDs
 	cacheMutex        sync.RWMutex
+	messageService    *services.ChatService
 }
 
-func NewHub() *Hub {
+func NewHub(messageService *services.ChatService) *Hub {
 	return &Hub{
-		Clients:    make(map[int]*Client),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Broadcast:  make(chan models.Message),
+		Clients:        make(map[int]*Client),
+		Register:       make(chan *Client),
+		Unregister:     make(chan *Client),
+		Broadcast:      make(chan models.Message),
+		groupMembersCache: make(map[int][]int),
+		messageService: messageService,
 	}
 }
 
@@ -48,6 +52,13 @@ func (h *Hub) Run() {
 
 			switch msg.Type {
 			case "private":
+				// Process private message
+				if err := h.messageService.ProcessPrivateMessage(msg); err != nil {
+					fmt.Println("Error processing private message:", err)
+					continue
+				}
+
+				// Send to recipient if connected
 				if recipient, ok := h.Clients[msg.To]; ok {
 					select {
 					case recipient.Send <- msgBytes:
@@ -55,51 +66,79 @@ func (h *Hub) Run() {
 					default:
 						close(recipient.Send)
 						delete(h.Clients, recipient.ID)
-						fmt.Printf("⚠️ Failed to send private message to user %d (channel full or disconnected)\n", msg.To)
 					}
-				} else {
-					fmt.Printf("⚠️ Private message recipient user %d not connected\n", msg.To)
 				}
-			case "group":
-				groupID := msg.GroupID
-				if groupID == 0 {
-					fmt.Println("❌ Group message received with GroupID 0")
+
+			case "group_message":
+				// Process group message
+				if err := h.messageService.ProcessGroupMessage(msg); err != nil {
+					fmt.Println("Error processing group message:", err)
 					continue
 				}
 
-				// Check cache first
-				h.cacheMutex.RLock()
-				members, cached := h.groupMembersCache[groupID]
-				h.cacheMutex.RUnlock()
-
-				if !cached {
-					// Cache miss - fetch from database
-					if err := h.WarmGroupMembersCache(groupID); err != nil {
-						fmt.Printf("❌ Failed to get group members: %v\n", err)
-						continue
-					}
-					h.cacheMutex.RLock()
-					members = h.groupMembersCache[groupID]
-					h.cacheMutex.RUnlock()
+				// Get group members from cache or service
+				members, err := h.GetGroupMembers(msg.GroupID)
+				if err != nil {
+					fmt.Printf("❌ Failed to get group members: %v\n", err)
+					continue
 				}
 
-				// Send to all connected members
-				for _, userID := range members {
-					if client, ok := h.Clients[userID]; ok {
+				fmt.Println("group memebrs are :", members)
+
+				// Broadcast to all connected group members except sender
+				for _, memberID := range members {
+					if memberID == msg.From {
+						continue // Skip sender
+					}
+
+					if client, ok := h.Clients[memberID]; ok {
 						select {
 						case client.Send <- msgBytes:
-							// Success
+							// Message sent successfully
 						default:
+							// Handle full channel or disconnected client
 							close(client.Send)
 							delete(h.Clients, client.ID)
 						}
 					}
 				}
+				fmt.Printf("✅ Group message broadcast to %d members of group %d\n", len(members)-1, msg.GroupID)
+
 			default:
 				fmt.Printf("❌ Unknown message type: %s\n", msg.Type)
 			}
 		}
 	}
+}
+
+// GetGroupMembers returns group members from cache or fetches from service
+func (h *Hub) GetGroupMembers(groupID int) ([]int, error) {
+	// Check cache first
+	h.cacheMutex.RLock()
+	members, cached := h.groupMembersCache[groupID]
+	h.cacheMutex.RUnlock()
+
+	if cached {
+		return members, nil
+	}
+
+	// Cache miss - fetch from service
+	groupMembers, err := h.messageService.GetGroupMembers(groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract user IDs
+	userIDs := make([]int, len(groupMembers))
+	for i, member := range groupMembers {
+		userIDs[i] = member.ID
+	}
+	// Update cache
+	h.cacheMutex.Lock()
+	h.groupMembersCache[groupID] = userIDs
+	h.cacheMutex.Unlock()
+
+	return userIDs, nil
 }
 
 // After inserting notification in DB, fetch it and send:

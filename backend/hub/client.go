@@ -3,7 +3,6 @@ package hub
 import (
 	"encoding/json"
 	"log"
-	"social/db/sqlite"
 	"social/models"
 	"time"
 
@@ -71,27 +70,6 @@ func (c *Client) readPump(hub *Hub) {
 			parsedTime = time.Now()
 		}
 		msg.Timestamp = parsedTime.String()
-
-		// Vérification : empêcher l'envoi de message à un profil privé si l'expéditeur n'est pas abonné
-		var isPrivate bool
-		err = sqlite.DB.QueryRow(`SELECT is_private FROM users WHERE id = ?`, msg.To).Scan(&isPrivate)
-		if err == nil && isPrivate && msg.From != msg.To {
-			var status string
-			err = sqlite.DB.QueryRow(`SELECT status FROM followers WHERE follower_id = ? AND followed_id = ?`, msg.From, msg.To).Scan(&status)
-			if err != nil || status != "accepted" {
-				log.Printf("Tentative d'envoi de message refusée : profil privé non suivi")
-				continue // ignore le message
-			}
-		}
-
-		// Store message in database
-		_, err = sqlite.DB.Exec(`
-            INSERT INTO group_messages (group_id, sender_id, content, timestamp)
-            VALUES (?, ?, ?, ?)
-        `, msg.From, msg.To, msg.Content, time.Now())
-		if err != nil {
-			log.Printf("Error storing message: %v", err)
-		}
 
 		hub.Broadcast <- msg
 	}

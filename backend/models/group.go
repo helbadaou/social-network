@@ -79,6 +79,7 @@ type CreateEventRequest struct {
 	Description string `json:"description"`
 	EventDate   string `json:"event_date"` // RFC3339
 }
+
 type GroupMember struct {
     ID       int    `json:"id"`
     Username string `json:"username"`

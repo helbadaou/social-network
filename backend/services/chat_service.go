@@ -49,3 +49,25 @@ func (s *ChatService) GetChatHistory(userID, otherID int) ([]models.Message, err
 	}
 	return s.Repo.GetChatHistory(userID, otherID)
 }
+
+func (s *ChatService) ProcessPrivateMessage(msg models.Message) error {
+	// Check access rights
+	hasAccess, err := s.Repo.CheckPrivateProfileAccess(msg.From, msg.To)
+	if err != nil || !hasAccess {
+		return err
+	}
+	
+	// Save message
+	return s.Repo.SavePrivateMessage(msg)
+}
+
+func (s *ChatService) ProcessGroupMessage(msg models.Message) error {
+	// Validate group membership would go here
+	
+	// Save message
+	return s.Repo.SaveGroupMessage(msg)
+}
+
+func (s *ChatService) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
+	return s.Repo.GetGroupMembers(groupID)
+}

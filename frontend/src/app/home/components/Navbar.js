@@ -3,175 +3,33 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'  // Added useRouter import
+import { useRouter } from 'next/navigation'
+import { useSharedWorker } from '../../../contexts/SharedWorkerContext'
+import { useNotifications } from './useNotifications'
 
 export default function Navbar({
   user,
-  handleSearch,
-  handleLogout,
-  results,
-  openMessages,
-  togglePostForm,
-  realtimeNotification,
-  fetchChatUsers,
   hideActions = false,
-  hideSearch = false,
-  onNotificationRemoved,
-  fetchUserById,
-  setSearch,
-  setResults
+  hideSearch = false
 }) {
-  const router = useRouter()  // Initialize router
-
+  const router = useRouter()
+  const { sendMessage } = useSharedWorker()
   const [showProfile, setShowProfile] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
-
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const notificationsRef = useRef(null)
-  const notificationButtonRef = useRef(null)
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const removeNotification = (criteria) => {
-    setNotifications(prev => {
-      const filtered = prev.filter(notif => {
-        if (criteria.type === 'follow_request_cancelled') {
-          return !(notif.type === 'follow_request' && notif.sender_id === criteria.sender_id);
-        }
-        return true;
-      });
-      setUnreadCount(filtered.filter(n => !n.seen).length);
-      return filtered;
-    });
-  };
-
-  useEffect(() => {
-    if (onNotificationRemoved) {
-      onNotificationRemoved(removeNotification);
-    }
-  }, [onNotificationRemoved]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationsRef.current &&
-        !notificationsRef.current.contains(event.target) &&
-        !notificationButtonRef.current.contains(event.target)) {
-        setShowNotifications(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("http://localhost:8080/api/notifications", { credentials: 'include' });
-      const data = await res.json();
-
-      const uniqueNotifs = [];
-      const seenKeys = new Set();
-
-      for (const notif of data) {
-        const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          uniqueNotifs.push(notif);
-        }
-      }
-
-      setNotifications(uniqueNotifs);
-      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
-    } catch (err) {
-      console.error("Erreur récupération notifications", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const toggleNotifications = async (e) => {
-    e.stopPropagation();
-    const newState = !showNotifications;
-    setShowNotifications(newState);
-
-    if (newState) {
-      await fetchNotifications();
-      await fetch('http://localhost:8080/api/notifications/seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mark_all: true }),
-        credentials: 'include',
-      });
-      await fetchNotifications();
-      setUnreadCount(0);
-    }
-  };
-
-  const handleAccept = async (notifId, senderId) => {
-    try {
-      await fetch('/api/follow/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
-      });
-
-      if (typeof fetchChatUsers === 'function') {
-        setTimeout(() => fetchChatUsers(), 500);
-      }
-
-      await fetch('/api/notifications/seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      });
-
-      await fetch('/api/notifications/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      });
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
-    } catch (err) {
-      console.error('Erreur acceptation:', err);
-    }
-  };
-
-  const handleReject = async (notifId, senderId) => {
-  try {
-    const [rejectRes, seenRes, deleteRes] = await Promise.all([
-      fetch('/api/follow/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: senderId }),
-        credentials: 'include',
-      }),
-      fetch('/api/notifications/seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      }),
-      fetch('/api/notifications/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_id: notifId }),
-        credentials: 'include',
-      })
-    ]);
-
-    if (rejectRes.ok && seenRes.ok && deleteRes.ok) {
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
-    } else {
-      console.error('One or more requests failed', rejectRes.status, seenRes.status);
-    }
-  } catch (err) {
-    console.error('Erreur rejet:', err);
-  }
-};
+  const [search, setSearch] = useState("")
+  const [results, setResults] = useState([])
+  
+  // Notification related state and handlers
+  const {
+    showNotifications,
+    notifications,
+    unreadCount,
+    toggleNotifications,
+    handleAccept,
+    handleReject,
+    notificationsRef,
+    notificationButtonRef
+  } = useNotifications(user, sendMessage)
 
   const toggleProfile = () => {
     setShowProfile(prev => !prev)
@@ -198,41 +56,41 @@ export default function Navbar({
     }
   }, [user]);
 
-  useEffect(() => {
-    if (realtimeNotification) {
-      if (realtimeNotification.type === "follow_request_response") {
-        const { sender_id, recipient_id } = realtimeNotification;
-        if (recipient_id === user?.ID) {
-          setNotifications(prev => prev.filter(n => !(n.type === 'follow_request' && n.sender_id === sender_id)));
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-        return;
+  const handleSearch = async (e) => {
+    const value = e.target.value;
+    setSearch(value);
+
+    if (value.length > 1) {
+      try {
+        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to search users");
+        const data = await res.json();
+        setResults(data);
+      } catch (err) {
+        console.error("Error searching users:", err);
       }
-
-      setNotifications(prev => {
-        const exists = prev.some(n =>
-          n.sender_id === realtimeNotification.sender_id &&
-          n.type === realtimeNotification.type &&
-          n.message === realtimeNotification.message
-        );
-
-        if (exists) return prev;
-
-        const newNotif = {
-          id: realtimeNotification.id,
-          sender_id: realtimeNotification.sender_id,
-          type: realtimeNotification.type,
-          message: realtimeNotification.message,
-          created_at: realtimeNotification.created_at || new Date().toISOString(),
-          seen: false
-        };
-
-        const updated = [newNotif, ...prev];
-        setUnreadCount(updated.filter(n => !n.seen).length);
-        return updated;
-      });
+    } else {
+      setResults([]);
     }
-  }, [realtimeNotification, user?.ID]);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        router.push("/login");
+      } else {
+        throw new Error("Logout failed");
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
   return (
     <nav className="bg-gray-900 shadow px-6 py-4 border-b border-gray-800 relative">
@@ -271,17 +129,17 @@ export default function Navbar({
         <div className="flex items-center gap-4 ml-4 relative">
           {!hideActions && (
             <>
-              <button onClick={togglePostForm}>
+              <button onClick={() => sendMessage({ type: 'TOGGLE_POST_FORM' })}>
                 <img src="/plus-icon.png" alt="Créer un post" className="w-6 h-6" />
               </button>
 
-              <button onClick={openMessages} className="relative">
+              <button onClick={() => sendMessage({ type: 'OPEN_MESSAGES' })} className="relative">
                 <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
               </button>
             </>
           )}
 
-          {/* Cloche notifications (toujours visible) */}
+          {/* Cloche notifications */}
           <div className="relative">
             <button
               ref={notificationButtonRef}
@@ -411,7 +269,6 @@ export default function Navbar({
               )}
             </div>
           )}
-
         </div>
       </div>
     </nav>

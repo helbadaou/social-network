@@ -17,8 +17,8 @@ type Handler struct {
 	hub     *Hub
 }
 
-func NewHandler(service *services.AuthService, session *services.SessionService, hubS *Hub) *Handler {
-	return &Handler{service: service, session: session, hub: hubS}
+func NewHandler(service *services.AuthService, session *services.SessionService, group *services.GroupService, hubS *Hub) *Handler {
+	return &Handler{service: service, session: session, group: group, hub: hubS}
 }
 
 var upgrader = websocket.Upgrader{

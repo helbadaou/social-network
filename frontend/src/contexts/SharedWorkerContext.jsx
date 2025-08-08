@@ -40,6 +40,7 @@ export function SharedWorkerProvider({ children }) {
 
   // Function for components to send data
   const sendMessage = payload => {
+    console.log("it doesn't ", workerRef)
     if (!workerRef.current) {
       console.error('Worker not initialized');
       return;
