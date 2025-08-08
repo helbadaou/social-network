@@ -714,3 +714,37 @@ func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.
 
     return messages, nil
 }
+
+func (r *GroupRepository) CreateNotification(recipientID int, notification models.Notification) (int, error) {
+    var id int64
+    
+    result, err := r.db.Exec(`
+        INSERT INTO notifications (
+            user_id, 
+            sender_id, 
+            group_id,
+            type, 
+            message, 
+            seen, 
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        recipientID,
+        notification.SenderID,
+        notification.GroupId, // Can be nil
+        notification.Type,
+        notification.Message,
+        notification.Seen,
+        notification.CreatedAt,
+    )
+    
+    if err != nil {
+        return 0, fmt.Errorf("failed to create notification: %w", err)
+    }
+    
+    id, err = result.LastInsertId()
+    if err != nil {
+        return 0, fmt.Errorf("failed to get last insert ID: %w", err)
+    }
+    
+    return int(id), nil
+}

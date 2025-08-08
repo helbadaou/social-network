@@ -20,6 +20,9 @@ function connectWebSocket() {
       
       const parsed = JSON.parse(msg.data);
 
+      console.log("coming data : ", parsed);
+      
+
       // Forward all messages to all ports
       broadcast({
         type: "message",

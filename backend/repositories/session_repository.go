@@ -56,3 +56,11 @@ func (s *SessionRepo) CreateSession(userID int) (string, time.Time, error) {
 	fmt.Println("Session created successfully:", sessionID)
 	return sessionID, expiration, nil
 }
+
+func (s *SessionRepo) GetUserNicknameById(userId int) string {
+	var userNickname string
+	query := `SELECT nickname FROM users WHERE id = ?`
+	s.db.QueryRow(query, userId).Scan(&userNickname)
+	return userNickname
+
+}

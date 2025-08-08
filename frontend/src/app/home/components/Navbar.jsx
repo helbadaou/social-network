@@ -9,7 +9,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import PostForm from '../../../app/home/components/PostForm';
 
 export function Navbar() {
-    const { user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   // Post Form State
@@ -122,11 +122,7 @@ export function Navbar() {
   // Handle WebSocket messages from SharedWorker
   useEffect(() => {
     const handleWebSocketMessage = (message) => {
-      console.log(message)
-      if (message.type === 'follow_request') {
-        handleRealtimeNotification(message)
-      }
-      // Add other message types as needed
+      handleRealtimeNotification(message)
     }
 
     workerMessages.forEach(msg => {
@@ -139,11 +135,7 @@ export function Navbar() {
 
   // Your existing handleRealtimeNotification function
   const handleRealtimeNotification = (notification) => {
-    if (notification.type === "follow_request") {
-
-      fetchNotifications();
-      return;
-    }
+    fetchNotifications();
 
     setNotifications(prev => {
       const exists = prev.some(n =>
@@ -282,6 +274,66 @@ export function Navbar() {
     }
   };
 
+  const handleApprove = async (notifId, userId, groupId) => {
+    alert(groupId)
+    try {
+      const res = await fetch(`/api/groups/${groupId}/membership/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+        credentials: 'include'
+      })
+
+      if (res.ok) {
+        await fetch('/api/notifications/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+
+        await fetch('/api/notifications/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notifId));
+      }
+    } catch (err) {
+      console.error('Error approving request:', err)
+    }
+  }
+
+  const handleDecline = async (notifId, userId, groupId) => {
+    try {
+      const res = await fetch(`/api/groups/${groupId}/membership/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+        credentials: 'include'
+      })
+      if (res.ok) {
+        await fetch('/api/notifications/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+
+        await fetch('/api/notifications/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notifId));
+      }
+    } catch (err) {
+      console.error('Error declining request:', err)
+    }
+  }
+
   const togglePrivacy = async () => {
     try {
       const res = await fetch('/api/user/toggle-privacy', {
@@ -321,7 +373,7 @@ export function Navbar() {
       <nav className="bg-gray-900 shadow px-6 py-4 border-b border-gray-800 relative">
         <div className="flex items-center justify-between">
           {/* Search bar */}
-         <div className="max-w-xl w-full relative">
+          <div className="max-w-xl w-full relative">
             <input
               type="text"
               placeholder="🔍 Search users..."
@@ -329,7 +381,7 @@ export function Navbar() {
               value={search}
               className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none"
             />
-            {results.length > 0 && (
+            {results && results.length > 0 && (
               <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
                 {results.map((user) => (
                   <div
@@ -421,6 +473,28 @@ export function Navbar() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleReject(notif.id, notif.sender_id);
+                                }}
+                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                          {notif.type === 'group_join_request' && (
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApprove(notif.id, notif.sender_id, notif.GroupId);
+                                }}
+                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDecline(notif.id, notif.sender_id, notif.GroupId);
                                 }}
                                 className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                               >

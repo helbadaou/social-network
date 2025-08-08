@@ -51,7 +51,7 @@ func main() {
     authHandler := handlers.NewHandler(authService, sessionService, hub)
     chatHandler := handlers.NewChatHandler(chatService, sessionService)
     followHandler := handlers.NewFollowHandler(followService, sessionService, hub)
-    groupHandler := handlers.NewGroupHandler(groupService, sessionService)
+    groupHandler := handlers.NewGroupHandler(groupService, sessionService, hub)
     hubHandler := hubS.NewHandler(authService, sessionService, groupService, hub)
     notifHandler := handlers.NewNotificationHandler(notifService, sessionService)
     postHandler := handlers.NewPostHandler(postService, sessionService)
@@ -127,7 +127,3 @@ func main() {
         fmt.Printf("❌ Server error: %v\n", err)
     }
 }
-
-// func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
-// 	mux.HandleFunc("/api/groups", auth.GetGroupsHandler(db))
-// }

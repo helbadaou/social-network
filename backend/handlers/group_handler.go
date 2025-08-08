@@ -15,6 +15,7 @@ import (
 	"social/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,8 +32,8 @@ type GroupHandler struct {
 	Hub     *hub.Hub
 }
 
-func NewGroupHandler(service *services.GroupService, session *services.SessionService) *GroupHandler {
-	return &GroupHandler{Service: service, Session: session}
+func NewGroupHandler(service *services.GroupService, session *services.SessionService, Hub *hub.Hub) *GroupHandler {
+	return &GroupHandler{Service: service, Session: session, Hub: Hub}
 }
 
 func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +299,25 @@ func (h *GroupHandler) JoinGroupRequestHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Failed to create join request", http.StatusInternalServerError)
 		return
 	}
+	groupCreatorId, _ := h.Service.Repo.GetGroupCreatorID(groupID)
+	nickname := h.Session.GetUserNicknameById(userID)
+	// Create and send notification to group owner
+	notification := models.Notification{
+		SenderID:       userID,
+		SenderNickname: nickname,
+		Type:           "group_join_request",
+		Message:        fmt.Sprintf("%s wants to join your group", nickname),
+		Seen:           false,
+		CreatedAt:      time.Now().Format(time.RFC3339),
+		GroupId:        groupID,
+	}
+	_, err = h.Service.Repo.CreateNotification(groupCreatorId, notification)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	h.Hub.SendNotification(notification, groupCreatorId)
 
 	w.WriteHeader(http.StatusCreated)
 }

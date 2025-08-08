@@ -34,6 +34,10 @@ func (s *SessionService) GetUserIDFromSession(w http.ResponseWriter, r *http.Req
 	return id, true
 }
 
+func (s *SessionService) GetUserNicknameById(userId int) string {
+	return s.sessionRepo.GetUserNicknameById(userId)
+}
+
 func (s *SessionService) CreateSession(userID int) (string, time.Time, error) {
 	return s.sessionRepo.CreateSession(userID)
 }

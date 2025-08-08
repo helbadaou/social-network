@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"social/models"
 	"social/repositories"
+	"social/models"
 	"time"
 )
 
@@ -16,19 +16,19 @@ var (
 )
 
 type GroupService struct {
-	repo *repositories.GroupRepository
+	Repo *repositories.GroupRepository
 }
 
-func NewGroupService(repo *repositories.GroupRepository) *GroupService {
-	return &GroupService{repo: repo}
+func NewGroupService(Repo *repositories.GroupRepository) *GroupService {
+	return &GroupService{Repo: Repo}
 }
 
 func (s *GroupService) GetGroupDetailsByID(groupID, userID int) (*models.GroupResponse, error) {
-	return s.repo.GetGroupDetailsByID(groupID, userID)
+	return s.Repo.GetGroupDetailsByID(groupID, userID)
 }
 
 func (s *GroupService) CheckUserAccessStatus(groupID, userID int) (string, error) {
-	creatorID, err := s.repo.GetGroupCreatorID(groupID)
+	creatorID, err := s.Repo.GetGroupCreatorID(groupID)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +37,7 @@ func (s *GroupService) CheckUserAccessStatus(groupID, userID int) (string, error
 		return "creator", nil
 	}
 
-	status, err := s.repo.GetMembershipStatus(groupID, userID)
+	status, err := s.Repo.GetMembershipStatus(groupID, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "none", nil
@@ -49,7 +49,7 @@ func (s *GroupService) CheckUserAccessStatus(groupID, userID int) (string, error
 }
 
 func (s *GroupService) GetPendingRequests(groupID, userID int) ([]models.PendingRequest, error) {
-	creatorID, err := s.repo.GetGroupCreatorID(groupID)
+	creatorID, err := s.Repo.GetGroupCreatorID(groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (s *GroupService) GetPendingRequests(groupID, userID int) ([]models.Pending
 		return nil, fmt.Errorf("only group creator can view pending requests")
 	}
 
-	requests, err := s.repo.GetPendingRequests(groupID)
+	requests, err := s.Repo.GetPendingRequests(groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (s *GroupService) GetPendingRequests(groupID, userID int) ([]models.Pending
 }
 
 func (s *GroupService) JoinGroupRequest(groupID, userID int) error {
-	exists, err := s.repo.CheckMembershipExists(groupID, userID)
+	exists, err := s.Repo.CheckMembershipExists(groupID, userID)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (s *GroupService) JoinGroupRequest(groupID, userID int) error {
 		return fmt.Errorf("request already exists or already a member")
 	}
 
-	err = s.repo.CreateJoinRequest(groupID, userID)
+	err = s.Repo.CreateJoinRequest(groupID, userID)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *GroupService) JoinGroupRequest(groupID, userID int) error {
 }
 
 func (s *GroupService) AcceptInvite(groupID, userID int) error {
-	status, err := s.repo.GetMembershipStatus(groupID, userID)
+	status, err := s.Repo.GetMembershipStatus(groupID, userID)
 	if err != nil {
 		return fmt.Errorf("membership not found")
 	}
@@ -92,7 +92,7 @@ func (s *GroupService) AcceptInvite(groupID, userID int) error {
 		return fmt.Errorf("user is not invited")
 	}
 
-	err = s.repo.UpdateMembershipStatus(groupID, userID, "accepted")
+	err = s.Repo.UpdateMembershipStatus(groupID, userID, "accepted")
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *GroupService) AcceptInvite(groupID, userID int) error {
 }
 
 func (s *GroupService) InviteUserToGroup(groupID int, creatorID int, invite models.InviteRequest) error {
-	dbCreatorID, err := s.repo.GetGroupCreatorID(groupID)
+	dbCreatorID, err := s.Repo.GetGroupCreatorID(groupID)
 	if err != nil {
 		return fmt.Errorf("group not found")
 	}
@@ -110,7 +110,7 @@ func (s *GroupService) InviteUserToGroup(groupID int, creatorID int, invite mode
 		return fmt.Errorf("not authorized")
 	}
 
-	err = s.repo.UpsertGroupInvitation(groupID, invite.UserID)
+	err = s.Repo.UpsertGroupInvitation(groupID, invite.UserID)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *GroupService) InviteUserToGroup(groupID int, creatorID int, invite mode
 }
 
 func (s *GroupService) ApproveMembership(groupID int, creatorID int, body models.ApproveRequest) error {
-	dbCreatorID, err := s.repo.GetGroupCreatorID(groupID)
+	dbCreatorID, err := s.Repo.GetGroupCreatorID(groupID)
 	if err != nil {
 		return fmt.Errorf("group not found")
 	}
@@ -128,7 +128,7 @@ func (s *GroupService) ApproveMembership(groupID int, creatorID int, body models
 		return fmt.Errorf("forbidden")
 	}
 
-	err = s.repo.ApproveMembershipRequest(groupID, body.UserID)
+	err = s.Repo.ApproveMembershipRequest(groupID, body.UserID)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (s *GroupService) ApproveMembership(groupID int, creatorID int, body models
 }
 
 func (s *GroupService) DeclineMembership(groupID int, creatorID int, body models.DeclineRequest) error {
-	dbCreatorID, err := s.repo.GetGroupCreatorID(groupID)
+	dbCreatorID, err := s.Repo.GetGroupCreatorID(groupID)
 	if err != nil {
 		return fmt.Errorf("group not found")
 	}
@@ -145,7 +145,7 @@ func (s *GroupService) DeclineMembership(groupID int, creatorID int, body models
 		return fmt.Errorf("forbidden")
 	}
 
-	err = s.repo.DeclineMembershipRequest(groupID, body.UserID)
+	err = s.Repo.DeclineMembershipRequest(groupID, body.UserID)
 	if err != nil {
 		return err
 	}
@@ -153,23 +153,23 @@ func (s *GroupService) DeclineMembership(groupID int, creatorID int, body models
 }
 
 func (s *GroupService) GetNonGroupMembers(groupID, userID int) ([]map[string]interface{}, error) {
-	return s.repo.GetNonGroupMembers(groupID, userID)
+	return s.Repo.GetNonGroupMembers(groupID, userID)
 }
 
 func (s *GroupService) GetGroupPosts(groupID, userID int) ([]models.GroupPost, error) {
-	return s.repo.GetGroupPosts(groupID, userID)
+	return s.Repo.GetGroupPosts(groupID, userID)
 }
 
 func (s *GroupService) IsGroupMember(groupID, userID int) (bool, error) {
-	return s.repo.IsGroupMember(groupID, userID)
+	return s.Repo.IsGroupMember(groupID, userID)
 }
 
 func (s *GroupService) CreateGroupPost(post models.GroupPost) (*models.GroupPost, error) {
-	return s.repo.CreateGroupPost(post)
+	return s.Repo.CreateGroupPost(post)
 }
 
 func (s *GroupService) GetGroupPostComments(postID, userID int) ([]models.GroupPostComment, error) {
-	return s.repo.GetGroupPostComments(postID, userID)
+	return s.Repo.GetGroupPostComments(postID, userID)
 }
 
 func (s *GroupService) CreateGroupPostComment(userID, postID int, content string) (models.GroupPostComment, error) {
@@ -179,12 +179,12 @@ func (s *GroupService) CreateGroupPostComment(userID, postID int, content string
 		Content:  content,
 	}
 
-	created, err := s.repo.CreateGroupPostComment(comment)
+	created, err := s.Repo.CreateGroupPostComment(comment)
 	if err != nil {
 		return models.GroupPostComment{}, err
 	}
 
-	fullComment, err := s.repo.GetGroupPostCommentByID(created.ID)
+	fullComment, err := s.Repo.GetGroupPostCommentByID(created.ID)
 	if err != nil {
 		return models.GroupPostComment{}, err
 	}
@@ -194,11 +194,11 @@ func (s *GroupService) CreateGroupPostComment(userID, postID int, content string
 
 func (s *GroupService) GetGroupEvents(userID, groupID int) ([]models.GroupEvent, error) {
 	// Step 1: Check if user is a member or creator
-	ok, err := s.repo.IsGroupMember(groupID, userID)
+	ok, err := s.Repo.IsGroupMember(groupID, userID)
 	if !ok || err != nil {
 		return nil, fmt.Errorf("membership check failed: %w", err)
 	}
-	events, err := s.repo.GetGroupEvents(groupID, userID)
+	events, err := s.Repo.GetGroupEvents(groupID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s *GroupService) GetGroupEvents(userID, groupID int) ([]models.GroupEvent,
 
 func (s *GroupService) CreateGroupEvent(userID int, req models.CreateEventRequest) (models.GroupEvent, error) {
 	// Check membership
-	isMember, err := s.repo.IsGroupMember(req.GroupID, userID)
+	isMember, err := s.Repo.IsGroupMember(req.GroupID, userID)
 	if err != nil {
 		return models.GroupEvent{}, fmt.Errorf("membership check failed: %w", err)
 	}
@@ -229,12 +229,12 @@ func (s *GroupService) CreateGroupEvent(userID int, req models.CreateEventReques
 		EventDate:   eventDate,
 	}
 
-	createdEvent, err := s.repo.CreateGroupEvent(event)
+	createdEvent, err := s.Repo.CreateGroupEvent(event)
 	if err != nil {
 		return models.GroupEvent{}, err
 	}
 
-	fullEvent, err := s.repo.GetGroupEventWithCreator(createdEvent.ID)
+	fullEvent, err := s.Repo.GetGroupEventWithCreator(createdEvent.ID)
 	if err != nil {
 		return models.GroupEvent{}, err
 	}
@@ -244,7 +244,7 @@ func (s *GroupService) CreateGroupEvent(userID int, req models.CreateEventReques
 
 func (s *GroupService) SendGroupMessage(userID int, groupID int, content string) (models.Message, error) {
 	// Check if user is a member
-	isMember, err := s.repo.IsGroupMember(groupID, userID)
+	isMember, err := s.Repo.IsGroupMember(groupID, userID)
 	if err != nil {
 		return models.Message{}, fmt.Errorf("membership check failed: %w", err)
 	}
@@ -253,7 +253,7 @@ func (s *GroupService) SendGroupMessage(userID int, groupID int, content string)
 	}
 
 	// Insert message
-	_, err = s.repo.InsertGroupMessage(groupID, userID, content)
+	_, err = s.Repo.InsertGroupMessage(groupID, userID, content)
 	if err != nil {
 		return models.Message{}, fmt.Errorf("insert failed: %w", err)
 	}
@@ -269,74 +269,74 @@ func (s *GroupService) SendGroupMessage(userID int, groupID int, content string)
 }
 
 func (s *GroupService) GetGroupsForUser(userID int) ([]models.GroupWithStatus, error) {
-	return s.repo.GetAllGroups(userID)
+	return s.Repo.GetAllGroups(userID)
 }
 
 func (s *GroupService) CreateGroup(userID int, req models.CreateGroupRequest) (models.Group, error) {
 	group := models.Group{
-		Name:       req.Title,
+		Name:        req.Title,
 		Description: req.Description,
-		OwnerID:   userID,
+		OwnerID:     userID,
 	}
 
-	return s.repo.CreateGroup(group)
+	return s.Repo.CreateGroup(group)
 }
 
 // Add this to your service methods
 func (s *GroupService) SetEventResponse(userID, eventID int, response string) error {
-    // Validate response type
-    if response != "going" && response != "not_going" {
-        return fmt.Errorf("invalid response type")
-    }
+	// Validate response type
+	if response != "going" && response != "not_going" {
+		return fmt.Errorf("invalid response type")
+	}
 
-    // Get event to verify group membership
-    event, err := s.repo.GetGroupEventWithCreator(eventID)
-    if err != nil {
-        return fmt.Errorf("event lookup failed: %w", err)
-    }
+	// Get event to verify group membership
+	event, err := s.Repo.GetGroupEventWithCreator(eventID)
+	if err != nil {
+		return fmt.Errorf("event lookup failed: %w", err)
+	}
 
-    // Check if user is member of the group
-    isMember, err := s.repo.IsGroupMember(event.GroupID, userID)
-    if err != nil || !isMember {
-        return ErrUnauthorized
-    }
+	// Check if user is member of the group
+	isMember, err := s.Repo.IsGroupMember(event.GroupID, userID)
+	if err != nil || !isMember {
+		return ErrUnauthorized
+	}
 
-    // Set the response
-    err = s.repo.SetEventResponse(eventID, userID, response)
-    if err != nil {
-        return fmt.Errorf("failed to set response: %w", err)
-    }
+	// Set the response
+	err = s.Repo.SetEventResponse(eventID, userID, response)
+	if err != nil {
+		return fmt.Errorf("failed to set response: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 func (s *GroupService) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
-    // Add any business logic/validation here before calling the repository
-    if groupID <= 0 {
-        return nil, fmt.Errorf("invalid group ID")
-    }
+	// Add any business logic/validation here before calling the Repository
+	if groupID <= 0 {
+		return nil, fmt.Errorf("invalid group ID")
+	}
 
-    // You might want to check if the group exists first
-    exists, err := s.repo.GroupExists(groupID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to check group existence: %w", err)
-    }
-    if !exists {
-        return nil, fmt.Errorf("group not found")
-    }
+	// You might want to check if the group exists first
+	exists, err := s.Repo.GroupExists(groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check group existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("group not found")
+	}
 
-    // Call the repository method
-    members, err := s.repo.GetGroupMembers(groupID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get group members: %w", err)
-    }
+	// Call the Repository method
+	members, err := s.Repo.GetGroupMembers(groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group members: %w", err)
+	}
 
-    // You could add additional processing here if needed
-    // For example, filtering sensitive information, enriching data, etc.
+	// You could add additional processing here if needed
+	// For example, filtering sensitive information, enriching data, etc.
 
-    return members, nil
+	return members, nil
 }
 
 func (s *GroupService) GetGroupChatHistory(groupID, limit int) ([]models.GroupMessage, error) {
-	return s.repo.GetGroupChatHistory(groupID, limit)
+	return s.Repo.GetGroupChatHistory(groupID, limit)
 }
