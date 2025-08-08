@@ -51,10 +51,16 @@ func (c *Client) readPump(hub *Hub) {
 			continue
 		}
 
-		// Validate required fields
-		if msg.From == 0 || msg.To == 0 || msg.Content == "" {
-			log.Printf("Missing required message fields")
-			continue
+		if msg.Type == "private" {
+			if msg.From == 0 || msg.To == 0 || msg.Content == "" {
+				log.Printf("Missing required private message fields")
+				continue
+			}
+		} else if msg.Type == "group_message" {
+			if msg.From == 0 || msg.GroupID == 0 || msg.Content == "" {
+				log.Printf("Missing required group message fields")
+				continue
+			}
 		}
 
 		// Force correct sender ID and add timestamp
@@ -80,9 +86,9 @@ func (c *Client) readPump(hub *Hub) {
 
 		// Store message in database
 		_, err = sqlite.DB.Exec(`
-            INSERT INTO messages (from_id, to_id, content, type, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        `, msg.From, msg.To, msg.Content, msg.Type, time.Now())
+            INSERT INTO group_messages (group_id, sender_id, content, timestamp)
+            VALUES (?, ?, ?, ?)
+        `, msg.From, msg.To, msg.Content, time.Now())
 		if err != nil {
 			log.Printf("Error storing message: %v", err)
 		}

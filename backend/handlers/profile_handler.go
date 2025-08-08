@@ -129,3 +129,19 @@ func (h *ProfileHandler) TogglePrivacy(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request){
+	userId, ok := h.sessionService.GetUserIDFromSession(w, r)
+	if !ok {
+		http.Error(w, "Utilisateur non authentifié", http.StatusUnauthorized)
+		return
+	}
+
+	response := map[string]interface{}{
+        "id": userId,
+	}
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
+
+}

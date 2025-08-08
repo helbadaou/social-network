@@ -102,12 +102,12 @@ type GroupEvent struct {
 }
 
 type Message struct {
-	From      int    `json:"from"`
-	To        int    `json:"to"`
-	GroupID   int    `json:"groupId,omitempty"`
-	Content   string `json:"content"`
-	Type      string `json:"type"` // e.g., "private" or "group"
-	Timestamp string `json:"timestamp"`
+    From      int   `json:"from"`      // Changed to lowercase to match frontend
+    To        int   `json:"to"`
+    GroupID   int   `json:"groupId"`   // Changed to match frontend's groupId
+    Content   string `json:"content"`
+    Type      string `json:"type"`
+    Timestamp string `json:"timestamp"`
 }
 
 type GroupMessage struct {

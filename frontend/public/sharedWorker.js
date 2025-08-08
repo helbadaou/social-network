@@ -8,7 +8,7 @@ const maxReconnectAttempts = 5;
 
 function connectWebSocket() {
   socket = new WebSocket(`ws://localhost:8080/ws?userId=${encodeURIComponent(userId)}`);
-  
+
   socket.onopen = () => {
     reconnectAttempts = 0;
     isConnected = true;
@@ -18,13 +18,13 @@ function connectWebSocket() {
   socket.onmessage = (msg) => {
     try {
       const parsed = JSON.parse(msg.data);
-      
+
       // Forward all messages to all ports
       broadcast({
         type: "message",
         data: parsed
       });
-      
+
     } catch (err) {
       console.error("Error parsing message:", err);
       broadcast({
@@ -35,21 +35,21 @@ function connectWebSocket() {
   };
 
   socket.onerror = (err) => {
-    broadcast({ 
-      type: "status", 
+    broadcast({
+      type: "status",
       connected: false,
-      message: "❌ WebSocket error" 
+      message: "❌ WebSocket error"
     });
   };
 
   socket.onclose = () => {
     isConnected = false;
-    broadcast({ 
-      type: "status", 
+    broadcast({
+      type: "status",
       connected: false,
-      message: "🔌 WebSocket disconnected" 
+      message: "🔌 WebSocket disconnected"
     });
-    
+
     // Attempt reconnect
     if (reconnectAttempts < maxReconnectAttempts) {
       reconnectAttempts++;
@@ -60,14 +60,16 @@ function connectWebSocket() {
   };
 }
 
-onconnect = function(e) {
+onconnect = function (e) {
   const port = e.ports[0];
   ports.push(port);
 
-  port.onmessage = function(event) {
+  port.onmessage = function (event) {
     const data = event.data;
 
-    switch(data.type) {
+    console.log(data)
+
+    switch (data.type) {
       case "INIT":
         userId = data.userId;
         if (!socket) {
@@ -75,23 +77,42 @@ onconnect = function(e) {
         }
         break;
 
-      case "SEND":
+      case "group_message":
         if (socket && isConnected) {
           try {
-            const payload = typeof data.message === "string" 
-              ? data.message 
-              : JSON.stringify(data.message);
+            const payload = JSON.stringify(data);
+            console.log("payload is : ", payload)
             socket.send(payload);
           } catch (err) {
-            port.postMessage({ 
-              type: "error", 
-              message: "Failed to send message" 
+            port.postMessage({
+              type: "error",
+              message: "Failed to send message"
             });
           }
         } else {
-          port.postMessage({ 
-            type: "error", 
-            message: "WebSocket not connected" 
+          port.postMessage({
+            type: "error",
+            message: "WebSocket not connected"
+          });
+        }
+        break;
+      case "SEND":
+        if (socket && isConnected) {
+          try {
+            const payload = typeof data.message === "string"
+              ? data.message
+              : JSON.stringify(data.message);
+            socket.send(payload);
+          } catch (err) {
+            port.postMessage({
+              type: "error",
+              message: "Failed to send message"
+            });
+          }
+        } else {
+          port.postMessage({
+            type: "error",
+            message: "WebSocket not connected"
           });
         }
         break;
@@ -108,8 +129,8 @@ onconnect = function(e) {
   port.start();
 
   // Send initial status
-  port.postMessage({ 
-    type: "status", 
+  port.postMessage({
+    type: "status",
     connected: isConnected,
     message: isConnected ? "✅ WebSocket connected" : "🔌 WebSocket disconnected"
   });

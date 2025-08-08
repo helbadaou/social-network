@@ -102,14 +102,12 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		h.GetNonGroupMembersHandler(w, r)
 
 	case suffix == "chat" && method == http.MethodGet:
-		fmt.Println("dsmfksdmflksmk")
 		h.GetGroupChat(w, r)
 	// GROUP POSTS
 	case suffix == "posts" && method == http.MethodGet:
 		h.GetGroupPostsHandler(w, r)
 
 	case suffix == "posts" && method == http.MethodPost:
-		fmt.Println("hkjhkjhkjhkjh")
 		h.CreateGroupPostHandler(w, r)
 		// COMMENTS
 	case suffix == "comments" && method == http.MethodGet:

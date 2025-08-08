@@ -69,6 +69,7 @@ func main() {
 	mux.HandleFunc("/api/users/", profileHandler.GetUserByIDHandler)
 	mux.HandleFunc("/api/search", profileHandler.SearchUsers)
 	mux.HandleFunc("/api/user/toggle-privacy", profileHandler.TogglePrivacy)
+	mux.HandleFunc("/api/auth/me", profileHandler.GetMe)
 
 	// post routes
 	mux.Handle("/api/posts", utils.CorsMiddleware(http.HandlerFunc(postHandler.PostsHandler)))

@@ -1,11 +1,11 @@
-
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../home/components/Navbar'
 import PendingRequests from '../components/PendingRequests'
 import PostForm from '../../home/components/PostForm'
 import { use } from 'react'
+import { useSharedWorker } from '../../../contexts/SharedWorkerContext'
 
 export default function GroupDetailPage({ params }) {
   // Group and UI state
@@ -35,8 +35,6 @@ export default function GroupDetailPage({ params }) {
   // Chat state
   const [groupChatInput, setGroupChatInput] = useState('')
   const [groupChatMessages, setGroupChatMessages] = useState([])
-  const [isWsConnected, setIsWsConnected] = useState(false)
-  const [sharedWorker, setSharedWorker] = useState(null)
   const [userId, setUserId] = useState(null)
 
   // Event form state
@@ -49,13 +47,14 @@ export default function GroupDetailPage({ params }) {
   // Other hooks and refs
   const router = useRouter()
   const fileInputRef = useRef()
-  const workerRef = useRef(null)
   const [chatUsers, setChatUsers] = useState([])
   const [realtimeNotification, setRealtimeNotification] = useState(null)
 
-  // Initialize shared worker
+  // Shared Worker Context
+  const { isConnected, sendMessage } = useSharedWorker()
+
+  // Get current user ID
   useEffect(() => {
-    // Get current user ID
     const fetchUserId = async () => {
       try {
         const res = await fetch('/api/auth/me', {
@@ -73,80 +72,56 @@ export default function GroupDetailPage({ params }) {
     }
 
     fetchUserId()
-
-    return () => {
-      // Cleanup worker when component unmounts
-      if (workerRef.current) {
-        workerRef.current.port.close()
-      }
-    }
   }, [])
 
-  // Initialize worker when userId is available
+  // Handle incoming messages from the shared worker
   useEffect(() => {
-    if (userId && !sharedWorker) {
-      if (typeof SharedWorker !== 'undefined') {
-        const worker = new SharedWorker('/sharedWorker.js')
-        workerRef.current = worker
+    if (!userId) return
 
-        worker.port.onmessage = (event) => {
-          const { type, data, message, connected } = event.data
+    const messageHandler = (event) => {
+      const { type, data } = event.data
 
-          switch (type) {
-            case 'status':
-              setIsWsConnected(connected)
-              console.log('WebSocket status:', message)
-              break
-
-            case 'message':
-              // Handle incoming group chat messages
-              if (data.group_id === parseInt(groupId)) {
-                setGroupChatMessages(prev => [...prev, {
-                  ...data,
-                  isCurrentUser: data.sender_id === userId
-                }])
-              }
-              // Handle other message types (notifications, etc.)
-              break
-
-            case 'error':
-              console.error('Worker error:', message)
-              break
-
-            default:
-              console.log('Unknown message type from worker:', type)
+      switch (type) {
+        case 'group_message':
+          if (data.group_id === parseInt(groupId)) {
+            setGroupChatMessages(prev => [...prev, {
+              ...data,
+              isCurrentUser: data.sender_id === userId
+            }])
           }
-        }
-
-        worker.port.postMessage({
-          type: 'INIT',
-          userId: userId
-        })
-
-        setSharedWorker(worker)
-      } else {
-        console.warn('SharedWorker not supported in this browser')
-        // Fallback to direct WebSocket connection
+          break
+        case 'notification':
+          setRealtimeNotification(data)
+          break
+        case 'status':
+          // Connection status updates are already handled by the context
+          break
+        default:
+          console.log('Unknown message type:', type)
       }
     }
-  }, [userId, groupId])
+
+    // This assumes your SharedWorkerContext exposes a way to listen to messages
+    // You might need to modify the context to add this functionality
+    const cleanup = () => {
+      // Cleanup logic if needed
+    }
+
+    return cleanup
+  }, [groupId, userId])
 
   // Send group chat message through shared worker
   const sendGroupChatMessage = () => {
-    if (!groupChatInput.trim() || !sharedWorker || !isWsConnected) return
+    if (!groupChatInput.trim() || !isConnected || !userId) return
 
     const message = {
-      type: "group",
-      group_id: parseInt(groupId),
-      sender_id: userId,
+      type: "group_message",
+      groupId: parseInt(groupId),
+      from: userId,
       content: groupChatInput.trim(),
       timestamp: new Date().toISOString()
     }
-
-    sharedWorker.port.postMessage({
-      type: 'SEND',
-      message: message
-    })
+    sendMessage(message)
 
     // Optimistically update UI
     setGroupChatMessages(prev => [...prev, {
@@ -165,6 +140,7 @@ export default function GroupDetailPage({ params }) {
       sendGroupChatMessage()
     }
   }
+
   const togglePostForm = () => {
     setShowPostForm(prev => !prev)
   }
@@ -189,8 +165,6 @@ export default function GroupDetailPage({ params }) {
       });
 
       if (!res.ok) throw new Error('Failed to submit response');
-
-      // Refresh events after voting
       fetchEvents();
     } catch (err) {
       console.error('Error submitting response:', err);
@@ -215,7 +189,6 @@ export default function GroupDetailPage({ params }) {
       const data = await res.json()
       setPosts(data || [])
 
-      // Fetch comments for each post
       if (data?.length) {
         data.forEach(post => {
           fetchComments(post.id)
@@ -302,7 +275,7 @@ export default function GroupDetailPage({ params }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: content  // Matching your CreateCommentRequest struct
+          content: content
         }),
         credentials: 'include'
       });
@@ -384,6 +357,24 @@ export default function GroupDetailPage({ params }) {
     }))
   }
 
+  const handleJoin = async (e) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch(`/api/groups/${groupId}/membership/join`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error('Failed to join group')
+
+      const refreshRes = await fetch(`/api/groups/${groupId}`)
+      if (refreshRes.ok) {
+        setGroup(await refreshRes.json())
+      }
+    } catch (err) {
+      console.error('Error joining group:', err)
+    }
+  }
+
   useEffect(() => {
     const fetchGroup = async () => {
       try {
@@ -402,24 +393,6 @@ export default function GroupDetailPage({ params }) {
     fetchPosts()
     fetchEvents()
   }, [groupId])
-
-  const handleJoin = async (e) => {
-    e.stopPropagation()
-    try {
-      const res = await fetch(`/api/groups/${groupId}/membership/join`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-      if (!res.ok) throw new Error('Failed to join group')
-
-      const refreshRes = await fetch(`/api/groups/${groupId}`)
-      if (refreshRes.ok) {
-        setGroup(await refreshRes.json())
-      }
-    } catch (err) {
-      console.error('Error joining group:', err)
-    }
-  }
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900">
@@ -656,7 +629,6 @@ export default function GroupDetailPage({ params }) {
                         />
                       )}
 
-                      {/* Comments section */}
                       <div className="mt-4">
                         {loadingComments[post.id] ? (
                           <div className="text-gray-400 text-sm">Loading comments...</div>
@@ -741,10 +713,8 @@ export default function GroupDetailPage({ params }) {
                           </div>
                         </div>
 
-                        {/* Voting section */}
                         <div className="mt-4 pt-4 border-t border-gray-700">
                           <div className="flex items-center gap-4">
-                            {/* Going button */}
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleVote(event.id, 'going')}
@@ -763,7 +733,6 @@ export default function GroupDetailPage({ params }) {
                               </span>
                             </div>
 
-                            {/* Not Going button */}
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleVote(event.id, 'not_going')}
@@ -815,6 +784,7 @@ export default function GroupDetailPage({ params }) {
           </div>
         )}
       </div>
+
       <button
         onClick={() => setShowGroupChat(true)}
         className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition-colors z-40"
@@ -825,14 +795,13 @@ export default function GroupDetailPage({ params }) {
         </svg>
       </button>
 
-      {/* Group Chat Popup - Add this near your other modals */}
       {showGroupChat && (
         <div className="fixed inset-0 z-40 pointer-events-none">
           <div className="absolute right-0 top-0 h-full w-96 bg-gray-800 shadow-lg border-l border-gray-700 flex flex-col pointer-events-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-white">Group Chat: {group?.title}</h3>
-                <span className={`h-2 w-2 rounded-full ${isWsConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
               </div>
               <button
                 onClick={() => setShowGroupChat(false)}
@@ -847,7 +816,7 @@ export default function GroupDetailPage({ params }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {groupChatMessages.length === 0 ? (
                 <p className="text-gray-400 text-center py-10">
-                  {isWsConnected ? "No messages yet. Start the conversation!" : "Connecting to chat..."}
+                  {isConnected ? "No messages yet. Start the conversation!" : "Connecting to chat..."}
                 </p>
               ) : (
                 groupChatMessages.map((msg, index) => (
@@ -875,13 +844,13 @@ export default function GroupDetailPage({ params }) {
                   value={groupChatInput}
                   onChange={(e) => setGroupChatInput(e.target.value)}
                   onKeyPress={handleChatKeyPress}
-                  placeholder={isWsConnected ? "Type a message..." : "Connecting..."}
-                  disabled={!isWsConnected}
+                  placeholder={isConnected ? "Type a message..." : "Connecting..."}
+                  disabled={!isConnected}
                   className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                 />
                 <button
                   onClick={sendGroupChatMessage}
-                  disabled={!groupChatInput.trim() || !isWsConnected}
+                  disabled={!groupChatInput.trim() || !isConnected}
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
                   Send
