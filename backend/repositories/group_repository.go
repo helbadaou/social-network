@@ -584,6 +584,7 @@ func (r *GroupRepository) SetEventResponse(eventID, userID int, response string)
 
     return nil
 }
+
 func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
     query := `
         SELECT 
@@ -594,7 +595,7 @@ func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, er
                 WHEN g.creator_id = u.id THEN 'creator'
                 ELSE 'member'
             END as role,
-            gm.joined_at
+            gm.created_at as joined_at
         FROM group_memberships gm
         JOIN users u ON gm.user_id = u.id
         JOIN groups g ON gm.group_id = g.id
@@ -648,6 +649,7 @@ func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, er
 
     return members, nil
 }
+
 func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
     var exists bool
     err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)

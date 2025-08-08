@@ -275,7 +275,6 @@ export function Navbar() {
   };
 
   const handleApprove = async (notifId, userId, groupId) => {
-    alert(groupId)
     try {
       const res = await fetch(`/api/groups/${groupId}/membership/approve`, {
         method: 'POST',
@@ -499,6 +498,28 @@ export function Navbar() {
                                 className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                               >
                                 Reject
+                              </button>
+                            </div>
+                          )}
+                           {notif.type === 'group_event_created' && (
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApprove(notif.id, notif.sender_id, notif.GroupId);
+                                }}
+                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                              >
+                                Going
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDecline(notif.id, notif.sender_id, notif.GroupId);
+                                }}
+                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                              >
+                                Not Going
                               </button>
                             </div>
                           )}

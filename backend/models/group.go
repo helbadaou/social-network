@@ -81,11 +81,11 @@ type CreateEventRequest struct {
 }
 
 type GroupMember struct {
-    ID       int    `json:"id"`
-    Username string `json:"username"`
-    Avatar   string `json:"avatar"`
-    Role     string `json:"role"` // "creator" or "member"
-    JoinedAt string `json:"joined_at"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+	Role     string `json:"role"` // "creator" or "member"
+	JoinedAt string `json:"joined_at"`
 }
 
 type GroupEvent struct {
@@ -103,12 +103,12 @@ type GroupEvent struct {
 }
 
 type Message struct {
-    From      int   `json:"from"`      // Changed to lowercase to match frontend
-    To        int   `json:"to"`
-    GroupID   int   `json:"groupId"`   // Changed to match frontend's groupId
-    Content   string `json:"content"`
-    Type      string `json:"type"`
-    Timestamp string `json:"timestamp"`
+	From      int    `json:"from"` // Changed to lowercase to match frontend
+	To        int    `json:"to"`
+	GroupID   int    `json:"groupId"` // Changed to match frontend's groupId
+	Content   string `json:"content"`
+	Type      string `json:"type"`
+	Timestamp string `json:"timestamp"`
 }
 
 type GroupMessage struct {

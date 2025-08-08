@@ -699,16 +699,13 @@ func (h *GroupHandler) GetGroupEventsHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *GroupHandler) CreateGroupEventHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("nothin")
 	if r.Method != http.MethodPost {
-		fmt.Println("dddlldld")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	userID, ok := h.Session.GetUserIDFromSession(w, r)
 	if !ok || userID == 0 {
-		fmt.Println("hna")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -721,7 +718,6 @@ func (h *GroupHandler) CreateGroupEventHandler(w http.ResponseWriter, r *http.Re
 
 	event, err := h.Service.CreateGroupEvent(userID, req)
 	if err != nil {
-		fmt.Println("aaaa")
 		switch err {
 		case ErrUnauthorized:
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -733,8 +729,48 @@ func (h *GroupHandler) CreateGroupEventHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	go h.broadcastEventNotification(event, userID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(event)
+}
+
+func (h *GroupHandler) broadcastEventNotification(event models.GroupEvent, creatorID int) {
+	// Get group members
+	members, err := h.Service.GetGroupMembers(event.GroupID)
+	if err != nil {
+		log.Printf("Failed to get group members for notification: %v", err)
+		return
+	}
+
+	// Create notification
+	notification := models.Notification{
+		SenderID:       creatorID,
+		SenderNickname: event.CreatorName,
+		GroupId:        event.GroupID,
+		Type:           "group_event_created",
+		Message:        fmt.Sprintf("%s created a new event: %s", event.CreatorName, event.Title),
+		Seen:           false,
+		CreatedAt:      time.Now().Format(time.RFC3339),
+	}
+
+	// Create and send notifications to all members except creator
+	for _, member := range members {
+		if member.ID == creatorID {
+			continue
+		}
+
+		// Store notification in DB
+		notifID, err := h.Service.Repo.CreateNotification(member.ID, notification)
+		if err != nil {
+			log.Printf("Failed to create notification for user %d: %v", member.ID, err)
+			continue
+		}
+
+		// Send real-time notification
+		notification.ID = notifID
+		h.Hub.SendNotification(notification, member.ID)
+	}
 }
 
 func (h *GroupHandler) HandleGroupMessage(w http.ResponseWriter, r *http.Request) {

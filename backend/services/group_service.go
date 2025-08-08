@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"social/repositories"
 	"social/models"
+	"social/repositories"
 	"time"
 )
 
@@ -240,6 +240,7 @@ func (s *GroupService) CreateGroupEvent(userID int, req models.CreateEventReques
 	}
 
 	return fullEvent, nil
+
 }
 
 func (s *GroupService) SendGroupMessage(userID int, groupID int, content string) (models.Message, error) {

@@ -83,7 +83,6 @@ func (h *Hub) Run() {
 					continue
 				}
 
-				fmt.Println("group memebrs are :", members)
 
 				// Broadcast to all connected group members except sender
 				for _, memberID := range members {
