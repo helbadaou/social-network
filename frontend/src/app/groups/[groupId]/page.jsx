@@ -5,6 +5,7 @@ import PendingRequests from '../components/PendingRequests'
 import PostForm from '../../home/components/PostForm'
 import { use } from 'react'
 import { useSharedWorker } from '../../../contexts/SharedWorkerContext'
+import { useAuth } from '../../../contexts/AuthContext'
 
 export default function GroupDetailPage({ params }) {
   // Group and UI state
@@ -36,6 +37,18 @@ export default function GroupDetailPage({ params }) {
   const [groupChatMessages, setGroupChatMessages] = useState([])
   const [userId, setUserId] = useState(null)
 
+  // auth 
+  const {user} = useAuth()
+  const { sendWorkerMessage } = useSharedWorker()
+
+    useEffect(() => {
+    console.log("Current user:", user);
+    if (user?.ID) {
+      console.log("Initializing SharedWorker with user ID:", user.ID);
+      sendWorkerMessage({ type: 'INIT', userId: user.ID });
+    }
+  }, [user, sendWorkerMessage]);
+
   // Event form state
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -50,7 +63,6 @@ export default function GroupDetailPage({ params }) {
   const [realtimeNotification, setRealtimeNotification] = useState(null)
 
   // Shared Worker Context
-  const { isConnected, sendMessage } = useSharedWorker()
 
   // Get current user ID
   useEffect(() => {
@@ -111,7 +123,7 @@ export default function GroupDetailPage({ params }) {
 
   // Send group chat message through shared worker
   const sendGroupChatMessage = () => {
-    if (!groupChatInput.trim() || !isConnected || !userId) return
+    if (!groupChatInput.trim() || !userId) return
 
     const message = {
       type: "group_message",
@@ -120,7 +132,7 @@ export default function GroupDetailPage({ params }) {
       content: groupChatInput.trim(),
       timestamp: new Date().toISOString()
     }
-    sendMessage(message)
+    sendWorkerMessage(message)
 
     // Optimistically update UI
     setGroupChatMessages(prev => [...prev, {
@@ -776,7 +788,7 @@ export default function GroupDetailPage({ params }) {
             <div className="flex justify-between items-center p-4 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-white">Group Chat: {group?.title}</h3>
-                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className={`h-2 w-2 rounded-full ${user ? 'bg-green-500' : 'bg-red-500'}`}></span>
               </div>
               <button
                 onClick={() => setShowGroupChat(false)}
@@ -791,7 +803,7 @@ export default function GroupDetailPage({ params }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {groupChatMessages.length === 0 ? (
                 <p className="text-gray-400 text-center py-10">
-                  {isConnected ? "No messages yet. Start the conversation!" : "Connecting to chat..."}
+                  {user ? "No messages yet. Start the conversation!" : "Connecting to chat..."}
                 </p>
               ) : (
                 groupChatMessages.map((msg, index) => (
@@ -819,13 +831,13 @@ export default function GroupDetailPage({ params }) {
                   value={groupChatInput}
                   onChange={(e) => setGroupChatInput(e.target.value)}
                   onKeyPress={handleChatKeyPress}
-                  placeholder={isConnected ? "Type a message..." : "Connecting..."}
-                  disabled={!isConnected}
+                  placeholder={user ? "Type a message..." : "Connecting..."}
+                  disabled={!user}
                   className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                 />
                 <button
                   onClick={sendGroupChatMessage}
-                  disabled={!groupChatInput.trim() || !isConnected}
+                  disabled={!groupChatInput.trim() || !user}
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
                   Send
