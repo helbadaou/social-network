@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import styles from './RegisterPage.module.css'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -79,10 +80,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-8">
-      <h1 className="text-4xl font-bold mb-6 text-center">Create your account</h1>
+    <main className={styles.container}>
+      <h1 className={styles.title}>Create your account</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-xl shadow-md">
+      <form onSubmit={handleSubmit} className={styles.form}>
         <Input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required />
         <Input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
         <Input name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required />
@@ -95,19 +96,19 @@ export default function RegisterPage() {
           name="avatar"
           accept="image/*"
           onChange={(e) => setForm((prev) => ({ ...prev, avatar: e.target.files[0] }))}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-400"
+          className={styles.fileInput}
         />
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+          className={styles.submitButton}
         >
           Register
         </button>
 
-        <p className="text-center text-sm mt-4 text-gray-600">
+        <p className={styles.loginLink}>
           Vous avez déjà un compte ?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/login" className={styles.link}>
             Connectez-vous ici
           </Link>
         </p>
@@ -115,8 +116,8 @@ export default function RegisterPage() {
 
       {message.text && (
         <p
-          className={`mt-4 text-center font-medium ${
-            message.type === 'success' ? 'text-green-600' : 'text-red-600'
+          className={`${styles.message} ${
+            message.type === 'success' ? styles.messageSuccess : styles.messageError
           }`}
         >
           {message.text}
@@ -131,7 +132,7 @@ function Input({ name, type = 'text', ...props }) {
     <input
       name={name}
       type={type}
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={styles.input}
       {...props}
     />
   )
@@ -142,7 +143,7 @@ function Textarea({ name, ...props }) {
     <textarea
       name={name}
       rows="4"
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={styles.textarea}
       {...props}
     />
   )

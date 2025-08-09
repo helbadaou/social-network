@@ -1,0 +1,175 @@
+/* ChatBox.module.css */
+.container {
+  width: 24rem;
+  background-color: #1f2937;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #374151;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.recipientName {
+  font-weight: 500;
+  color: white;
+}
+
+.closeButton {
+  color: #f87171;
+  font-size: 0.75rem;
+}
+
+.closeButton:hover {
+  color: #fca5a5;
+}
+
+.messagesContainer {
+  max-height: 60vh;
+  min-height: 300px;
+  overflow-y: auto;
+  background-color: #111827;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: #d1d5db;
+  flex: 1;
+  margin-bottom: 0.5rem;
+}
+
+.errorContainer {
+  text-align: center;
+  padding: 1rem;
+}
+
+.errorIcon {
+  color: #f87171;
+  margin-bottom: 0.5rem;
+}
+
+.errorMessage {
+  color: #f87171;
+  font-size: 0.875rem;
+}
+
+.errorHint {
+  color: #6b7280;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.emptyMessage {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.messageBubble {
+  margin-bottom: 0.5rem;
+}
+
+.messageRight {
+  text-align: right;
+}
+
+.messageLeft {
+  text-align: left;
+}
+
+.messageContent {
+  display: inline-block;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  max-width: 80%;
+  word-break: break-word;
+}
+
+.sentMessage {
+  background-color: #2563eb;
+  color: white;
+}
+
+.receivedMessage {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.messageMeta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.messageTime {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.inputContainer {
+  display: flex;
+  position: relative;
+}
+
+.inputField {
+  flex: 1;
+  border: 1px solid #4b5563;
+  color: white;
+  border-radius: 0.25rem 0 0 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background-color: #374151;
+}
+
+.inputField:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.inputFieldDisabled {
+  background-color: #4b5563;
+  border-color: #6b7280;
+  cursor: not-allowed;
+}
+
+.emojiButton {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.emojiButton:hover {
+  color: #fbbf24;
+}
+
+.sendButton {
+  margin-left: 0.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0 0.25rem 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.sendButtonActive {
+  background-color: #2563eb;
+  color: white;
+}
+
+.sendButtonActive:hover {
+  background-color: #1d4ed8;
+}
+
+.sendButtonDisabled {
+  background-color: #4b5563;
+  cursor: not-allowed;
+  opacity: 0.5;
+}

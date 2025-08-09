@@ -1,0 +1,46 @@
+/* ProfilePage.module.css */
+
+.container {
+  max-width: 36rem; /* max-w-xl */
+  margin: 0 auto; /* mx-auto */
+  padding: 1rem; /* p-4 */
+}
+
+.title {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 1rem; /* mb-4 */
+  color: #000000; /* default text color */
+}
+
+.field {
+  margin-bottom: 0.5rem;
+  color: #000000;
+}
+
+.field strong {
+  font-weight: 600;
+}
+
+.error {
+  color: #dc2626; /* text-red-600 */
+}
+
+.loading {
+  color: #000000;
+}
+
+.logoutButton {
+  margin-top: 1.5rem; /* mt-6 */
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  background-color: #dc2626; /* bg-red-600 */
+  color: #ffffff; /* text-white */
+  border: none;
+  border-radius: 0.25rem; /* rounded */
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.logoutButton:hover {
+  background-color: #b91c1c; /* hover:bg-red-700 */
+}

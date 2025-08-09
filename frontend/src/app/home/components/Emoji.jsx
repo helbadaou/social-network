@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import styles from './EmojiPicker.module.css'
 
 const EMOJI_CATEGORIES = {
   smileys: {
@@ -34,31 +35,31 @@ export default function EmojiPicker({ onEmojiSelect, isOpen, onClose }) {
   const [activeCategory, setActiveCategory] = useState('smileys')
 
   if (!isOpen) return null
-
   return (
-    <div className="absolute bottom-12 left-0 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50">
+    <div className={styles.picker}>
       {/* Header */}
-      <div className="flex justify-between items-center p-2 border-b border-gray-600">
-        <h3 className="text-sm font-medium text-white">Emojis</h3>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Emojis</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white text-sm"
+          className={styles.closeButton}
         >
           ✖
         </button>
       </div>
 
       {/* Category tabs */}
-      <div className="flex p-2 border-b border-gray-600 bg-gray-700">
+      <div className={styles.categories}>
         {Object.entries(EMOJI_CATEGORIES).map(([key, category]) => (
           <button
             key={key}
             onClick={() => setActiveCategory(key)}
-            className={`p-1 mx-1 rounded text-sm ${
-              activeCategory === key 
-                ? 'bg-blue-600 text-white' 
-                : 'text-gray-300 hover:bg-gray-600'
-            }`}
+            className={`
+            ${styles.categoryButton} 
+            ${activeCategory === key
+                ? styles.categoryButtonActive
+                : styles.categoryButtonInactive}
+          `}
             title={category.name}
           >
             {category.emojis[0]}
@@ -67,8 +68,8 @@ export default function EmojiPicker({ onEmojiSelect, isOpen, onClose }) {
       </div>
 
       {/* Emoji grid */}
-      <div className="h-48 overflow-y-auto p-2">
-        <div className="grid grid-cols-8 gap-1">
+      <div className={styles.emojiGrid}>
+        <div className={styles.emojiContainer}>
           {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji, index) => (
             <button
               key={index}
@@ -76,7 +77,7 @@ export default function EmojiPicker({ onEmojiSelect, isOpen, onClose }) {
                 onEmojiSelect(emoji)
                 onClose()
               }}
-              className="w-8 h-8 flex items-center justify-center hover:bg-gray-600 rounded text-lg"
+              className={styles.emojiButton}
               title={emoji}
             >
               {emoji}

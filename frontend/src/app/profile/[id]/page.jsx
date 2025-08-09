@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import styles from './PublicProfilePage.module.css'
 
 export default function PublicProfilePage() {
   const { id } = useParams()
@@ -129,25 +130,25 @@ export default function PublicProfilePage() {
     setTab(newTab);
   };
 
-  if (error) return <p className="text-red-600">{error}</p>
-  if (!profile) return <p>Chargement du profil...</p>
+  if (error) return <p className={styles.error}>{error}</p>
+  if (!profile) return <p className={styles.loading}>Chargement du profil...</p>
+  
   return (
     <>
-
-      <main className="min-h-screen bg-black text-gray-100 px-4 py-6">
+      <main className={styles.container}>
         <button
           onClick={() => router.push('/home')}
-          className="mb-4 text-sm text-blue-400 hover:text-blue-300 underline cursor-pointer"
+          className={styles.backButton}
         >
           ← Retour à l'accueil
         </button>
 
-        <div className="max-w-xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6 text-blue-500">
+        <div className={styles.profileContainer}>
+          <h1 className={styles.title}>
             Profil de {profile.first_name} {profile.last_name}
           </h1>
 
-          <div className="bg-gray-900 rounded-xl p-4 shadow-md border border-gray-700">
+          <div className={styles.profileCard}>
             <img
               src={
                 profile.avatar
@@ -157,16 +158,24 @@ export default function PublicProfilePage() {
                   : '/avatar.png'
               }
               alt="Avatar"
-              className="w-24 h-24 rounded-full border-2 border-blue-500 object-cover mb-4"
+              className={styles.avatar}
             />
-            <p><strong className="text-blue-400">Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}</p>
-            <p><strong className="text-blue-400">Email :</strong> {profile.email}</p>
-            <p><strong className="text-blue-400">À propos :</strong> {profile.about || 'N/A'}</p>
-            <p><strong className="text-blue-400">Date de naissance :</strong> {profile.date_of_birth}</p>
+            <p className={styles.profileField}>
+              <strong className={styles.fieldLabel}>Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}
+            </p>
+            <p className={styles.profileField}>
+              <strong className={styles.fieldLabel}>Email :</strong> {profile.email}
+            </p>
+            <p className={styles.profileField}>
+              <strong className={styles.fieldLabel}>À propos :</strong> {profile.about || 'N/A'}
+            </p>
+            <p className={styles.profileField}>
+              <strong className={styles.fieldLabel}>Date de naissance :</strong> {profile.date_of_birth}
+            </p>
 
             {/* Follow button section */}
             {!profile.is_owner && (
-              <div className="mt-4">
+              <div className={styles.followSection}>
                 <FollowButton
                   profile={profile}
                   currentUser={currentUser}
@@ -183,22 +192,22 @@ export default function PublicProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex space-x-4 mt-8 mb-4 text-sm font-semibold">
+          <div className={styles.tabContainer}>
             <button
               onClick={() => handleTabClick('posts')}
-              className={`px-4 py-2 rounded ${tab === 'posts' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+              className={`${styles.tabButton} ${tab === 'posts' ? styles.tabActive : styles.tabInactive}`}
             >
               Publications
             </button>
             <button
               onClick={() => handleTabClick('followers')}
-              className={`px-4 py-2 rounded ${tab === 'followers' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+              className={`${styles.tabButton} ${tab === 'followers' ? styles.tabActive : styles.tabInactive}`}
             >
               Abonnés
             </button>
             <button
               onClick={() => handleTabClick('following')}
-              className={`px-4 py-2 rounded ${tab === 'following' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300'}`}
+              className={`${styles.tabButton} ${tab === 'following' ? styles.tabActive : styles.tabInactive}`}
             >
               Abonnements
             </button>
@@ -206,20 +215,20 @@ export default function PublicProfilePage() {
 
           {tab === 'posts' && (
             posts === null ? (
-              <p className="text-gray-400">Aucune publication pour le moment.</p>
+              <p className={styles.emptyMessage}>Aucune publication pour le moment.</p>
             ) : (
-              <div className="space-y-4">
+              <div className={styles.postsContainer}>
                 {posts.map(post => (
-                  <div key={post.id} className="bg-gray-800 shadow-md rounded-xl p-4 border border-gray-700">
-                    <div className="text-sm text-gray-400 mb-2">
+                  <div key={post.id} className={styles.postCard}>
+                    <div className={styles.postDate}>
                       🕒 {new Date(post.created_at).toLocaleString()}
                     </div>
-                    <p className="text-gray-100 mb-3 whitespace-pre-wrap">{post.content}</p>
+                    <p className={styles.postContent}>{post.content}</p>
                     {post.image_url && (
                       <img
                         src={post.image_url.startsWith('http') ? post.image_url : `http://localhost:8080${post.image_url}`}
                         alt="Post"
-                        className="w-full max-w-md rounded border border-gray-700 mb-2"
+                        className={styles.postImage}
                       />
                     )}
                   </div>
@@ -229,55 +238,54 @@ export default function PublicProfilePage() {
           )}
 
           {tab === 'followers' && (
-            <div className="space-y-3">
+            <div className={styles.usersContainer}>
               {!Array.isArray(followers) ? (
-                <p className="text-gray-400">Chargement des abonnés...</p>
+                <p className={styles.emptyMessage}>Chargement des abonnés...</p>
               ) : followers.length === 0 ? (
-                <p className="text-gray-400">Aucun abonné pour l'instant.</p>
+                <p className={styles.emptyMessage}>Aucun abonné pour l'instant.</p>
               ) : (
                 followers.map(user => (
                   <div
                     key={user.ID}
-                    className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors"
+                    className={styles.userCard}
                     onClick={() => router.push(`/profile/${user.ID}`)}
                   >
                     <img
                       src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className={styles.userAvatar}
                       alt="avatar"
                     />
-                    <div>
-                      <p className="text-white font-medium">{user.FirstName} {user.LastName}</p>
-                      <p className="text-gray-400 text-sm">@{user.Nickname}</p>
+                    <div className={styles.userInfo}>
+                      <p className={styles.userName}>{user.FirstName} {user.LastName}</p>
+                      <p className={styles.userNickname}>@{user.Nickname}</p>
                     </div>
                   </div>
                 ))
-
               )}
             </div>
           )}
 
           {tab === 'following' && (
-            <div className="space-y-3">
+            <div className={styles.usersContainer}>
               {!Array.isArray(following) ? (
-                <p className="text-gray-400">Chargement des suivis...</p>
+                <p className={styles.emptyMessage}>Chargement des suivis...</p>
               ) : following.length === 0 ? (
-                <p className="text-gray-400">Cet utilisateur ne suit personne.</p>
+                <p className={styles.emptyMessage}>Cet utilisateur ne suit personne.</p>
               ) : (
                 following.map(user => (
                   <div
                     key={user.ID}
-                    className="flex items-center space-x-4 bg-gray-800 p-3 rounded-xl border border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors"
+                    className={styles.userCard}
                     onClick={() => router.push(`/profile/${user.ID}`)}
                   >
                     <img
                       src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className={styles.userAvatar}
                       alt="avatar"
                     />
-                    <div>
-                      <p className="text-white font-medium">{user.FirstName} {user.LastName}</p>
-                      <p className="text-gray-400 text-sm">@{user.Nickname}</p>
+                    <div className={styles.userInfo}>
+                      <p className={styles.userName}>{user.FirstName} {user.LastName}</p>
+                      <p className={styles.userNickname}>@{user.Nickname}</p>
                     </div>
                   </div>
                 ))
@@ -350,7 +358,7 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
       <button
         onClick={handleUnfollow}
         disabled={isLoading}
-        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+        className={`${styles.followButton} ${styles.unfollowButton}`}
       >
         {isLoading ? 'Chargement...' : 'Se désabonner'}
       </button>
@@ -361,7 +369,7 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
     return (
       <button
         disabled
-        className="px-4 py-2 bg-yellow-600 text-white rounded-lg opacity-75"
+        className={`${styles.followButton} ${styles.pendingButton}`}
       >
         En attente d'approbation
       </button>
@@ -372,7 +380,7 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
     <button
       onClick={handleFollow}
       disabled={isLoading}
-      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+      className={`${styles.followButton} ${styles.followButtonPrimary}`}
     >
       {isLoading ? 'Chargement...' : profile.is_private ? 'Demander à suivre' : 'Suivre'}
     </button>

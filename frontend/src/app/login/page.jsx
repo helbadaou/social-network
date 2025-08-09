@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // 👀 Check if user is already authenticated
     const checkAuth = async () => {
       try {
         const res = await fetch('http://localhost:8080/api/profile', {
@@ -19,10 +19,9 @@ export default function LoginPage() {
         })
 
         if (res.ok) {
-          router.push('/home') // ✅ Already logged in, redirect to home
+          router.push('/home')
         }
       } catch (err) {
-        // Not logged in or network error — stay on login
         console.error('Auth check failed:', err)
       }
     }
@@ -57,14 +56,14 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-sm bg-white p-6 rounded-xl shadow-md">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Login</h1>
-        <form onSubmit={handleLogin} className="space-y-4">
+    <main className={styles.container}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Login</h1>
+        <form onSubmit={handleLogin} className={styles.form}>
           <input
             type="email"
             placeholder="Email"
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            className={styles.input}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -72,27 +71,31 @@ export default function LoginPage() {
           <input
             type="password"
             placeholder="Password"
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+            className={styles.input}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition duration-200"
+            className={styles.submitButton}
           >
             Login
           </button>
 
-          <p className="text-center text-sm mt-4 text-gray-600">
+          <p className={styles.registerText}>
             Pas encore de compte ?{' '}
-            <Link href="/register" className="text-blue-600 hover:underline">
+            <Link href="/register" className={styles.registerLink}>
               Créez-en un ici
             </Link>
           </p>
         </form>
         {message && (
-          <p className="mt-4 text-sm text-center text-red-600">{message}</p>
+          <p className={`${styles.message} ${
+            message.startsWith('✅') ? styles.successMessage : styles.errorMessage
+          }`}>
+            {message}
+          </p>
         )}
       </div>
     </main>
