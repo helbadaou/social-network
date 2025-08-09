@@ -143,6 +143,7 @@ func (h *Hub) GetGroupMembers(groupID int) ([]int, error) {
 // After inserting notification in DB, fetch it and send:
 func (h *Hub) SendNotification(notification models.Notification, toID int) {
 	msgBytes, _ := json.Marshal(notification)
+	fmt.Println("message that will be sent :", string(msgBytes))
 	if recipient, ok := h.Clients[toID]; ok {
 		recipient.Send <- msgBytes
 	}

@@ -21,6 +21,7 @@ func (repo *NotificationRepository) GetNotificationsByUserID(userID int) ([]mode
             n.sender_id, 
             COALESCE(u.nickname, '') as sender_nickname,
             n.group_id,  -- Added this column
+            n.event_id,
             n.type, 
             COALESCE(n.message, '') as message,
             n.seen,
@@ -45,6 +46,7 @@ func (repo *NotificationRepository) GetNotificationsByUserID(userID int) ([]mode
             &notif.SenderID,
             &notif.SenderNickname,
             &groupID,  // Scan into NullInt64 first
+            &notif.EventId,
             &notif.Type,
             &notif.Message,
             &notif.Seen,

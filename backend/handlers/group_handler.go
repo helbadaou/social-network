@@ -748,12 +748,12 @@ func (h *GroupHandler) broadcastEventNotification(event models.GroupEvent, creat
 		SenderID:       creatorID,
 		SenderNickname: event.CreatorName,
 		GroupId:        event.GroupID,
+		EventId:        event.ID,
 		Type:           "group_event_created",
 		Message:        fmt.Sprintf("%s created a new event: %s", event.CreatorName, event.Title),
 		Seen:           false,
 		CreatedAt:      time.Now().Format(time.RFC3339),
 	}
-
 	// Create and send notifications to all members except creator
 	for _, member := range members {
 		if member.ID == creatorID {

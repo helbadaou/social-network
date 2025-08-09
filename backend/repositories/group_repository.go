@@ -725,14 +725,16 @@ func (r *GroupRepository) CreateNotification(recipientID int, notification model
             user_id, 
             sender_id, 
             group_id,
+			event_id,
             type, 
             message, 
             seen, 
             created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         recipientID,
         notification.SenderID,
         notification.GroupId, // Can be nil
+        notification.EventId, // Can be nil
         notification.Type,
         notification.Message,
         notification.Seen,

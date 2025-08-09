@@ -333,6 +333,38 @@ export function Navbar() {
     }
   }
 
+    const handleVote = async (eventId, groupId, response, notifId) => {
+      
+    try {
+      const res = await fetch(`/api/groups/${groupId}/events/${eventId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ response }),
+        credentials: 'include'
+      });
+
+      if (!res.ok) throw new Error('Failed to submit response');
+      await fetch('/api/notifications/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+
+        await fetch('/api/notifications/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId }),
+          credentials: 'include',
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notifId));
+    } catch (err) {
+      console.error('Error submitting response:', err);
+    }
+  };
+
   const togglePrivacy = async () => {
     try {
       const res = await fetch('/api/user/toggle-privacy', {
@@ -506,7 +538,7 @@ export function Navbar() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleApprove(notif.id, notif.sender_id, notif.GroupId);
+                                  handleVote(notif.EventId, notif.GroupId, 'going', notif.id)
                                 }}
                                 className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
                               >
@@ -515,7 +547,7 @@ export function Navbar() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDecline(notif.id, notif.sender_id, notif.GroupId);
+                                  handleVote(notif.EventId, notif.GroupId, 'not_going', notif.id);
                                 }}
                                 className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                               >
