@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import styles from './CreatePostForm.module.css'
 
 export default function CreatePostForm({ onPostCreated }) {
   const [content, setContent] = useState('')
@@ -29,21 +30,25 @@ export default function CreatePostForm({ onPostCreated }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow space-y-4">
+    <form onSubmit={handleSubmit} className={styles.form}>
       <textarea
-        className="w-full p-2 border rounded"
+        className={styles.textarea}
         placeholder="What's on your mind?"
         value={content}
         onChange={e => setContent(e.target.value)}
         required
       />
-      <select value={privacy} onChange={e => setPrivacy(e.target.value)} className="border p-1 rounded">
+      <select 
+        value={privacy} 
+        onChange={e => setPrivacy(e.target.value)} 
+        className={styles.select}
+      >
         <option value="public">Public</option>
         <option value="followers">Followers</option>
         <option value="custom">Custom</option>
       </select>
-      <button className="bg-blue-600 text-white px-4 py-2 rounded">Post</button>
-      {message && <p className="text-sm">{message}</p>}
+      <button className={styles.button}>Post</button>
+      {message && <p className={styles.message}>{message}</p>}
     </form>
   )
 }

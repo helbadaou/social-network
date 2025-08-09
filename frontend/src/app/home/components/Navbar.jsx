@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useSharedWorker } from '../../../contexts/SharedWorkerContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import PostForm from '../../../app/home/components/PostForm';
+import styles from './Navbar.module.css'
 
 export function Navbar() {
   const { user } = useAuth();
@@ -399,35 +400,36 @@ export function Navbar() {
     fetchNotifications();
   }, []);
 
+ 
   return (
     <>
-      <nav className="bg-gray-900 shadow px-6 py-4 border-b border-gray-800 relative">
-        <div className="flex items-center justify-between">
+      <nav className={styles.navbar}>
+        <div className={styles.container}>
           {/* Search bar */}
-          <div className="max-w-xl w-full relative">
+          <div className={styles.searchContainer}>
             <input
               type="text"
               placeholder="🔍 Search users..."
               onChange={handleSearch}
               value={search}
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none"
+              className={styles.searchInput}
             />
             {results && results.length > 0 && (
-              <div className="absolute left-0 right-0 bg-gray-800 mt-2 rounded-md shadow-lg z-30 border border-gray-700 max-h-64 overflow-y-auto">
+              <div className={styles.searchResults}>
                 {results.map((user) => (
                   <div
                     key={user.id}
-                    className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
+                    className={styles.searchResultItem}
                     onClick={() => {
                       router.push(`/profile/${user.id}`);
                       setSearch('');
                       setResults([]);
                     }}
                   >
-                    <p className="font-medium text-white">
+                    <p className={styles.userName}>
                       {user.first_name} {user.last_name}
                     </p>
-                    <p className="text-sm text-gray-400">@{user.nickname}</p>
+                    <p className={styles.userNickname}>@{user.nickname}</p>
                   </div>
                 ))}
               </div>
@@ -435,13 +437,13 @@ export function Navbar() {
           </div>
 
           {/* Right side actions */}
-          <div className="flex items-center gap-4 ml-4 relative">
+          <div className={styles.actions}>
             <button onClick={togglePostForm}>
-              <img src="/plus-icon.png" alt="Create post" className="w-6 h-6" />
+              <img src="/plus-icon.png" alt="Create post" className={styles.icon} />
             </button>
 
             <button onClick={openMessages} className="relative">
-              <img src="/message-icon.png" alt="Messages" className="w-6 h-6" />
+              <img src="/message-icon.png" alt="Messages" className={styles.icon} />
             </button>
 
             {/* Notifications dropdown */}
@@ -449,11 +451,11 @@ export function Navbar() {
               <button
                 ref={notificationButtonRef}
                 onClick={toggleNotifications}
-                className="relative p-1"
+                className={styles.notificationButton}
               >
-                <img src="/notif-icon.png" className="w-6 h-6" alt="Notifications" />
+                <img src="/notif-icon.png" className={styles.icon} alt="Notifications" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -left-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  <span className={styles.notificationBadge}>
                     {unreadCount}
                   </span>
                 )}
@@ -462,41 +464,41 @@ export function Navbar() {
               {showNotifications && (
                 <div
                   ref={notificationsRef}
-                  className="absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-50 max-h-96 overflow-y-auto"
+                  className={styles.notificationDropdown}
                 >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold text-white">Notifications</h3>
+                  <div className={styles.notificationHeader}>
+                    <h3 className={styles.notificationTitle}>Notifications</h3>
                     <button
                       onClick={() => setShowNotifications(false)}
-                      className="text-gray-400 hover:text-white"
+                      className={styles.notificationClose}
                     >
                       ×
                     </button>
                   </div>
 
                   {notifications.length === 0 ? (
-                    <p className="text-gray-400 text-sm py-2">No notifications</p>
+                    <p className={styles.notificationEmpty}>No notifications</p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className={styles.notificationList}>
                       {notifications.map((notif, idx) => (
                         <div
                           key={notif.id ? notif.id : `${notif.sender_id}-${notif.type}-${notif.message}-${idx}`}
-                          className={`p-3 rounded border ${notif.seen ? 'bg-gray-800 border-gray-700' : 'bg-blue-900 border-blue-600'}`}
+                          className={`${styles.notificationItem} ${notif.seen ? styles.notificationSeen : styles.notificationUnseen}`}
                         >
-                          <p className="text-sm text-white break-words">
+                          <p className={styles.notificationText}>
                             {notif.message}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className={styles.notificationTime}>
                             {new Date(notif.created_at).toLocaleString()}
                           </p>
                           {notif.type === 'follow_request' && (
-                            <div className="flex gap-2 mt-2">
+                            <div className={styles.notificationActions}>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleAccept(notif.id, notif.sender_id);
                                 }}
-                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.acceptButton}`}
                               >
                                 Accept
                               </button>
@@ -505,20 +507,20 @@ export function Navbar() {
                                   e.stopPropagation();
                                   handleReject(notif.id, notif.sender_id);
                                 }}
-                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.rejectButton}`}
                               >
                                 Reject
                               </button>
                             </div>
                           )}
                           {notif.type === 'group_join_request' && (
-                            <div className="flex gap-2 mt-2">
+                            <div className={styles.notificationActions}>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleApprove(notif.id, notif.sender_id, notif.GroupId);
                                 }}
-                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.acceptButton}`}
                               >
                                 Accept
                               </button>
@@ -527,20 +529,20 @@ export function Navbar() {
                                   e.stopPropagation();
                                   handleDecline(notif.id, notif.sender_id, notif.GroupId);
                                 }}
-                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.rejectButton}`}
                               >
                                 Reject
                               </button>
                             </div>
                           )}
-                           {notif.type === 'group_event_created' && (
-                            <div className="flex gap-2 mt-2">
+                          {notif.type === 'group_event_created' && (
+                            <div className={styles.notificationActions}>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleVote(notif.EventId, notif.GroupId, 'going', notif.id)
                                 }}
-                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.acceptButton}`}
                               >
                                 Going
                               </button>
@@ -549,7 +551,7 @@ export function Navbar() {
                                   e.stopPropagation();
                                   handleVote(notif.EventId, notif.GroupId, 'not_going', notif.id);
                                 }}
-                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                                className={`${styles.actionButton} ${styles.rejectButton}`}
                               >
                                 Not Going
                               </button>
@@ -563,7 +565,7 @@ export function Navbar() {
               )}
             </div>
 
-            <Link href="/groups" className="text-gray-300 hover:text-white">👥 Groups</Link>
+            <Link href="/groups" className={styles.groupsLink}>👥 Groups</Link>
 
             {/* User profile dropdown */}
             {user && (
@@ -578,39 +580,37 @@ export function Navbar() {
                   }
                   alt="Avatar"
                   onClick={() => setShowProfile(prev => !prev)}
-                  className="w-10 h-10 rounded-full border border-blue-600 cursor-pointer"
+                  className={styles.avatar}
                 />
 
                 {showProfile && (
-                  <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg p-4 z-20">
-                    <h2 className="font-semibold text-white">
+                  <div className={styles.profileDropdown}>
+                    <h2 className={styles.profileName}>
                       {user.FirstName} {user.LastName}
                     </h2>
-                    <p className="text-sm text-blue-400 mt-1">{user.Email}</p>
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-sm text-gray-300">
+                    <p className={styles.profileEmail}>{user.Email}</p>
+                    <div className={styles.profilePrivacy}>
+                      <span className={styles.privacyText}>
                         {isPrivate ? '🔒 Private profile' : '🌍 Public profile'}
                       </span>
                       <button
                         onClick={togglePrivacy}
-                        className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out 
-                        ${isPrivate ? 'bg-red-500' : 'bg-green-500'}`}
+                        className={`${styles.privacyToggle} ${isPrivate ? styles.privacyTogglePrivate : styles.privacyTogglePublic}`}
                       >
                         <div
-                          className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out 
-                          ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`}
+                          className={`${styles.privacyToggleThumb} ${isPrivate ? styles.privacyToggleThumbPrivate : styles.privacyToggleThumbPublic}`}
                         ></div>
                       </button>
                     </div>
                     <button
                       onClick={() => router.push(`/profile/${user.ID}`)}
-                      className="mt-3 w-full text-sm text-green-500 hover:underline"
+                      className={styles.profileLink}
                     >
                       View profile
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="mt-3 w-full text-sm text-red-500 hover:underline"
+                      className={styles.logoutButton}
                     >
                       Logout
                     </button>
@@ -623,7 +623,7 @@ export function Navbar() {
       </nav>
       {/* Post Form Modal */}
       {showPostForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className={styles.modalOverlay}>
           <PostForm
             content={content}
             setContent={setContent}

@@ -52,6 +52,7 @@ func (h *Hub) Run() {
 
 			switch msg.Type {
 			case "private":
+				fmt.Println("nothing just test")
 				// Process private message
 				if err := h.messageService.ProcessPrivateMessage(msg); err != nil {
 					fmt.Println("Error processing private message:", err)
