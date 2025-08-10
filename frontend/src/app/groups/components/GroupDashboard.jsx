@@ -35,9 +35,29 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   const removeNotificationCallback = useRef(null);
   const ws = useRef(null);
   const fileInputRef = useRef();
+
   const togglePostForm = () => {
     setShowPostForm(prev => !prev)
   }
+
+  // Placeholder functions for missing handlers
+  const handleSearch = (searchTerm) => {
+    setSearch(searchTerm);
+    // Implement search logic
+  };
+
+  const handleLogout = () => {
+    // Implement logout logic
+  };
+
+  const openMessages = () => {
+    setShowMessages(true);
+  };
+
+  const handleNotificationRemoved = () => {
+    setRealtimeNotification(null);
+  };
+
   // Fetch group posts
   const fetchPosts = async () => {
     try {
@@ -80,6 +100,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
       console.error('Failed to fetch group members', err);
     }
   };
+
   // Handle post submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -168,7 +189,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   return (
     <div className={styles.groupDashboardOverlay}>
       <Navbar
-        user={user}
+        user={currentUser}
         handleSearch={handleSearch}
         handleLogout={handleLogout}
         results={results}
@@ -195,8 +216,8 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
       )}
 
       {showPostForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl">
+        <div className={styles.postFormOverlay}>
+          <div className={styles.postFormModal}>
             <PostForm
               content={content}
               setContent={setContent}
@@ -215,6 +236,126 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
       )}
 
       <div className={styles.groupDashboardPopup}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>{group.title}</h2>
+          <button onClick={onClose} className={styles.closeButton}>
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.tabs}>
+          <button 
+            className={`${styles.tab} ${activeTab === 'posts' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('posts')}
+          >
+            Posts
+          </button>
+          <button 
+            className={`${styles.tab} ${activeTab === 'events' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('events')}
+          >
+            Events
+          </button>
+          <button 
+            className={`${styles.tab} ${activeTab === 'chat' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('chat')}
+          >
+            Chat
+          </button>
+        </div>
+
+        <div className={styles.content}>
+          {loading && <div className={styles.loading}>Loading...</div>}
+          {error && <div className={styles.error}>{error}</div>}
+
+          {activeTab === 'posts' && (
+            <div className={styles.postsSection}>
+              {posts.length === 0 && !loading ? (
+                <div className={styles.emptyState}>No posts yet</div>
+              ) : (
+                posts.map(post => (
+                  <div key={post.id} className={styles.postCard}>
+                    <div className={styles.postHeader}>
+                      <span className={styles.postAuthor}>{post.author}</span>
+                      <span className={styles.postDate}>{new Date(post.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className={styles.postContent}>{post.content}</p>
+                    {post.image && (
+                      <img src={post.image} alt="Post" className={styles.postImage} />
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'events' && (
+            <div className={styles.eventsSection}>
+              {isCreator && (
+                <div className={styles.createEventForm}>
+                  <h3>Create Event</h3>
+                  <input
+                    type="text"
+                    placeholder="Event title"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                    className={styles.input}
+                  />
+                  <textarea
+                    placeholder="Event description"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                    className={styles.textarea}
+                  />
+                  <input
+                    type="datetime-local"
+                    value={newEvent.event_date}
+                    onChange={(e) => setNewEvent({...newEvent, event_date: e.target.value})}
+                    className={styles.input}
+                  />
+                  <button className={styles.createButton}>Create Event</button>
+                </div>
+              )}
+              
+              {events.length === 0 && !loading ? (
+                <div className={styles.emptyState}>No events scheduled</div>
+              ) : (
+                events.map(event => (
+                  <div key={event.id} className={styles.eventCard}>
+                    <h4 className={styles.eventTitle}>{event.title}</h4>
+                    <p className={styles.eventDescription}>{event.description}</p>
+                    <span className={styles.eventDate}>
+                      {new Date(event.event_date).toLocaleString()}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div className={styles.chatSection}>
+              <div className={styles.chatMessages}>
+                {groupMessages.map(msg => (
+                  <div key={msg.id} className={styles.chatMessage}>
+                    <span className={styles.chatAuthor}>{msg.from}:</span>
+                    <span className={styles.chatText}>{msg.message}</span>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.chatInput}>
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={groupMessageInput}
+                  onChange={(e) => setGroupMessageInput(e.target.value)}
+                  className={styles.input}
+                />
+                <button className={styles.sendButton}>Send</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

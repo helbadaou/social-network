@@ -1,0 +1,87 @@
+.card {
+  background-color: #1f2937; /* gray-800 */
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #374151; /* gray-700 */
+  transition: all 0.2s;
+}
+
+.card:hover {
+  border-color: #4b5563; /* gray-600 */
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+}
+
+.adminBadge {
+  font-size: 0.75rem;
+  background-color: #7c3aed; /* purple-600 */
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.description {
+  color: #9ca3af; /* gray-400 */
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metadata {
+  font-size: 0.75rem;
+  color: #6b7280; /* gray-500 */
+}
+
+.separator {
+  margin: 0 0.5rem;
+}
+
+.button {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.joinButton {
+  background-color: #2563eb; /* blue-600 */
+  color: white;
+}
+
+.joinButton:hover {
+  background-color: #1d4ed8; /* blue-700 */
+}
+
+.pendingBadge {
+  background-color: #d97706; /* yellow-600 */
+  color: white;
+  cursor: default;
+}
+
+.visitButton {
+  background-color: #16a34a; /* green-600 */
+  color: white;
+}
+
+.visitButton:hover {
+  background-color: #15803d; /* green-700 */
+}

@@ -1,7 +1,7 @@
-// src/app/groups/components/CreateGroupModal.jsx
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import styles from './CreateGroupModal.module.css'
 
 export default function CreateGroupModal({ onClose }) {
   const [title, setTitle] = useState('')
@@ -45,27 +45,27 @@ export default function CreateGroupModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-700">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Create New Group</h2>
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Create New Group</h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className={styles.closeButton}
           >
             ✕
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-900 text-red-100 rounded text-sm">
+          <div className={styles.error}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
+          <div className={styles.inputGroup}>
+            <label htmlFor="title" className={styles.label}>
               Group Name *
             </label>
             <input
@@ -73,38 +73,38 @@ export default function CreateGroupModal({ onClose }) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={styles.input}
               required
               maxLength={50}
             />
           </div>
 
-          <div className="mb-6">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">
+          <div className={styles.inputGroup}>
+            <label htmlFor="description" className={styles.label}>
               Description
             </label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={styles.textarea}
               rows={3}
               maxLength={200}
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className={styles.buttonContainer}>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              className={`${styles.button} ${styles.cancelButton}`}
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className={`${styles.button} ${styles.submitButton} ${isLoading || !title.trim() ? styles.disabled : ''}`}
               disabled={isLoading || !title.trim()}
             >
               {isLoading ? 'Creating...' : 'Create Group'}

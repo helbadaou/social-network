@@ -29,6 +29,7 @@ export function Navbar() {
   const [showProfile, setShowProfile] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false); // Add this missing state
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationsRef = useRef(null);
@@ -334,8 +335,8 @@ export function Navbar() {
     }
   }
 
-    const handleVote = async (eventId, groupId, response, notifId) => {
-      
+  const handleVote = async (eventId, groupId, response, notifId) => {
+
     try {
       const res = await fetch(`/api/groups/${groupId}/events/${eventId}/vote`, {
         method: 'POST',
@@ -348,19 +349,19 @@ export function Navbar() {
 
       if (!res.ok) throw new Error('Failed to submit response');
       await fetch('/api/notifications/seen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
+      });
 
-        await fetch('/api/notifications/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notification_id: notifId }),
-          credentials: 'include',
-        });
-        setNotifications(prev => prev.filter(n => n.id !== notifId));
+      await fetch('/api/notifications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notifId }),
+        credentials: 'include',
+      });
+      setNotifications(prev => prev.filter(n => n.id !== notifId));
     } catch (err) {
       console.error('Error submitting response:', err);
     }
@@ -400,7 +401,7 @@ export function Navbar() {
     fetchNotifications();
   }, []);
 
- 
+
   return (
     <>
       <nav className={styles.navbar}>
@@ -634,9 +635,10 @@ export function Navbar() {
             handleSubmit={handleSubmit}
             creating={creating}
             ref={fileInputRef}
+            onClose={() => setShowPostForm(false)}  // Add this prop
           />
         </div>
       )}
     </>
   );
-}
+} 

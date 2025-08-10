@@ -89,7 +89,7 @@
   top: -0.25rem;
   left: -0.25rem;
   background-color: #ef4444;
-  color: white;
+  color: rgb(51, 66, 75);
   font-size: 0.75rem;
   border-radius: 9999px;
   height: 1rem;
@@ -125,7 +125,7 @@
 .notificationTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: white;
+  color: rgb(63, 80, 94);
 }
 
 .notificationClose {
@@ -184,7 +184,7 @@
 
 .actionButton {
   font-size: 0.75rem;
-  color: white;
+  color: rgb(255, 255, 255);
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
 }

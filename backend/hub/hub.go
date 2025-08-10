@@ -72,6 +72,7 @@ func (h *Hub) Run() {
 
 			case "group_message":
 				// Process group message
+				fmt.Println("la walo")
 				if err := h.messageService.ProcessGroupMessage(msg); err != nil {
 					fmt.Println("Error processing group message:", err)
 					continue

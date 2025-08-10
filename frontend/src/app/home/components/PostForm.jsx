@@ -5,7 +5,7 @@ import { useEffect, useState, forwardRef } from 'react'
 import styles from './PostForm.module.css'
 
 const PostForm = forwardRef(function PostForm(
-  { content, setContent, image, setImage, privacy, setPrivacy, handleSubmit, creating },
+  { content, setContent, image, setImage, privacy, setPrivacy, handleSubmit, creating, onClose },
   fileInputRef
 ) {
   const [recipients, setRecipients] = useState([])
@@ -46,6 +46,16 @@ const PostForm = forwardRef(function PostForm(
 
   return (
     <form onSubmit={onSubmit} className={styles.form}>
+      {/* Add close button at top-right */}
+      <button 
+        type="button" 
+        onClick={onClose}
+        className={styles.closeButton}
+        aria-label="Fermer le formulaire"
+      >
+        ×
+      </button>
+      
       <textarea
         placeholder="Exprimez-vous..."
         value={content}
@@ -92,13 +102,15 @@ const PostForm = forwardRef(function PostForm(
         </div>
       )}
 
-      <button
-        type="submit"
-        className={styles.submitButton}
-        disabled={creating}
-      >
-        {creating ? 'Publication...' : 'Publier'}
-      </button>
+      <div className={styles.buttonGroup}>
+        <button
+          type="submit"
+          className={styles.submitButton}
+          disabled={creating}
+        >
+          {creating ? 'Publication...' : 'Publier'}
+        </button>
+      </div>
     </form>
   )
 })

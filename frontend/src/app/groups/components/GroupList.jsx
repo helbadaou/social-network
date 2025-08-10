@@ -1,7 +1,7 @@
-// src/app/groups/components/GroupList.jsx
 'use client'
 import { useEffect, useState } from 'react'
 import GroupCard from './GroupCard'
+import styles from './GroupList.module.css'
 
 export default function GroupList() {
   const [groups, setGroups] = useState([])
@@ -26,15 +26,15 @@ export default function GroupList() {
   }, [])
 
   if (loading) return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className={styles.loadingGrid}>
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-gray-800 rounded-xl p-4 h-32 animate-pulse"></div>
+        <div key={i} className={styles.skeleton}></div>
       ))}
     </div>
   )
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className={styles.grid}>
       {groups !== null && groups.map(group => (
         <GroupCard key={group.id} group={group} />
       ))}
