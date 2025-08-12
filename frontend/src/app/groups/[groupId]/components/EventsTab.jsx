@@ -3,9 +3,7 @@ import styles from './EventsTab.module.css'
 
 export default function EventsTab({ group, showEventForm, setShowEventForm }) {
   const [events, setEvents] = useState([])
-
-  useEffect(() => {
-    const fetchEvents = async () => {
+const fetchEvents = async () => {
       try {
         const res = await fetch(`/api/groups/${group.id}/events`)
         if (!res.ok) throw new Error('Failed to fetch events')
@@ -15,8 +13,10 @@ export default function EventsTab({ group, showEventForm, setShowEventForm }) {
         console.error('Failed to fetch events', err)
       }
     }
-
+  useEffect(() => {
+    
     fetchEvents()
+    
   }, [group.id])
 
   const handleVote = async (eventId, response) => {
