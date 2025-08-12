@@ -116,7 +116,7 @@ func main() {
 
 	// WebSocket route
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("🧲 WebSocket connection initiated")
+		//fmt.Println("🧲 WebSocket connection initiated")
 		hubHandler.ServeWS(hub, w, r)
 	})
 

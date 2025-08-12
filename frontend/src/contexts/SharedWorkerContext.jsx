@@ -14,7 +14,7 @@ export function SharedWorkerProvider({ children }) {
     port.start()
 
     const handleMessage = (event) => {
-      console.log("event hhhhh", event.data);
+      //console.log("event hhhhh", event.data);
       
       setWorkerMessages(prev => [...prev, event.data])
     }

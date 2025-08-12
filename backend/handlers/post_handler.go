@@ -65,7 +65,6 @@ func (h *PostHandler) PostsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("here")
 	userID, ok := h.session.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -82,7 +81,6 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 	privacy := r.FormValue("privacy")
 	recipientIDsStr := r.Form["recipient_ids"]
 
-	fmt.Println("reciepents are : ", recipientIDsStr)
 
 	if content == "" || privacy == "" {
 		http.Error(w, "Missing content or privacy", http.StatusBadRequest)

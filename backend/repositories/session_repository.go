@@ -24,7 +24,7 @@ func (s *SessionRepo) ValidateSession(r *http.Request, db *sql.DB) (int, error) 
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		if err == http.ErrNoCookie {
-			fmt.Println("ysf", err)
+			fmt.Println("err:", err)
 			return 0, fmt.Errorf("no session cookie")
 		}
 		return 0, fmt.Errorf("error reading session cookie: %v", err)
@@ -53,7 +53,6 @@ func (s *SessionRepo) CreateSession(userID int) (string, time.Time, error) {
 		log.Println("Error storing session in database:", err)
 		return "", time.Time{}, err
 	}
-	fmt.Println("Session created successfully:", sessionID)
 	return sessionID, expiration, nil
 }
 

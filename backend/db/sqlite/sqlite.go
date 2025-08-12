@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -45,5 +44,5 @@ func applyMigrations() {
 		log.Fatalf("Migration failed: %v", err)
 	}
 
-	fmt.Println("✅ Migrations applied successfully")
+	//fmt.Println("✅ Migrations applied successfully")
 }

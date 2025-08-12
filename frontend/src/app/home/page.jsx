@@ -147,7 +147,7 @@ export default function HomePage() {
 
         // Handle incoming messages
         if (data && (type === "message" || data.type === "private")) {
-          console.log('Processing chat message');
+         // console.log('Processing chat message');
           setMessages((prev) => [...prev, data]);
 
           // NEW: Check if message is from another user (not sent by current user)

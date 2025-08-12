@@ -82,7 +82,6 @@ func (h *Hub) Run() {
 					fmt.Printf("❌ Failed to get group members: %v\n", err)
 					continue
 				}
-				fmt.Println("member", members)
 
 				// Broadcast to all connected group members except sender
 				for _, memberID := range members {
@@ -99,7 +98,6 @@ func (h *Hub) Run() {
 						}
 						select {
 						case client.Send <- msgBytes:
-							fmt.Println("nothing", string(msgBytes))
 							// Message sent successfully
 						default:
 							// Handle full channel or disconnected client
@@ -150,7 +148,6 @@ func (h *Hub) GetGroupMembers(groupID int) ([]int, error) {
 // After inserting notification in DB, fetch it and send:
 func (h *Hub) SendNotification(notification models.Notification, toID int) {
 	msgBytes, _ := json.Marshal(notification)
-	fmt.Println("message that will be sent :", string(msgBytes))
 	if recipient, ok := h.Clients[toID]; ok {
 		recipient.Send <- msgBytes
 	}

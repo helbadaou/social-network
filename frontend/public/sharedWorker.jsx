@@ -25,7 +25,7 @@ function connectWebSocket() {
   socket.onmessage = (msg) => {
     try {
       const parsed = JSON.parse(msg.data);
-      console.log("coming data : ", parsed);
+      //console.log("coming data : ", parsed);
       
       // Forward all messages to all ports
       broadcast({
@@ -79,7 +79,7 @@ onconnect = function (e) {
   port.onmessage = function (event) {
     const data = event.data;
 
-    console.log("ya rbi salama ",data)
+    //console.log("ya rbi salama ",data)
 
     switch (data.type) {
       case "INIT":
@@ -95,7 +95,7 @@ onconnect = function (e) {
         if (socket && isConnected) {
           try {
             const payload = JSON.stringify(data);
-            console.log("payload is : ", payload)
+           // console.log("payload is : ", payload)
             socket.send(payload);
           } catch (err) {
             port.postMessage({
@@ -104,7 +104,6 @@ onconnect = function (e) {
             });
           }
         } else {
-          console.log('hhhhhhhhhhhhhhhhh');
           
           port.postMessage({
             type: "error",

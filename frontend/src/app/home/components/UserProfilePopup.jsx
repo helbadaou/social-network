@@ -39,10 +39,10 @@ export default function UserProfilePopup({
         // Si c'est une réponse à notre demande (nous sommes le sender)
         if (sender_id === currentUser?.ID && recipient_id === selectedUser.id) {
           if (action === "accepted") {
-            console.log("✅ Demande acceptée");
+            //console.log("✅ Demande acceptée");
             setFollowStatus("accepted");
           } else if (action === "rejected") {
-            console.log("❌ Demande refusée - retour à l'état initial");
+            //console.log("❌ Demande refusée - retour à l'état initial");
             setFollowStatus(""); // Retour à l'état initial = bouton "Suivre"
           }
         }
@@ -71,7 +71,7 @@ export default function UserProfilePopup({
       if (res.ok) {
         const data = await res.json();
         setFollowStatus(data.status || "");
-        console.log("🔄 Follow status mis à jour:", data.status);
+        //console.log("🔄 Follow status mis à jour:", data.status);
       } else {
         setFollowStatus("");
       }

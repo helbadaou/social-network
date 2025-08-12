@@ -126,7 +126,7 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 	case suffix == "events" && method == http.MethodPost:
 
 		h.CreateGroupEventHandler(w, r)
-		fmt.Println("fhfhfh")
+		
 
 	case strings.HasSuffix(suffix, "/vote") && method == http.MethodPost:
 		h.HandleEventVote(w, r)
@@ -612,7 +612,6 @@ func (h *GroupHandler) CreateGroupPostHandler(w http.ResponseWriter, r *http.Req
 		}
 		imagePath = "http://localhost:8080/uploads/group_posts/" + header.Filename
 	}
-	fmt.Println("pth", imagePath)
 	post := models.GroupPost{
 		GroupID:  groupID,
 		AuthorID: userID,

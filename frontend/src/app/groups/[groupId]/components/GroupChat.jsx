@@ -24,13 +24,11 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
   useEffect(() => {
     if (worker) {
       worker.port.onmessage = (event) => {
-        console.log("rah dkhel");
 
         const message = event.data.data;
         if (event.type === 'user_online' && message.groupId === parseInt(group?.id)) {
           setOnlineUsers(prev => [...prev, message.from])
         } else if (message.type === 'group' && message.groupId === parseInt(group?.id)) {
-          console.log("dkhel tra hna ");
 
           setGroupChatMessages(prev => [...prev, message])
         }
