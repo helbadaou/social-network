@@ -46,6 +46,9 @@ export function Navbar() {
       console.log("Initializing SharedWorker with user ID:", user.ID);
       sendWorkerMessage({ type: 'INIT', userId: user.ID });
     }
+    if (user?.IsPrivate){
+      setIsPrivate(true)
+    }
   }, [user, sendWorkerMessage]);
 
   const handleSearch = async (e) => {
@@ -661,7 +664,7 @@ export function Navbar() {
             </div>
 
             <Link href="/" className={styles.homeLink}>
-              🏠 Home
+              🏠
             </Link>
 
             <Link href="/groups" className={styles.groupsLink}>👥 Groups</Link>
