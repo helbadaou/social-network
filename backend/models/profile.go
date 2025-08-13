@@ -8,6 +8,7 @@ type Profile struct {
 	Email       string `json:"email"`
 	About       string `json:"about"`
 	Avatar      string `json:"avatar"`
+	Gender      string `json:"gender"`
 	DateOfBirth string `json:"date_of_birth"`
 	IsPrivate   bool   `json:"is_private"`
 

@@ -31,6 +31,7 @@ export default function RegisterPage() {
     last_name: '',
     date_of_birth: '',
     nickname: '',
+    gender: '',
     about: '',
     avatar: '',
   })
@@ -39,6 +40,7 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -65,6 +67,7 @@ export default function RegisterPage() {
           last_name: '',
           date_of_birth: '',
           nickname: '',
+          gender: '',
           about: '',
           avatar: '',
         })
@@ -94,7 +97,7 @@ export default function RegisterPage() {
           onChange={handleChange}
           className={styles.input}
         >
-          <option value="">Select Gender (optional)</option>
+          <optgroup label="Select Gender (optional)"></optgroup>
           <option value="male">Male</option>
           <option value="female">Female</option>
         </select>

@@ -109,7 +109,8 @@ export default function PublicProfilePage() {
           />
           <p><strong className={styles.label}>Nom d'utilisateur :</strong> {profile.first_name} {profile.last_name}</p>
           <p><strong className={styles.label}>Email :</strong> {profile.email}</p>
-          <p><strong className={styles.label}>À propos :</strong> {profile.about || 'N/A'}</p>
+          <p><strong className={styles.label}>Gender :</strong> {profile.gender}</p>
+          <p><strong className={styles.label}>À propos :</strong> {profile.about}</p>
           <p><strong className={styles.label}>Date de naissance :</strong> {profile.date_of_birth}</p>
 
           {!profile.is_owner && (

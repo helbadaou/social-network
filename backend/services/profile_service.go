@@ -33,9 +33,7 @@ func (s *ProfileService) GetUserProfile(requesterID, targetID int) (*models.Prof
 	}
 
 	if user.IsPrivate && !user.IsOwner && !user.IsFollowed {
-		user.FirstName = ""
-		user.LastName = ""
-		user.Nickname = ""
+		user.Gender = ""
 		user.Email = ""
 		user.About = ""
 		user.DateOfBirth = ""

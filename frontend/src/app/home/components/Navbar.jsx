@@ -34,15 +34,12 @@ export function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
-  // NEW: Message counter state
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   
   const notificationsRef = useRef(null);
   const notificationButtonRef = useRef(null);
   const { workerMessages, sendWorkerMessage } = useSharedWorker();
   const { setShowMessages } = useMessageSidebar()
   const openMessages = () => {
-    setUnreadMessagesCount(0)
     setShowMessages(true);
     // Reset unread messages count when opening messages
   };
@@ -145,8 +142,6 @@ export function Navbar() {
 
     workerMessages.forEach(msg => {
       if (msg.type === 'message' && msg.data) {
-        let count = unreadMessagesCount + 1
-        setUnreadMessagesCount(count)
         handleWebSocketMessage(msg.data)
       }
     })

@@ -17,7 +17,7 @@ func NewProfileRepository(db *sql.DB) *SqliteProfileRepo {
 func (r *SqliteProfileRepo) GetByID(userID int) (*models.User, error) {
 	query := `
 		SELECT id, email, first_name, last_name, date_of_birth,
-		       nickname, about, avatar, is_private
+		       nickname, gender, about, avatar, is_private
 		FROM users
 		WHERE id = ?;
 	`
@@ -30,6 +30,7 @@ func (r *SqliteProfileRepo) GetByID(userID int) (*models.User, error) {
 		&user.LastName,
 		&user.DateOfBirth,
 		&user.Nickname,
+		&user.Gender,
 		&user.About,
 		&user.Avatar,
 		&user.IsPrivate,
@@ -44,14 +45,14 @@ func (r *SqliteProfileRepo) GetByID(userID int) (*models.User, error) {
 
 func (r *SqliteProfileRepo) FindByID(userID int) (*models.Profile, error) {
 	row := r.db.QueryRow(`
-		SELECT id, first_name, last_name, nickname, email, about, avatar, date_of_birth, is_private
+		SELECT id, first_name, last_name, nickname, email, about, avatar, gender, date_of_birth, is_private
 		FROM users WHERE id = ?
 	`, userID)
 
 	var user models.Profile
 	err := row.Scan(
 		&user.ID, &user.FirstName, &user.LastName, &user.Nickname,
-		&user.Email, &user.About, &user.Avatar, &user.DateOfBirth, &user.IsPrivate,
+		&user.Email, &user.About, &user.Avatar, &user.Gender, &user.DateOfBirth, &user.IsPrivate,
 	)
 	if err != nil {
 		return nil, err
