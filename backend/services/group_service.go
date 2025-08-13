@@ -198,7 +198,7 @@ func (s *GroupService) DeclineMembership(groupID int, creatorID int, body models
 	return nil
 }
 
-func (s *GroupService) GetNonGroupMembers(groupID, userID int) ([]map[string]interface{}, error) {
+func (s *GroupService) GetNonGroupMembers(groupID, userID int) ([]models.User, error) {
 	return s.Repo.GetNonGroupMembers(groupID, userID)
 }
 

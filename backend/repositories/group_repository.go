@@ -161,7 +161,7 @@ func (r *GroupRepository) DeclineMembershipRequest(groupID, userID int) error {
 	return err
 }
 
-func (r *GroupRepository) GetNonGroupMembers(groupID, userID int) ([]map[string]interface{}, error) {
+func (r *GroupRepository) GetNonGroupMembers(groupID, userID int) ([]models.User, error) {
 	query := `
 		SELECT id, nickname FROM users
 		WHERE id NOT IN (
@@ -175,19 +175,33 @@ func (r *GroupRepository) GetNonGroupMembers(groupID, userID int) ([]map[string]
 	}
 	defer rows.Close()
 
-	var users []map[string]interface{}
+	var users []models.User
+
+	// Iterate through each row
 	for rows.Next() {
-		var id int
-		var username string
-		if err := rows.Scan(&id, &username); err != nil {
+		var user models.User
+
+		// You need to scan into the actual fields of your User struct
+		// Replace these field names with the actual fields in your models.User struct
+		err := rows.Scan(
+			&user.ID,
+			&user.Nickname,
+			// Add other fields as needed based on your User struct
+		)
+		if err != nil {
+			fmt.Println("hhhhhh", err)
 			return nil, err
 		}
-		users = append(users, map[string]interface{}{
-			"id":       id,
-			"username": username,
-		})
+
+		users = append(users, user)
 	}
 
+	// Check for errors during iteration
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Found users:", len(users))
 	return users, nil
 }
 
@@ -256,7 +270,6 @@ func (r *GroupRepository) IsGroupMember(groupID, userID int) (bool, error) {
 	}
 	return exists > 0, nil
 }
-
 
 func (r *GroupRepository) CreateGroupPost(post models.GroupPost) (*models.GroupPost, error) {
 	result, err := r.db.Exec(`
@@ -382,7 +395,6 @@ func (r *GroupRepository) GetGroupPostCommentByID(commentID int) (models.GroupPo
 		&comment.ID, &comment.PostID, &comment.AuthorID, &comment.Content,
 		&comment.CreatedAt, &comment.AuthorName, &comment.AuthorAvatar,
 	)
-
 	if err != nil {
 		return models.GroupPostComment{}, err
 	}
@@ -395,7 +407,6 @@ func (r *GroupRepository) GetGroupPostCommentByID(commentID int) (models.GroupPo
 }
 
 func (r *GroupRepository) GetGroupEvents(groupID, userID int) ([]models.GroupEvent, error) {
-
 	// Step 2: Fetch events
 	rows, err := r.db.Query(`
 	SELECT 
@@ -413,7 +424,6 @@ func (r *GroupRepository) GetGroupEvents(groupID, userID int) ([]models.GroupEve
 	WHERE ge.group_id = ?
 	ORDER BY ge.event_date ASC
 `, userID, groupID)
-
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
@@ -547,53 +557,53 @@ func (r *GroupRepository) CreateGroup(group models.Group) (models.Group, error) 
 	if err != nil {
 		return models.Group{}, err
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		return models.Group{}, err
 	}
-	
+
 	group.ID = int(id)
 	return group, nil
 }
 
 // Add this to your existing repository methods
 func (r *GroupRepository) SetEventResponse(eventID, userID int, response string) error {
-    // First check if response exists
-    var exists bool
-    err := r.db.QueryRow(`
+	// First check if response exists
+	var exists bool
+	err := r.db.QueryRow(`
         SELECT EXISTS(
             SELECT 1 FROM event_responses 
             WHERE event_id = ? AND user_id = ?
         )`, eventID, userID).Scan(&exists)
-    if err != nil {
-        return fmt.Errorf("check existing response failed: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("check existing response failed: %w", err)
+	}
 
-    if exists {
-        // Update existing response
-        _, err = r.db.Exec(`
+	if exists {
+		// Update existing response
+		_, err = r.db.Exec(`
             UPDATE event_responses 
             SET response = ?
             WHERE event_id = ? AND user_id = ?`,
-            response, eventID, userID)
-    } else {
-        // Insert new response
-        _, err = r.db.Exec(`
+			response, eventID, userID)
+	} else {
+		// Insert new response
+		_, err = r.db.Exec(`
             INSERT INTO event_responses (event_id, user_id, response)
             VALUES (?, ?, ?)`,
-            eventID, userID, response)
-    }
+			eventID, userID, response)
+	}
 
-    if err != nil {
-        return fmt.Errorf("failed to set event response: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to set event response: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
-    query := `
+	query := `
         SELECT 
             u.id,
             u.nickname,
@@ -620,51 +630,51 @@ func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, er
         ORDER BY role DESC, joined_at ASC
     `
 
-    rows, err := r.db.Query(query, groupID, groupID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to query group members: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.Query(query, groupID, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group members: %w", err)
+	}
+	defer rows.Close()
 
-    var members []models.GroupMember
-    for rows.Next() {
-        var member models.GroupMember
-        var joinedAt time.Time
-        
-        err := rows.Scan(
-            &member.ID,
-            &member.Username,
-            &member.Avatar,
-            &member.Role,
-            &joinedAt,
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan member row: %w", err)
-        }
-        
-        member.JoinedAt = joinedAt.Format(time.RFC3339)
-        if member.Avatar != "" {
-            member.Avatar = "http://localhost:8080/" + member.Avatar
-        }
-        
-        members = append(members, member)
-    }
+	var members []models.GroupMember
+	for rows.Next() {
+		var member models.GroupMember
+		var joinedAt time.Time
 
-    if err := rows.Err(); err != nil {
-        return nil, fmt.Errorf("rows iteration error: %w", err)
-    }
+		err := rows.Scan(
+			&member.ID,
+			&member.Username,
+			&member.Avatar,
+			&member.Role,
+			&joinedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan member row: %w", err)
+		}
 
-    return members, nil
+		member.JoinedAt = joinedAt.Format(time.RFC3339)
+		if member.Avatar != "" {
+			member.Avatar = "http://localhost:8080/" + member.Avatar
+		}
+
+		members = append(members, member)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return members, nil
 }
 
 func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
-    var exists bool
-    err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)
-    return exists, err
+	var exists bool
+	err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)", groupID).Scan(&exists)
+	return exists, err
 }
 
 func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.GroupMessage, error) {
-    query := `
+	query := `
         SELECT 
             gm.id, 
             gm.group_id, 
@@ -680,54 +690,54 @@ func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.
         LIMIT ?
     `
 
-    rows, err := r.db.Query(query, groupID, limit)
-    if err != nil {
-        return nil, fmt.Errorf("failed to query group chat history: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.Query(query, groupID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group chat history: %w", err)
+	}
+	defer rows.Close()
 
-    var messages []models.GroupMessage
-    for rows.Next() {
-        var msg models.GroupMessage
-        var timestamp time.Time
-        
-        err := rows.Scan(
-            &msg.ID,
-            &msg.GroupID,
-            &msg.SenderID,
-            &msg.Content,
-            &timestamp,
-            &msg.SenderNickname,
-            &msg.SenderAvatar,
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan message row: %w", err)
-        }
-        
-        msg.Timestamp = timestamp
-        if msg.SenderAvatar != "" {
-            msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
-        }
-        
-        messages = append(messages, msg)
-    }
+	var messages []models.GroupMessage
+	for rows.Next() {
+		var msg models.GroupMessage
+		var timestamp time.Time
 
-    if err := rows.Err(); err != nil {
-        return nil, fmt.Errorf("rows iteration error: %w", err)
-    }
+		err := rows.Scan(
+			&msg.ID,
+			&msg.GroupID,
+			&msg.SenderID,
+			&msg.Content,
+			&timestamp,
+			&msg.SenderNickname,
+			&msg.SenderAvatar,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		}
 
-    // Reverse the order to have oldest messages first
-    for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-        messages[i], messages[j] = messages[j], messages[i]
-    }
+		msg.Timestamp = timestamp
+		if msg.SenderAvatar != "" {
+			msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
+		}
 
-    return messages, nil
+		messages = append(messages, msg)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	// Reverse the order to have oldest messages first
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages, nil
 }
 
 func (r *GroupRepository) CreateNotification(recipientID int, notification models.Notification) (int, error) {
-    var id int64
-    
-    result, err := r.db.Exec(`
+	var id int64
+
+	result, err := r.db.Exec(`
         INSERT INTO notifications (
             user_id, 
             sender_id, 
@@ -738,33 +748,32 @@ func (r *GroupRepository) CreateNotification(recipientID int, notification model
             seen, 
             created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        recipientID,
-        notification.SenderID,
-        notification.GroupId, // Can be nil
-        notification.EventId, // Can be nil
-        notification.Type,
-        notification.Message,
-        notification.Seen,
-        notification.CreatedAt,
-    )
-    
-    if err != nil {
-        return 0, fmt.Errorf("failed to create notification: %w", err)
-    }
-    
-    id, err = result.LastInsertId()
-    if err != nil {
-        return 0, fmt.Errorf("failed to get last insert ID: %w", err)
-    }
-    
-    return int(id), nil
+		recipientID,
+		notification.SenderID,
+		notification.GroupId, // Can be nil
+		notification.EventId, // Can be nil
+		notification.Type,
+		notification.Message,
+		notification.Seen,
+		notification.CreatedAt,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create notification: %w", err)
+	}
+
+	id, err = result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID: %w", err)
+	}
+
+	return int(id), nil
 }
 
 func (r *GroupRepository) GetUserNickname(userID int) (string, error) {
-    var nickname string
-    err := r.db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&nickname)
-    if err != nil {
-        return "", fmt.Errorf("failed to get user nickname: %w", err)
-    }
-    return nickname, nil
+	var nickname string
+	err := r.db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&nickname)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user nickname: %w", err)
+	}
+	return nickname, nil
 }
