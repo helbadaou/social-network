@@ -300,18 +300,34 @@ export default function HomePage() {
   };
 
   // Rest of your existing functions (fetchChatUsers, fetchUser, etc.) remain the same...
+  
+
+
+  
   useEffect(() => {
-    fetchChatUsers();
+
     fetchUser();
+ 
+    fetchChatUsers();
     fetchPosts();
+     
+    
+   
+
   }, []);
+
+  //router.push("/login");
+
 
   const fetchChatUsers = useCallback(async () => {
     try {
       const res = await fetch("http://localhost:8080/api/chat-users", {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to fetch users");
+       if (!res.ok) {
+        console.log("Unauthorized")
+      router.push("/login");
+       }
       const data = await res.json();
       setChatUsers(data);
     } catch (err) {
@@ -325,7 +341,10 @@ export default function HomePage() {
         credentials: "include",
       });
 
-      if (!res.ok) throw new Error("Unauthorized");
+      if (!res.ok) {
+        console.log("Unauthorized")
+      router.push("/login");
+       }
 
       const data = await res.json();
       setUser(data);
