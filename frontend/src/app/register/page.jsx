@@ -84,12 +84,26 @@ export default function RegisterPage() {
       <h1 className={styles.h1}>Create your account</h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
-        <Input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required />
-        <Input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
         <Input name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required />
         <Input name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} required />
-        <Input name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} required />
         <Input name="nickname" placeholder="Nickname (optional)" value={form.nickname} onChange={handleChange} />
+        
+        <select
+          name="gender"
+          value={form.gender || ''}
+          onChange={handleChange}
+          className={styles.input}
+        >
+          <option value="">Select Gender (optional)</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+
+        <Input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+        <Input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
+        
+        <Input name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} required />
+        
         <Textarea name="about" placeholder="About Me (optional)" value={form.about} onChange={handleChange} />
         <input
           type="file"
