@@ -1,6 +1,6 @@
 
 .main {
-  max-width: 42rem; /* max-w-xl */
+  max-width: 30rem; /* max-w-xl */
   margin-left: auto;
   margin-right: auto;
   padding-left: 1.5rem; /* px-6 */
@@ -21,7 +21,7 @@
   --tw-space-y-reverse: 0;
   margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse))); /* space-y-5 */
   margin-bottom: calc(1.25rem * var(--tw-space-y-reverse)); /* space-y-5 */
-  background-color: #fff; /* bg-white */
+  background-color: #333333; /* bg-white */
   padding: 1.5rem; /* p-6 */
   border-radius: 0.75rem; /* rounded-xl */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
@@ -36,11 +36,11 @@
   border-width: 1px; /* border */
   border-color: #d1d5db; /* border-gray-300 */
   border-radius: 0.5rem; /* rounded-lg */
-  color: #4b5563; /* text-gray-800 */
+  color: #ffffff; /* text-gray-800 */
 }
 
 .input::placeholder, .textarea::placeholder {
-  color: #6b7280; /* placeholder-gray-500 */
+  color: #ffffff; /* placeholder-gray-500 */
 }
 
 .input:focus, .textarea:focus {
@@ -57,7 +57,7 @@
     padding: 1rem 0.5rem;
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
-    color: #9ca3af;
+    color: #ffffff;
 }
 
 .button {
@@ -84,11 +84,11 @@
   font-size: 0.875rem; /* text-sm */
   line-height: 1.25rem;
   margin-top: 1rem; /* mt-4 */
-  color: #4b5563; /* text-gray-600 */
+  color: #bcd1ee; /* text-gray-600 */
 }
 
 .link {
-  color: #2563eb; /* text-blue-600 */
+  color: #eec50c; /* text-blue-600 */
 }
 
 .link:hover {
