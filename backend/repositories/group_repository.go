@@ -49,6 +49,39 @@ func (r *GroupRepository) GetGroupDetailsByID(groupID, userID int) (*models.Grou
 
 	return &resp, nil
 }
+func (h *GroupRepository) getGroupMembers(groupID int) ([]models.User, error) {
+    query := `
+        SELECT u.id, u.first_name, u.last_name, u.email, u.avatar
+        FROM users u
+        INNER JOIN group_members gm ON u.id = gm.user_id
+        WHERE gm.group_id = ? AND gm.status = 'accepted'
+        ORDER BY u.first_name, u.last_name
+    `
+    
+    rows, err := h.db.Query(query, groupID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var members []models.User
+    for rows.Next() {
+        var member models.User
+        err := rows.Scan(
+            &member.ID,
+            &member.FirstName,
+            &member.LastName,
+            &member.Email,
+            &member.Avatar,
+        )
+        if err != nil {
+            return nil, err
+        }
+        members = append(members, member)
+    }
+
+    return members, rows.Err()
+}
 
 func (r *GroupRepository) GetGroupCreatorID(groupID int) (int, error) {
 	var creatorID int

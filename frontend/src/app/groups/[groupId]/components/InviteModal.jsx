@@ -60,13 +60,13 @@ export default function InviteModal({ showInviteForm, setShowInviteForm, groupId
                 <div key={member.id} className={styles.memberItem}>
                   <div className={styles.memberInfo}>
                     <div className={styles.avatar}>
-                      {member.username.charAt(0)}
+                      {member.Nickname.charAt(0)}
                     </div>
-                    <span className={styles.memberName}>{member.name}</span>
+                    <span className={styles.memberName}>{member.Nickname}</span>
                   </div>
                   <button
-                    onClick={() => handleInviteMember(member.id)}
-                    disabled={invitingMemberId === member.id}
+                    onClick={() => handleInviteMember(member.ID)}
+                    disabled={invitingMemberId === member.ID}
                     className={styles.inviteButton}
                   >
                     {invitingMemberId === member.id ? 'Inviting...' : 'Invite'}

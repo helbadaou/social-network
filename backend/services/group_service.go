@@ -47,6 +47,9 @@ func (s *GroupService) CheckUserAccessStatus(groupID, userID int) (string, error
 
 	return status, nil
 }
+func (s *GroupService) getGroupMembers(groupID int) ([]models.GroupMember, error) {
+	return s.Repo.GetGroupMembers(groupID)
+}
 
 func (s *GroupService) GetPendingRequests(groupID, userID int) ([]models.PendingRequest, error) {
 	creatorID, err := s.Repo.GetGroupCreatorID(groupID)

@@ -117,7 +117,7 @@ export default function GroupDetailPage({ params }) {
 
           {activeTab === 'members' && group.is_creator && (
             <MembersTab
-              group={group}
+              groupId={groupId}
               showInviteForm={showInviteForm}
               setShowInviteForm={setShowInviteForm}
             />

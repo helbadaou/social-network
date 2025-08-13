@@ -9,13 +9,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"social/hub"
 	"social/models"
 	"social/services"
 	"social/utils"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -122,11 +123,11 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		// EVENTS
 	case suffix == "events" && method == http.MethodGet:
 		h.GetGroupEventsHandler(w, r)
-
+	case suffix == "members" && method == http.MethodGet:
+		h.GetAllMembers(w, r)
 	case suffix == "events" && method == http.MethodPost:
 
 		h.CreateGroupEventHandler(w, r)
-		
 
 	case strings.HasSuffix(suffix, "/vote") && method == http.MethodPost:
 		h.HandleEventVote(w, r)
@@ -139,6 +140,41 @@ func (h *GroupHandler) GroupRouterHandler(w http.ResponseWriter, r *http.Request
 		http.NotFound(w, r)
 	}
 }
+
+func (h *GroupHandler) GetAllMembers(w http.ResponseWriter, r *http.Request) {
+	// Extract group ID from URL
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 3 {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	groupIDStr := pathParts[2]
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get group members from database
+	members, err := h.Service.GetGroupMembers(groupID)
+	if err != nil {
+		log.Printf("Error getting group members: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+
+	// Encode and send response
+	if err := json.NewEncoder(w).Encode(members); err != nil {
+		log.Printf("Error encoding members response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *GroupHandler) GetGroupChat(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from session
 	userID, ok := h.Session.GetUserIDFromSession(w, r)
@@ -175,6 +211,7 @@ func (h *GroupHandler) GetGroupChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)
 }
+
 func (h *GroupHandler) GetGroupByIDHandler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	groupID, err := strconv.Atoi(pathParts[len(pathParts)-1])
