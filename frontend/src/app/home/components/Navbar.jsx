@@ -33,8 +33,8 @@ export function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  
-  
+
+
   const notificationsRef = useRef(null);
   const notificationButtonRef = useRef(null);
   const { workerMessages, sendWorkerMessage } = useSharedWorker();
@@ -51,7 +51,7 @@ export function Navbar() {
       console.log("Initializing SharedWorker with user ID:", user.ID);
       sendWorkerMessage({ type: 'INIT', userId: user.ID });
     }
-    if (user?.IsPrivate){
+    if (user?.IsPrivate) {
       setIsPrivate(true)
     }
   }, [user, sendWorkerMessage]);
@@ -136,8 +136,8 @@ export function Navbar() {
     const handleWebSocketMessage = (message) => {
       // Handle notifications
       handleRealtimeNotification(message);
-      
-      
+
+
     }
 
     workerMessages.forEach(msg => {
@@ -471,6 +471,15 @@ export function Navbar() {
   // Initial notifications and messages count fetch
   useEffect(() => {
     fetchNotifications();
+  }, []);
+  
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/messages/unread-count")
+      .then(res => res.json())
+      .then(data => setUnreadMessagesCount(data.count))
+      .catch(() => setUnreadMessagesCount(0));
   }, []);
 
   if (!user) {
