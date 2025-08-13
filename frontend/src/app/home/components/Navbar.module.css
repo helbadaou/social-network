@@ -370,3 +370,31 @@
 .homeLink:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
+
+
+/* Add these styles to your existing Navbar.module.css file */
+
+/* Messages container - similar to notifications container */
+.messagesContainer {
+  position: relative;
+  display: inline-block;
+}
+
+/* Message counter badge - similar to notification counter */
+.messageCount {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4444;
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  z-index: 10;
+}

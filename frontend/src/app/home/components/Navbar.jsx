@@ -15,7 +15,6 @@ export function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
 
-
   // Post Form State
   const [showPostForm, setShowPostForm] = useState(false);
   const [content, setContent] = useState('');
@@ -34,11 +33,20 @@ export function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // NEW: Message counter state
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  
   const notificationsRef = useRef(null);
   const notificationButtonRef = useRef(null);
   const { workerMessages, sendWorkerMessage } = useSharedWorker();
   const { setShowMessages } = useMessageSidebar()
-  const openMessages = () => setShowMessages(true);
+  const openMessages = () => {
+    setUnreadMessagesCount(0)
+    setShowMessages(true);
+    // Reset unread messages count when opening messages
+  };
+
   // Initialize SharedWorker when user is available
   useEffect(() => {
     console.log("Current user:", user);
@@ -126,16 +134,19 @@ export function Navbar() {
       setSuccess("");
     }
   };
-
   // Handle WebSocket messages from SharedWorker
   useEffect(() => {
     const handleWebSocketMessage = (message) => {
-      handleRealtimeNotification(message)
+      // Handle notifications
+      handleRealtimeNotification(message);
+      
+      
     }
 
     workerMessages.forEach(msg => {
       if (msg.type === 'message' && msg.data) {
-        // Handle WebSocket data from server
+        let count = unreadMessagesCount + 1
+        setUnreadMessagesCount(count)
         handleWebSocketMessage(msg.data)
       }
     })
@@ -340,7 +351,6 @@ export function Navbar() {
   }
 
   const handleVote = async (eventId, groupId, response, notifId) => {
-
     try {
       const res = await fetch(`/api/groups/${groupId}/events/${eventId}/vote`, {
         method: 'POST',
@@ -373,14 +383,12 @@ export function Navbar() {
 
   const handleInviteAccept = async (groupId, notifId) => {
     try {
-      // First accept the invitation (this will update the membership status to 'accepted')
       const res = await fetch(`/api/groups/${groupId}/membership/accept`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (res.ok) {
-        // Mark notification as seen and delete it
         await fetch('/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -395,7 +403,6 @@ export function Navbar() {
           credentials: 'include',
         });
 
-        // Remove the notification from state
         setNotifications(prev => prev.filter(n => n.id !== notifId));
       } else {
         console.error('Failed to accept invitation');
@@ -407,14 +414,12 @@ export function Navbar() {
 
   const handleInviteDecline = async (groupId, notifId) => {
     try {
-      // First decline the invitation (this will remove the membership record)
       const res = await fetch(`/api/groups/${groupId}/membership/refuse`, {
         method: 'POST',
         credentials: 'include'
       });
 
       if (res.ok) {
-        // Mark notification as seen and delete it
         await fetch('/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -429,7 +434,6 @@ export function Navbar() {
           credentials: 'include',
         });
 
-        // Remove the notification from state
         setNotifications(prev => prev.filter(n => n.id !== notifId));
       } else {
         alert(res.status)
@@ -469,10 +473,11 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Initial notifications fetch
+  // Initial notifications and messages count fetch
   useEffect(() => {
     fetchNotifications();
   }, []);
+
   if (!user) {
     return
   }
@@ -518,9 +523,17 @@ export function Navbar() {
               <img src="/plus-icon.png" alt="Create post" className={styles.actionIcon} />
             </button>
 
-            <button onClick={openMessages} className={styles.actionButton}>
-              <img src="/message-icon.png" alt="Messages" className={styles.actionIcon} />
-            </button>
+            {/* Messages button with counter - UPDATED */}
+            <div className={styles.messagesContainer}>
+              <button onClick={openMessages} className={styles.actionButton}>
+                <img src="/message-icon.png" alt="Messages" className={styles.actionIcon} />
+                {unreadMessagesCount >= 0 && (
+                  <span className={styles.messageCount}>
+                    {unreadMessagesCount}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* Notifications dropdown */}
             <div className={styles.notificationsContainer}>

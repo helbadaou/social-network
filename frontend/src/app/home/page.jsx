@@ -469,34 +469,6 @@ export default function HomePage() {
 
   return (
     <div className={styles.pageContainer}>
-      {/* NEW: Notification Toast */}
-      {realtimeNotification && (
-        <div
-          className={`${styles.notificationToast} ${realtimeNotification.type === 'message' ? styles.messageNotification : ''}`}
-          onClick={realtimeNotification.type === 'message' ? handleNotificationClick : undefined}
-          style={{ cursor: realtimeNotification.type === 'message' ? 'pointer' : 'default' }}
-        >
-          <div className={styles.notificationContent}>
-            <span>
-              {realtimeNotification.message}
-              {realtimeNotification.type === 'message' && (
-                <small style={{ display: 'block', opacity: 0.8, fontSize: '0.75rem' }}>
-                  Click to open chat
-                </small>
-              )}
-            </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setRealtimeNotification(null);
-              }}
-              className={styles.closeNotification}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
 
       {showMessages && user && (
         <MessageSidebar
@@ -511,15 +483,7 @@ export default function HomePage() {
       )}
 
       {/* NEW: Message notification indicator in top bar or wherever appropriate */}
-      {totalUnreadMessages > 0 && (
-        <div
-          className={styles.messageIndicator}
-          onClick={handleMessageIndicatorClick}
-        >
-          <span className={styles.unreadBadge}>{totalUnreadMessages}</span>
-          <span>New messages - Click to open</span>
-        </div>
-      )}
+
 
       <div className={styles.postFormContainer}>
         {showPostForm && (
