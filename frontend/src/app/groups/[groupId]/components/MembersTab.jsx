@@ -87,12 +87,9 @@ export default function MembersTab({ groupId, showInviteForm, setShowInviteForm 
 function MemberItem({ member }) {
   const [imageError, setImageError] = useState(false);
   
-  // Handle different possible name formats
   const displayName = member.username;
   
-  // Generate avatar URL - you can customize this based on your needs
   const getAvatarUrl = (member) => {
-    // Option 1: If you have avatar URLs in your member data
     if (member.avatar) {
       return member.avatar;
     }
