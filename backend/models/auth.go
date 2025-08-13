@@ -7,6 +7,7 @@ type RegisterRequest struct {
 	LastName    string `json:"last_name"`
 	DateOfBirth string `json:"date_of_birth"`
 	Nickname    string `json:"nickname"`
+	Gender      string `json:"gender"`
 	About       string `json:"about"`
 	Avatar      string `json:"avatar"`
 }
@@ -24,6 +25,7 @@ type User struct {
 	LastName    string
 	DateOfBirth string
 	Nickname    string
+	Gender      string
 	About       string
 	Avatar      string
 	IsPrivate   bool

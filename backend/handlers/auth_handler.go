@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
-
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+
 	"social/db/sqlite"
 	"social/hub"
 	"social/models"
@@ -43,8 +44,11 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		LastName:    r.FormValue("last_name"),
 		DateOfBirth: r.FormValue("date_of_birth"),
 		Nickname:    r.FormValue("nickname"),
+		Gender:      r.FormValue("gender"),
 		About:       r.FormValue("about"),
 	}
+
+	fmt.Println("gender", form.Gender)
 
 	// Handle avatar upload
 	file, header, err := r.FormFile("avatar")
@@ -81,7 +85,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	//fmt.Println("from login")
+	// fmt.Println("from login")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

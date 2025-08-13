@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+
 	"social/models"
 	"social/repositories"
 
@@ -42,6 +43,7 @@ func (a *AuthService) Register(form models.RegisterRequest) error {
 		LastName:    form.LastName,
 		DateOfBirth: form.DateOfBirth,
 		Nickname:    form.Nickname,
+		Gender:      form.Gender,
 		About:       form.About,
 		Avatar:      form.Avatar,
 	}
