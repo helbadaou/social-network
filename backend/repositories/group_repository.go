@@ -546,7 +546,7 @@ func (r *GroupRepository) InsertGroupMessage(groupID int, senderID int, content 
 func (r *GroupRepository) GetAllGroups(userID int) ([]models.GroupWithStatus, error) {
 	query := `
         SELECT 
-            g.id, g.title, g.description, g.creator_id,
+            g.id, g.title, g.description, g.creator_id, g.created_at,
             COUNT(gm.user_id) as member_count,
             EXISTS(
                 SELECT 1 FROM group_memberships 
@@ -571,7 +571,7 @@ func (r *GroupRepository) GetAllGroups(userID int) ([]models.GroupWithStatus, er
 	for rows.Next() {
 		var g models.GroupWithStatus
 		err := rows.Scan(
-			&g.ID, &g.Title, &g.Description, &g.CreatorID,
+			&g.ID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt,
 			&g.MemberCount, &g.IsMember, &g.IsCreator, &g.IsPending,
 		)
 		if err != nil {

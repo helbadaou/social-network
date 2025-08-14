@@ -126,6 +126,7 @@ type GroupWithStatus struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	CreatorID   int    `json:"creator_id"`
+	CreatedAt time.Time `json:"created_at"`
 
 	MemberCount int  `json:"member_count"`
 	IsMember    bool `json:"is_member"`

@@ -197,7 +197,7 @@ function ChatMessage({ message }) {
       <div className={messageBubbleClasses}>
         <p className={styles.messageContent}>{renderMessageContent(message.content)}</p>
         <p className={styles.messageInfo}>
-          {message.isCurrentUser ? 'You' : message.sender_name || 'User'}
+          {message.isCurrentUser ? 'You' : message.sender_nickname || 'User'}
           {message.isOnline && <span className={styles.onlineIndicator}></span>}
           • {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
