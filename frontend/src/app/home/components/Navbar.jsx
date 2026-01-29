@@ -4,10 +4,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { redirect, useRouter } from 'next/navigation';
-import { useSharedWorker } from '../../../contexts/SharedWorkerContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import PostForm from '../../../app/home/components/PostForm';
 import { useMessageSidebar } from '../../../contexts/MessageSideBarContext';
+import { useWorker } from '../../../contexts/WorkerContext';
+import { useNavbar } from '../../../contexts/NavBarContext';
 import Image from 'next/image';
 import styles from './Navbar.module.css';
 
@@ -30,23 +31,21 @@ export function Navbar() {
 
   // Existing Navbar State
   const [showProfile, setShowProfile] = useState(false);
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(user?.IsPrivate || false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const notificationsRef = useRef(null);
   const notificationButtonRef = useRef(null);
-  const { workerMessages, sendWorkerMessage } = useSharedWorker();
+  const { worker } = useWorker();
   const { setShowMessages } = useMessageSidebar()
+  const { notifications, unreadCount, setNotifications, setUnreadCount } = useNavbar()
   const openMessages = () => setShowMessages(true);
-  // Initialize SharedWorker when user is available
+
+  // Sync isPrivate state with user data
   useEffect(() => {
-    console.log("Current user:", user);
-    if (user?.ID) {
-      console.log("Initializing SharedWorker with user ID:", user.ID);
-      sendWorkerMessage({ type: 'INIT', userId: user.ID });
+    if (user?.IsPrivate !== undefined) {
+      setIsPrivate(user.IsPrivate);
     }
-  }, [user, sendWorkerMessage]);
+  }, [user]);
 
   const handleSearch = async (e) => {
     const value = e.target.value;
@@ -104,10 +103,22 @@ export function Navbar() {
       setContent("");
       setImage(null);
       setPrivacy("public");
+      setShowPostForm(false); // FERMER LE FORMULAIRE DE POST APRÈS SUCCÈS
 
       if (fileInputRef.current) {
         fileInputRef.current.value = null;
       }
+
+      // Rafraîchir les posts en appelant l'API pour récupérer le nouveau post
+      await fetch("http://localhost:8080/api/posts", {
+        credentials: "include"
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Posts mis à jour:", data);
+          window.location.reload();
+        });
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -124,56 +135,22 @@ export function Navbar() {
     }
   };
 
-  // Handle WebSocket messages from SharedWorker
-  useEffect(() => {
-    const handleWebSocketMessage = (message) => {
-      handleRealtimeNotification(message)
-    }
-
-    workerMessages.forEach(msg => {
-      if (msg.type === 'message' && msg.data) {
-        // Handle WebSocket data from server
-        handleWebSocketMessage(msg.data)
-      }
-    })
-  }, [workerMessages])
-
-  // Your existing handleRealtimeNotification function
-  const handleRealtimeNotification = (notification) => {
-    fetchNotifications();
-
-    setNotifications(prev => {
-      const exists = prev.some(n =>
-        n.sender_id === notification.sender_id &&
-        n.type === notification.type &&
-        n.message === notification.message
-      );
-
-      if (exists) return prev;
-
-      const newNotif = {
-        id: notification.id,
-        sender_id: notification.sender_id,
-        type: notification.type,
-        message: notification.message,
-        created_at: notification.created_at || new Date().toISOString(),
-        seen: false
-      };
-
-      const updated = [newNotif, ...prev];
-      setUnreadCount(updated.filter(n => !n.seen).length);
-      return updated;
-    });
-  }
+  // NOTE: Notifications are handled by home/page.jsx and passed down as props
+  // No need to listen to Worker here - avoids duplication
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', { credentials: 'include', method: 'POST' });
-      window.location.reload();
+      await fetch('http://localhost:8080/api/logout', {
+        credentials: 'include',
+        method: 'POST'
+      })
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error('Logout error:', err)
+    } finally {
+      // 🔥 IMPORTANT: Redirection immédiate
+      window.location.href = '/login'
     }
-  };
+  }
 
   const fetchNotifications = async () => {
     try {
@@ -183,7 +160,8 @@ export function Navbar() {
       const uniqueNotifs = [];
       const seenKeys = new Set();
 
-      for (const notif of data) {
+      const notifications = Array.isArray(data) ? data : [];
+      for (const notif of notifications) {
         const key = `${notif.sender_id}-${notif.message}-${notif.type}`;
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
@@ -191,10 +169,15 @@ export function Navbar() {
         }
       }
 
-      setNotifications(uniqueNotifs);
+      setNotifications(uniqueNotifs || []);
       setUnreadCount(uniqueNotifs.filter(n => !n.seen).length);
     } catch (err) {
-      console.error("Error fetching notifications", err);
+      if (!err.message.includes('UNAUTHORIZED') &&
+        !err.message.includes('JSON') &&
+        !err.message.includes('Unauthorized')) {
+        console.error("Error fetching notifications", err);
+        setNotifications([]);
+      }
     }
   };
 
@@ -218,21 +201,21 @@ export function Navbar() {
 
   const handleAccept = async (notifId, senderId) => {
     try {
-      await fetch('/api/follow/accept', {
+      await fetch('http://localhost:8080/api/follow/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender_id: senderId }),
         credentials: 'include',
       });
 
-      await fetch('/api/notifications/seen', {
+      await fetch('http://localhost:8080/api/notifications/seen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
         credentials: 'include',
       });
 
-      await fetch('/api/notifications/delete', {
+      await fetch('http://localhost:8080/api/notifications/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
@@ -247,19 +230,19 @@ export function Navbar() {
   const handleReject = async (notifId, senderId) => {
     try {
       const [rejectRes, seenRes, deleteRes] = await Promise.all([
-        fetch('/api/follow/reject', {
+        fetch('http://localhost:8080/api/follow/reject', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sender_id: senderId }),
           credentials: 'include',
         }),
-        fetch('/api/notifications/seen', {
+        fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         }),
-        fetch('/api/notifications/delete', {
+        fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -279,7 +262,7 @@ export function Navbar() {
 
   const handleApprove = async (notifId, userId, groupId) => {
     try {
-      const res = await fetch(`/api/groups/${groupId}/membership/approve`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
@@ -287,14 +270,14 @@ export function Navbar() {
       })
 
       if (res.ok) {
-        await fetch('/api/notifications/seen', {
+        await fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('/api/notifications/delete', {
+        await fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -309,21 +292,21 @@ export function Navbar() {
 
   const handleDecline = async (notifId, userId, groupId) => {
     try {
-      const res = await fetch(`/api/groups/${groupId}/membership/decline`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/decline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
         credentials: 'include'
       })
       if (res.ok) {
-        await fetch('/api/notifications/seen', {
+        await fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('/api/notifications/delete', {
+        await fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -339,7 +322,7 @@ export function Navbar() {
   const handleVote = async (eventId, groupId, response, notifId) => {
 
     try {
-      const res = await fetch(`/api/groups/${groupId}/events/${eventId}/vote`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/events/${eventId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -349,14 +332,14 @@ export function Navbar() {
       });
 
       if (!res.ok) throw new Error('Failed to submit response');
-      await fetch('/api/notifications/seen', {
+      await fetch('http://localhost:8080/api/notifications/seen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
         credentials: 'include',
       });
 
-      await fetch('/api/notifications/delete', {
+      await fetch('http://localhost:8080/api/notifications/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
@@ -371,21 +354,21 @@ export function Navbar() {
   const handleInviteAccept = async (groupId, notifId) => {
     try {
       // First accept the invitation (this will update the membership status to 'accepted')
-      const res = await fetch(`/api/groups/${groupId}/membership/accept`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/accept`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (res.ok) {
         // Mark notification as seen and delete it
-        await fetch('/api/notifications/seen', {
+        await fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('/api/notifications/delete', {
+        await fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -405,21 +388,21 @@ export function Navbar() {
   const handleInviteDecline = async (groupId, notifId) => {
     try {
       // First decline the invitation (this will remove the membership record)
-      const res = await fetch(`/api/groups/${groupId}/membership/refuse`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/refuse`, {
         method: 'POST',
         credentials: 'include'
       });
 
       if (res.ok) {
         // Mark notification as seen and delete it
-        await fetch('/api/notifications/seen', {
+        await fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('/api/notifications/delete', {
+        await fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -439,7 +422,7 @@ export function Navbar() {
 
   const togglePrivacy = async () => {
     try {
-      const res = await fetch('/api/user/toggle-privacy', {
+      const res = await fetch('http://localhost:8080/api/user/toggle-privacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_private: !isPrivate }),
@@ -733,6 +716,7 @@ export function Navbar() {
             handleSubmit={handleSubmit}
             creating={creating}
             ref={fileInputRef}
+            onClose={() => setShowPostForm(false)}
           />
         </div>
       )}

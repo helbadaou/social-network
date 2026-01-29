@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
 	"social/hub"
-	"social/services"
 	"social/models"
-	"strconv"
-	"strings"
+	"social/services"
+	"social/utils"
 )
 
 type ProfileHandler struct {
@@ -24,124 +24,109 @@ func NewProfileHandler(service *services.ProfileService, sessionService *service
 }
 
 func (h *ProfileHandler) ProfileHandler(w http.ResponseWriter, r *http.Request) {
-	// Step 1: Get user ID from session token
-	userID, ok := h.sessionService.GetUserIDFromSession(w, r)
+	userID, ok := utils.GetUserIDFromContext(r.Context())
 	if !ok {
-		// Clear the session cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_token",
 			Value:    "",
 			Path:     "/",
-			MaxAge:   -1, // Expire immediately
+			MaxAge:   -1,
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 			Secure:   false,
 		})
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	// Step 2: Fetch user profile
 	user, err := h.profileService.ProfileRepo.GetByID(userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "User not found", http.StatusNotFound)
+			utils.WriteError(w, http.StatusNotFound, "User not found")
 		} else {
 			fmt.Println("Error fetching user:", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Internal server error")
 		}
 		return
 	}
 
-	// Step 3: Return user data
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(user)
+	utils.WriteJSON(w, http.StatusOK, user)
 }
 
 func (h *ProfileHandler) GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Parse target user ID from URL
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/users/")
-	targetID, err := strconv.Atoi(idStr)
+	targetID, err := utils.ExtractIDFromPath(r.URL.Path, "/api/users/", "")
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	// 2. Get requester ID from session
-	requesterID, ok := h.sessionService.GetUserIDFromSession(w, r)
+	requesterID, ok := utils.GetUserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	// 3. Get user profile via service
 	user, err := h.profileService.GetUserProfile(requesterID, targetID)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
-	// 4. Encode response
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(user)
+	utils.WriteJSON(w, http.StatusOK, user)
 }
 
 func (h *ProfileHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
 	if query == "" {
-		http.Error(w, "Missing search query", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Missing search query")
 		return
 	}
 
 	results, err := h.profileService.SearchUsers(query)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(results)
+	utils.WriteJSON(w, http.StatusOK, results)
 }
 
 func (h *ProfileHandler) TogglePrivacy(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	userID, ok := h.sessionService.GetUserIDFromSession(w, r)
+	userID, ok := utils.GetUserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Utilisateur non authentifié", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	var req models.PrivacyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Requête invalide", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
-	err := h.profileService.TogglePrivacy(userID, req.IsPrivate)
-	if err != nil {
-		http.Error(w, "Erreur base de données", http.StatusInternalServerError)
+	if err := h.profileService.TogglePrivacy(userID, req.IsPrivate); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	utils.WriteSuccess(w, "Privacy updated successfully")
 }
 
-func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request){
-	userId, ok := h.sessionService.GetUserIDFromSession(w, r)
+func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	userId, ok := utils.GetUserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Utilisateur non authentifié", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	response := map[string]interface{}{
-        "id": userId,
+		"id": userId,
 	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(response)
-
+	utils.WriteJSON(w, http.StatusOK, response)
 }

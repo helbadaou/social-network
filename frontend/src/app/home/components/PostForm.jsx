@@ -5,7 +5,7 @@ import { useEffect, useState, forwardRef } from 'react'
 import styles from './PostForm.module.css'
 
 const PostForm = forwardRef(function PostForm(
-  { content, setContent, image, setImage, privacy, setPrivacy, handleSubmit, creating },
+  { content, setContent, image, setImage, privacy, setPrivacy, handleSubmit, creating, fileInputRef: fileInputRefProp, onClose, isGroupPost, error, success },
   fileInputRef
 ) {
 
@@ -47,9 +47,17 @@ const PostForm = forwardRef(function PostForm(
     setRecipientIds([]) // reset après publication
   }
 
+  // support callers that pass ref via prop or forwarded ref
+  const inputRef = fileInputRefProp || fileInputRef
+
 
   return (
     <form onSubmit={onSubmit} className={styles.form}>
+      {onClose && (
+        <button type="button" aria-label="Close" className={styles.closeButton} onClick={onClose}>
+          ×
+        </button>
+      )}
       <textarea
         placeholder="Exprimez-vous..."
         value={content}
@@ -61,7 +69,7 @@ const PostForm = forwardRef(function PostForm(
       <input
         type="file"
         accept="image/*"
-        ref={fileInputRef}
+        ref={inputRef}
         className={styles.fileInput}
         onChange={(e) => setImage(e.target.files[0])}
       />
@@ -83,7 +91,7 @@ const PostForm = forwardRef(function PostForm(
             <div className={styles.noRecipients}>Aucun abonné disponible.</div>
           ) : (
             (recipients || []).map((user) => (
-              <label key={user.id} className={styles.recipientLabel}>
+              <label key={user.ID} className={styles.recipientLabel}>
                 <input
                   type="checkbox"
                   checked={recipientIds.includes(user.ID)}

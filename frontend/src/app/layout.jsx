@@ -1,11 +1,15 @@
-// layout.js
 import { Geist, Geist_Mono } from "next/font/google";
-import { SharedWorkerProvider } from "../contexts/SharedWorkerContext";
+import { Toaster } from 'react-hot-toast';
+import { WorkerProvider } from "../contexts/WorkerContext";
 import { NavbarProvider } from "../contexts/NavBarContext";
 import { Navbar } from "./home/components/Navbar"
 import AuthProvider from "../contexts/AuthContext"
 import { MessageSidebarProvider } from "../contexts/MessageSideBarContext";
+import { ChatProvider } from "../contexts/ChatContext";
 import MessageSidebar from "./messages/components/MessageSidebar";
+import ChatBoxContainer from "./messages/components/ChatBoxContainer";
+import { WorkerInitializer } from "../components/WorkerInitializer";
+import { ChatInitializer } from "../components/ChatInitializer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,15 +32,42 @@ export default function RootLayout({ children }) {
     <html>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <SharedWorkerProvider>
-            <NavbarProvider>
-              <MessageSidebarProvider>
-                <Navbar />
-                <MessageSidebar />
-                {children}
-              </MessageSidebarProvider>
-            </NavbarProvider>
-          </SharedWorkerProvider>
+          <WorkerProvider>
+            <ChatProvider>
+              <NavbarProvider>
+                <MessageSidebarProvider>
+                  <WorkerInitializer />
+                  <ChatInitializer />
+                  <Navbar />
+                  <MessageSidebar />
+                  <ChatBoxContainer />
+                  {children}
+                  <Toaster 
+                    position="top-right"
+                    toastOptions={{
+                      duration: 4000,
+                      style: {
+                        background: '#363636',
+                        color: '#fff',
+                      },
+                      success: {
+                        iconTheme: {
+                          primary: '#4ade80',
+                          secondary: '#fff',
+                        },
+                      },
+                      error: {
+                        iconTheme: {
+                          primary: '#ef4444',
+                          secondary: '#fff',
+                        },
+                      },
+                    }}
+                  />
+                </MessageSidebarProvider>
+              </NavbarProvider>
+            </ChatProvider>
+          </WorkerProvider>
         </AuthProvider>
       </body>
     </html>

@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import PostForm from "./components/PostForm";
-import MessageSidebar from "../messages/components/MessageSidebar";
-import ChatBox from "../messages/components/ChatBox";
 import Post from './components/Post'
 import styles from './HomePage.module.css'
 import { useMessageSidebar } from "../../contexts/MessageSideBarContext";
+import { useWorker } from "../../contexts/WorkerContext";
+import { useNavbar } from "../../contexts/NavBarContext";
+import { useChat } from "../../contexts/ChatContext";
 
 export default function HomePage() {
   // States for posts, user, UI, etc.
@@ -23,12 +24,8 @@ export default function HomePage() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
-  const [openChats, setOpenChats] = useState([]);
   const [showPostForm, setShowPostForm] = useState(false)
-  const [notifications, setNotifications] = useState([])
   const [realtimeNotification, setRealtimeNotification] = useState(null)
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [chatUsers, setChatUsers] = useState([])
 
   // NEW: Message notification states
   const [messageNotifications, setMessageNotifications] = useState([]);
@@ -36,13 +33,16 @@ export default function HomePage() {
   const [isWindowFocused, setIsWindowFocused] = useState(true);
 
   const { showMessages, setShowMessages } = useMessageSidebar()
+  const { worker: contextWorker, setWorker } = useWorker()
+  const { setNotifications, setUnreadCount } = useNavbar()
+
+  // Use global chat context
+  const globalChat = useChat();
 
   const removeNotificationCallback = useRef(null);
 
-  // --- SharedWorker related ---
-  const workerRef = useRef(null);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState({});
+  // --- Worker related ---
+  const workerRef = useRef(contextWorker);
 
   // NEW: Throttling ref
   const lastMessageTime = useRef(null);
@@ -70,34 +70,43 @@ export default function HomePage() {
 
   // NEW: Function to show browser notification
   const showBrowserNotification = useCallback((sender, message) => {
-
     if ('Notification' in window && Notification.permission === 'granted' && !isWindowFocused) {
-      const notification = new Notification(`New message from ${sender.username || sender.name}`, {
+      // Ensure sender has a valid name
+      const senderName = sender?.full_name || sender?.username || sender?.name || `User ${sender?.id || sender?.ID || '?'}`;
+
+      const notification = new Notification(`New message from ${senderName}`, {
         body: message.content,
-        icon: sender.avatar || '/default-avatar.png',
-        tag: `message-${sender.id || sender.ID}`, // Prevent duplicate notifications from same user
+        icon: sender?.avatar || '/default-avatar.png',
+        tag: `message-${sender?.id || sender?.ID}`,
       });
 
       notification.onclick = () => {
         window.focus();
-        // Open chat with the sender if not already open
-        if (!openChats.some(c => (c.id || c.ID) === (sender.id || sender.ID))) {
-          openChat(sender);
-        }
+        globalChat.openChat(sender);
         notification.close();
       };
 
       // Auto-close after 5 seconds
       setTimeout(() => notification.close(), 5000);
     }
-  }, [isWindowFocused, openChats]);
+  }, [isWindowFocused, globalChat]);
 
   // NEW: Function to handle incoming message notifications
   const handleIncomingMessage = useCallback((messageData) => {
     console.log(messageData, "nothing just test")
     const senderId = messageData.from;
-    const sender = chatUsers.find(u => (u.id || u.ID) === senderId) ||
-      { id: senderId, username: 'Unknown User' };
+    let sender = globalChat.chatUsers.find(u => (u.id || u.ID) === senderId);
+
+    // If sender not found in chatUsers, create a basic object with the data we have
+    if (!sender) {
+      sender = {
+        id: senderId,
+        username: messageData.sender_nickname || messageData.senderNickname || `User ${senderId}`,
+        full_name: messageData.sender_nickname || messageData.senderNickname || `User ${senderId}`,
+        name: messageData.sender_nickname || messageData.senderNickname || `User ${senderId}`,
+        avatar: '/avatar.png'
+      };
+    }
 
     // Update unread message count
     setUnreadMessages(prev => ({
@@ -114,71 +123,96 @@ export default function HomePage() {
       read: false
     }, ...prev.slice(0, 9)]); // Keep only last 10 notifications
 
-    // Show browser notification if window is not focused
     // Show in-app notification toast
+    const displayName = sender.full_name || sender.username || sender.name || `User ${senderId}`;
     setRealtimeNotification({
       type: 'message',
-      message: `New message from ${sender.username || sender.name}`,
+      message: `New message from ${displayName}`,
       timestamp: new Date(),
       sender: sender // Add sender info for click handling
     });
+
+    // Show browser notification
+    showBrowserNotification(sender, messageData);
 
     //Auto-remove toast after 5 seconds (increased time)
     setTimeout(() => {
       setRealtimeNotification(null);
     }, 5000);
-  }, [chatUsers, showBrowserNotification]);
+  }, [globalChat, showBrowserNotification]);
 
-  // Setup SharedWorker connection once user is set
-  useEffect(() => {
-    if (!user?.ID) return;
+  // Setup Worker message handler - use Worker from context or create local
+  // NEW: Setup Worker message handler - CRITICAL: Keep stable to avoid re-registration
+  const handleWorkerMessage = useCallback((event) => {
+    console.log("📨 Message received from Worker in home/page.jsx:", event.data);
 
-    if (!workerRef.current) {
-      workerRef.current = new SharedWorker('/sharedWorker.jsx');
-      const port = workerRef.current.port;
+    const { type, data, message } = event.data;
 
-      port.start();
-      port.postMessage({ type: "INIT", userId: user.ID });
+    // Handle incoming PRIVATE messages only (show toast notification)
+    if (data && (type === "private" || data.type === "private")) {
+      console.log('Processing private chat message in home');
 
-      port.onmessage = (event) => {
-        console.log("Message received from SharedWorker:", event.data);
+      // Add message to global chat context
+      globalChat.addMessageForRecipient(data);
 
-        const { type, data, message } = event.data;
-
-        // Handle incoming messages
-        if (data && (type === "message" || data.type === "private")) {
-          console.log('Processing chat message');
-          setMessages((prev) => [...prev, data]);
-
-          // NEW: Check if message is from another user (not sent by current user)
-          if (data.from !== user.ID) {
-            handleIncomingMessage(data);
-          }
-        }
-        else if (message && (type === "message" || type === "private")) {
-          console.log('Processing chat message (legacy format)');
-          setMessages((prev) => [...prev, message]);
-
-          // NEW: Check if message is from another user
-          if (message.from !== user.ID) {
-            handleIncomingMessage(message);
-          }
-        }
-        // Handle other notifications
-        else if (type === "notification" || type === "follow_request" ||
-          type === "follow_request_response" || type === "follow_request_cancelled") {
-          const notificationData = data || message;
-          setNotifications(prev => [notificationData, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          setRealtimeNotification(notificationData);
-        }
-        else if (type === "status" || type === "error") {
-          const statusMessage = data || message;
-          console.log(`[Worker]: ${statusMessage}`);
-        }
-      };
+      // Check if message is from another user (not sent by current user)
+      if (data.from !== user?.ID) {
+        handleIncomingMessage(data);
+      }
     }
-  }, [user?.ID, handleIncomingMessage]);
+    // Handle GROUP messages (no toast, just store)
+    else if (data && (type === "group_message" || data.type === "group_message")) {
+      console.log('Processing group message in home');
+      // Group messages are handled elsewhere
+    }
+    // Handle other notifications (no toast, just add to notification list with unread count)
+    else if (type === "notification" || type === "follow_request" ||
+      type === "follow_request_response" || type === "follow_request_cancelled" ||
+      type === "group_event_created" || type === "group_join_request" ||
+      type === "group_invitation" || type === "user_online") {
+      const notificationData = data || message;
+      console.log('Processing notification:', type, notificationData);
+      setNotifications(prev => [notificationData, ...prev]);
+      // DO NOT show toast for non-message notifications
+    }
+    else if (type === "status" || type === "error") {
+      const statusMessage = data || message;
+      console.log(`[Worker]: ${statusMessage}`);
+    }
+  }, [user?.ID, handleIncomingMessage, setNotifications, setUnreadCount, globalChat]);
+
+  useEffect(() => {
+    let activeWorker = workerRef.current;
+
+    // If no worker yet, create one locally
+    if (!activeWorker && user?.ID) {
+      console.log("🔧 Creating Worker in home/page.jsx for user:", user.ID);
+      try {
+        activeWorker = new Worker('/worker.js');
+        activeWorker.postMessage({ type: 'INIT', userId: user.ID });
+        workerRef.current = activeWorker;
+        setWorker(activeWorker); // Store in context
+      } catch (err) {
+        console.error("❌ Error creating Worker:", err);
+        return;
+      }
+    }
+
+    if (!activeWorker) {
+      console.log("⏳ Worker not yet available in home/page.jsx");
+      return;
+    }
+
+    console.log("✅ Worker available in home/page.jsx, setting up message handler");
+
+    // Use addEventListener with the stable handler
+    activeWorker.addEventListener('message', handleWorkerMessage);
+
+    // Cleanup: Remove listener on unmount or handler change
+    return () => {
+      activeWorker.removeEventListener('message', handleWorkerMessage);
+    };
+  }, [contextWorker, user?.ID, handleWorkerMessage]);
 
   // NEW: Function to mark messages as read when chat is opened
   const markMessagesAsRead = useCallback((userId) => {
@@ -197,14 +231,10 @@ export default function HomePage() {
   }, []);
 
   // NEW: Enhanced openChat function
-  const openChat = (user) => {
-    const userId = user.id || user.ID;
-    if (!openChats.some((c) => (c.id || c.ID) === userId)) {
-      setOpenChats((prev) => [...prev, user]);
-    }
-    // Mark messages as read when chat is opened
-    markMessagesAsRead(userId);
-  };
+  const openChat = useCallback((user) => {
+    globalChat.openChat(user);
+    markMessagesAsRead(user.id || user.ID);
+  }, [globalChat]);
 
   // Send chat message through SharedWorker with throttling
   const sendMessage = useCallback((chatMsg) => {
@@ -220,7 +250,7 @@ export default function HomePage() {
 
     // Throttle implementation
     const now = Date.now();
-    const throttleDelay = 1000; // 1 second throttle
+    const throttleDelay = 500; // 0.5 second throttle
 
     if (lastMessageTime.current && now - lastMessageTime.current < throttleDelay) {
       console.log("Message throttled - please wait before sending another message");
@@ -229,27 +259,18 @@ export default function HomePage() {
 
     lastMessageTime.current = now;
 
-    workerRef.current.port.postMessage({ type: "SEND", message: chatMsg });
-
-    const messageWithId = {
+    // Ensure timestamp is in ISO format
+    const messageToSend = {
       ...chatMsg,
-      uniqueId: `${chatMsg.from}-${chatMsg.to}-${chatMsg.timestamp}-${Date.now()}-sent`
+      timestamp: chatMsg.timestamp || new Date().toISOString()
     };
 
-    setMessages(prev => {
-      const validPrev = prev.filter(m => m && typeof m === 'object');
-      const exists = validPrev.some(m =>
-        m &&
-        m.from === chatMsg.from &&
-        m.to === chatMsg.to &&
-        m.content === chatMsg.content &&
-        m.timestamp && chatMsg.timestamp &&
-        Math.abs(new Date(m.timestamp) - new Date(chatMsg.timestamp)) < 1000
-      );
+    console.log("Sending message to Worker:", messageToSend);
+    workerRef.current.postMessage({ type: "SEND", message: messageToSend });
 
-      if (exists) return prev;
-      return [...prev, messageWithId];
-    });
+    // DON'T add optimistic message - wait for server confirmation
+    // The server will send the message back to us via WebSocket
+    // This avoids deduplication issues and ensures consistency
   }, []);
 
   // NEW: Calculate total unread message count
@@ -273,7 +294,7 @@ export default function HomePage() {
     // Find users with unread messages and open their chats
     Object.entries(unreadMessages).forEach(([userId, count]) => {
       if (count > 0) {
-        const user = chatUsers.find(u => (u.id || u.ID) === parseInt(userId));
+        const user = globalChat.chatUsers.find(u => (u.id || u.ID) === parseInt(userId));
         if (user) {
           openChat(user);
         }
@@ -311,13 +332,17 @@ export default function HomePage() {
       const res = await fetch("http://localhost:8080/api/chat-users", {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) {
+        // console.error("Failed to fetch users");
+        return;
+
+      }
       const data = await res.json();
-      setChatUsers(data);
+      globalChat.setChatUsers(data);
     } catch (err) {
       console.error("Error fetching users:", err);
     }
-  }, []);
+  }, [globalChat]);
 
   const fetchUser = async () => {
     try {
@@ -325,7 +350,11 @@ export default function HomePage() {
         credentials: "include",
       });
 
-      if (!res.ok) throw new Error("Unauthorized");
+      if (!res.ok) {
+        // console.error("Unauthorized - Redirecting to login");
+        router.push("/login");
+        return;
+      }
 
       const data = await res.json();
       setUser(data);
@@ -339,7 +368,7 @@ export default function HomePage() {
     setLoading(true);
     fetch("http://localhost:8080/api/posts", { credentials: "include" })
       .then((res) => res.json())
-      .then((data) => setPosts(data))
+      .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Error fetching posts:", err))
       .finally(() => setLoading(false));
   };
@@ -426,10 +455,8 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     try {
-      if (workerRef.current) {
-        workerRef.current.port.close();
-        workerRef.current = null;
-      }
+      // Don't close worker - it should stay alive for other components
+      // Worker is managed globally by WorkerContext
 
       const res = await fetch("http://localhost:8080/api/logout", {
         method: "POST",
@@ -479,29 +506,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {showMessages && user && (
-        <MessageSidebar
-          chatUsers={chatUsers}
-          showMessages={showMessages}
-          setShowMessages={setShowMessages}
-          openChat={openChat}
-          currentUserId={user?.ID}
-          fetchChatUsers={fetchChatUsers}
-          unreadMessages={unreadMessages} // NEW: Pass unread messages
-        />
-      )}
-
-      {/* NEW: Message notification indicator in top bar or wherever appropriate */}
-      {totalUnreadMessages > 0 && (
-        <div
-          className={styles.messageIndicator}
-          onClick={handleMessageIndicatorClick}
-        >
-          <span className={styles.unreadBadge}>{totalUnreadMessages}</span>
-          <span>New messages - Click to open</span>
-        </div>
-      )}
-
       <div className={styles.postFormContainer}>
         {showPostForm && (
           <div className={styles.postFormWrapper}>
@@ -515,38 +519,20 @@ export default function HomePage() {
               handleSubmit={handleSubmit}
               creating={creating}
               ref={fileInputRef}
+              onClose={() => setShowPostForm(false)}
             />
           </div>
         )}
       </div>
 
       <h2 className={styles.postsHeading}></h2>
-      {posts === null ? (
+      {!Array.isArray(posts) || posts.length === 0 ? (
         <p className={styles.noPosts}>Aucun post à afficher.</p>
       ) : (
         posts.map(post => (
           <Post key={post.id} post={post} fetchUserById={fetchUserById} />
         ))
       )}
-
-      <div className={styles.chatBoxContainer}>
-        {openChats.map((u) => (
-          <ChatBox
-            key={u.id || u.ID}
-            recipient={u}
-            currentUser={user}
-            messages={messages}
-            input={input[u.id || u.ID] || ''}
-            setInput={(val) => setInput(prev => ({ ...prev, [u.id || u.ID]: val }))}
-            onSendMessage={sendMessage}
-            onClose={() => {
-              setOpenChats(prev => prev.filter(c => (c.id || c.ID) !== (u.id || u.ID)));
-              markMessagesAsRead(u.id || u.ID); // Mark as read when closing
-            }}
-            unreadCount={unreadMessages[u.id || u.ID] || 0} // NEW: Pass unread count
-          />
-        ))}
-      </div>
     </div>
   )
 }

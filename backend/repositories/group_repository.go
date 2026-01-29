@@ -165,11 +165,19 @@ func (r *GroupRepository) GetNonGroupMembers(groupID, userID int) ([]map[string]
 	query := `
 		SELECT id, nickname FROM users
 		WHERE id NOT IN (
+			-- Exclure le créateur du groupe
+			SELECT creator_id FROM groups WHERE id = ?
+			UNION
+			-- Exclure tous les utilisateurs qui ont une relation avec le groupe
+			-- (membres acceptés, invitations en attente, demandes en attente)
 			SELECT user_id FROM group_memberships WHERE group_id = ?
+			UNION
+			-- Exclure l'utilisateur qui fait la requête
+			SELECT ?
 		)
-		AND id != ?`
+		ORDER BY nickname`
 
-	rows, err := r.db.Query(query, groupID, userID)
+	rows, err := r.db.Query(query, groupID, groupID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -593,68 +601,71 @@ func (r *GroupRepository) SetEventResponse(eventID, userID int, response string)
 }
 
 func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, error) {
-    query := `
-        SELECT 
-            u.id,
-            u.nickname,
-            u.avatar,
-            CASE 
-                WHEN g.creator_id = u.id THEN 'creator'
-                ELSE 'member'
-            END as role,
-            gm.created_at as joined_at
-        FROM group_memberships gm
-        JOIN users u ON gm.user_id = u.id
-        JOIN groups g ON gm.group_id = g.id
-        WHERE gm.group_id = ? AND gm.status = 'accepted'
-        UNION
-        SELECT 
-            u.id,
-            u.nickname,
-            u.avatar,
-            'creator' as role,
-            g.created_at as joined_at
-        FROM groups g
-        JOIN users u ON g.creator_id = u.id
-        WHERE g.id = ?
-        ORDER BY role DESC, joined_at ASC
-    `
+	query := `
+		SELECT DISTINCT
+			u.id,
+			u.nickname,
+			COALESCE(u.avatar, '') as avatar,
+			CASE 
+				WHEN g.creator_id = u.id THEN 'creator'
+				ELSE 'member'
+			END as role,
+			COALESCE(
+				datetime(gm.created_at),
+				datetime(g.created_at)
+			) as joined_at
+		FROM users u
+		CROSS JOIN groups g
+		LEFT JOIN group_memberships gm ON gm.user_id = u.id AND gm.group_id = g.id
+		WHERE g.id = ?
+		AND (
+			u.id = g.creator_id
+			OR
+			(gm.status = 'accepted' AND u.id != g.creator_id)
+		)
+		ORDER BY 
+			CASE WHEN g.creator_id = u.id THEN 0 ELSE 1 END,
+			joined_at ASC
+	`
 
-    rows, err := r.db.Query(query, groupID, groupID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to query group members: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.Query(query, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group members: %w", err)
+	}
+	defer rows.Close()
 
-    var members []models.GroupMember
-    for rows.Next() {
-        var member models.GroupMember
-        var joinedAt time.Time
-        
-        err := rows.Scan(
-            &member.ID,
-            &member.Username,
-            &member.Avatar,
-            &member.Role,
-            &joinedAt,
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan member row: %w", err)
-        }
-        
-        member.JoinedAt = joinedAt.Format(time.RFC3339)
-        if member.Avatar != "" {
-            member.Avatar = "http://localhost:8080/" + member.Avatar
-        }
-        
-        members = append(members, member)
-    }
+	var members []models.GroupMember
+	for rows.Next() {
+		var member models.GroupMember
+		var joinedAtStr string  // ⬅️ SCANNER EN STRING !
+		
+		err := rows.Scan(
+			&member.ID,
+			&member.Username,
+			&member.Avatar,
+			&member.Role,
+			&joinedAtStr,  // ⬅️ STRING, pas time.Time
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan member row: %w", err)
+		}
+		
+		// ⬇️ Convertir la string en format RFC3339 si nécessaire
+		member.JoinedAt = joinedAtStr
+		
+		// ⬇️ Ajouter le préfixe URL si l'avatar existe
+		if member.Avatar != "" {
+			member.Avatar = "http://localhost:8080/" + member.Avatar
+		}
+		
+		members = append(members, member)
+	}
 
-    if err := rows.Err(); err != nil {
-        return nil, fmt.Errorf("rows iteration error: %w", err)
-    }
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
 
-    return members, nil
+	return members, nil
 }
 
 func (r *GroupRepository) GroupExists(groupID int) (bool, error) {
@@ -767,4 +778,34 @@ func (r *GroupRepository) GetUserNickname(userID int) (string, error) {
         return "", fmt.Errorf("failed to get user nickname: %w", err)
     }
     return nickname, nil
+}
+
+
+// IsUserMemberOfGroup vérifie si un utilisateur est un membre accepté du groupe OU le créateur
+func (r *GroupRepository) IsUserMemberOfGroup(groupID, userID int) (bool, error) {
+	// Vérifier si l'utilisateur est le créateur du groupe
+	var creatorID int
+	err := r.db.QueryRow(`SELECT creator_id FROM groups WHERE id = ?`, groupID).Scan(&creatorID)
+	if err != nil {
+		return false, err
+	}
+	
+	// Si c'est le créateur, retourner true
+	if creatorID == userID {
+		return true, nil
+	}
+	
+	// Sinon, vérifier si c'est un membre accepté
+	var count int
+	err = r.db.QueryRow(`
+		SELECT COUNT(*) 
+		FROM group_memberships 
+		WHERE group_id = ? AND user_id = ? AND status = 'accepted'
+	`, groupID, userID).Scan(&count)
+	
+	if err != nil {
+		return false, err
+	}
+	
+	return count > 0, nil
 }

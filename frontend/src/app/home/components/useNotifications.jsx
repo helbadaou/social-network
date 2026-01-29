@@ -1,10 +1,19 @@
 // src/hooks/useNotifications.js
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavbar } from '../../../contexts/NavBarContext'
 
 export function useNotifications(user, sendMessage) {
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  // try to get global unread setter from NavBarContext (may throw if provider missing)
+  let setGlobalUnread = null
+  try {
+    const navbar = useNavbar()
+    setGlobalUnread = navbar.setUnreadCount
+  } catch (e) {
+    setGlobalUnread = null
+  }
   const notificationsRef = useRef(null)
   const notificationButtonRef = useRef(null)
 
@@ -25,7 +34,9 @@ export function useNotifications(user, sendMessage) {
       }
 
       setNotifications(uniqueNotifs)
-      setUnreadCount(uniqueNotifs.filter(n => !n.seen).length)
+      const count = uniqueNotifs.filter(n => !n.seen).length
+      setUnreadCount(count)
+      if (setGlobalUnread) setGlobalUnread(count)
     } catch (err) {
       console.error("Erreur récupération notifications", err)
     }
@@ -46,12 +57,13 @@ export function useNotifications(user, sendMessage) {
       })
       await fetchNotifications()
       setUnreadCount(0)
+      if (setGlobalUnread) setGlobalUnread(0)
     }
   }, [showNotifications, fetchNotifications])
 
   const handleAccept = useCallback(async (notifId, senderId) => {
     try {
-      await fetch('/api/follow/accept', {
+      await fetch('http://localhost:8080/api/follow/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender_id: senderId }),
@@ -60,14 +72,14 @@ export function useNotifications(user, sendMessage) {
 
       sendMessage({ type: 'FETCH_CHAT_USERS' })
 
-      await fetch('/api/notifications/seen', {
+      await fetch('http://localhost:8080/api/notifications/seen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
         credentials: 'include',
       })
 
-      await fetch('/api/notifications/delete', {
+      await fetch('http://localhost:8080/api/notifications/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
@@ -82,19 +94,19 @@ export function useNotifications(user, sendMessage) {
   const handleReject = useCallback(async (notifId, senderId) => {
     try {
       const [rejectRes, seenRes, deleteRes] = await Promise.all([
-        fetch('/api/follow/reject', {
+        fetch('http://localhost:8080/api/follow/reject', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sender_id: senderId }),
           credentials: 'include',
         }),
-        fetch('/api/notifications/seen', {
+        fetch('http://localhost:8080/api/notifications/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         }),
-        fetch('/api/notifications/delete', {
+        fetch('http://localhost:8080/api/notifications/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -135,7 +147,11 @@ export function useNotifications(user, sendMessage) {
         if (type === 'notification' || type === 'follow_request' ||
           type === 'follow_request_response' || type === 'follow_request_cancelled') {
           setNotifications(prev => [message, ...prev])
-          setUnreadCount(prev => prev + 1)
+          setUnreadCount(prev => {
+            const next = prev + 1
+            if (setGlobalUnread) setGlobalUnread(next)
+            return next
+          })
         }
       }
 

@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -29,24 +30,49 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *Handler) ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	log.Printf("🌐 WebSocket request received from %s - Headers: %v\n", r.RemoteAddr, r.Header.Get("Origin"))
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Upgrade error:", err)
+		log.Printf("❌ Upgrade error: %v\n", err)
+		http.Error(w, "Failed to upgrade connection", http.StatusBadRequest)
 		return
 	}
 
-	userID, _ := h.session.GetUserIDFromSession(w, r) // 🔐 Your own logic
-	if userID == 0 {
+	log.Println("✅ WebSocket connection upgraded successfully")
 
-		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Authentication required"))
-		conn.Close()
-		return
+	// Try to get userID from session cookie first
+	userID, err := h.session.GetUserIDFromSession(r)
+
+	// If session not found or error, try to get from query parameter
+	if err != nil || userID == 0 {
+		userIDStr := r.URL.Query().Get("userId")
+		if userIDStr == "" {
+			log.Println("❌ Authentication required: No session and no userId parameter")
+			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Authentication required"))
+			conn.Close()
+			return
+		}
+
+		// Parse userID from query parameter
+		var parsedID int
+		_, err := fmt.Sscanf(userIDStr, "%d", &parsedID)
+		if err != nil || parsedID <= 0 {
+			log.Printf("❌ Invalid userId parameter: %s\n", userIDStr)
+			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Invalid userId"))
+			conn.Close()
+			return
+		}
+		userID = parsedID
+		log.Printf("✅ Authentication via query parameter - userID: %d\n", userID)
+	} else {
+		log.Printf("✅ Authentication via session cookie - userID: %d\n", userID)
 	}
 
 	client := &Client{
 		ID:   userID,
 		Conn: conn,
-		Send: make(chan []byte),
+		Send: make(chan []byte, 256),
 	}
 
 	hub.Register <- client

@@ -37,13 +37,31 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.Register:
 			h.Clients[client.ID] = client
-			fmt.Println("✅ Registered user", client.ID)
+			fmt.Printf("\n✅ === USER REGISTERED === \n")
+			fmt.Printf("   User ID: %d\n", client.ID)
+			fmt.Printf("   Total connected users: %d\n", len(h.Clients))
+			fmt.Printf("   Connected user IDs: %v\n\n", func() []int {
+				ids := make([]int, 0)
+				for id := range h.Clients {
+					ids = append(ids, id)
+				}
+				return ids
+			}())
 
 		case client := <-h.Unregister:
 			delete(h.Clients, client.ID)
 			close(client.Send)
 
 		case msg := <-h.Broadcast:
+			fmt.Printf("📨 Broadcast received - Type: %s, From: %d, To: %d\n", msg.Type, msg.From, msg.To)
+			fmt.Printf("🔍 Current connected clients: %v\n", func() []int {
+				ids := make([]int, 0)
+				for id := range h.Clients {
+					ids = append(ids, id)
+				}
+				return ids
+			}())
+
 			msgBytes, err := json.Marshal(msg)
 			if err != nil {
 				fmt.Println("❌ Failed to marshal message:", err)
@@ -54,22 +72,26 @@ func (h *Hub) Run() {
 			case "private":
 				// Process private message
 				if err := h.messageService.ProcessPrivateMessage(msg); err != nil {
-					fmt.Println("Error processing private message:", err)
+					fmt.Println("❌ Error processing private message:", err)
 					continue
 				}
 
 				// Send to recipient if connected
 				if recipient, ok := h.Clients[msg.To]; ok {
-					select {
-					case recipient.Send <- msgBytes:
-						fmt.Printf("✅ Private message sent to user %d\n", msg.To)
-					default:
-						close(recipient.Send)
-						delete(h.Clients, recipient.ID)
-					}
+					h.safeSend(recipient, msgBytes)
+				} else {
+					fmt.Printf("⚠️ Recipient user %d not connected\n", msg.To)
 				}
 
-			case "group":
+				// IMPORTANT: Also send confirmation back to sender for real-time display
+				// This ensures the sender sees the message immediately
+				if sender, ok := h.Clients[msg.From]; ok {
+					h.safeSend(sender, msgBytes)
+				} else {
+					fmt.Printf("⚠️ Sender user %d not connected (no confirmation sent)\n", msg.From)
+				}
+
+			case "group_message":
 				// Process group message
 				if err := h.messageService.ProcessGroupMessage(msg); err != nil {
 					fmt.Println("Error processing group message:", err)
@@ -84,31 +106,22 @@ func (h *Hub) Run() {
 				}
 				fmt.Println("member", members)
 
-				// Broadcast to all connected group members except sender
+				// Broadcast to all connected group members (including sender)
 				for _, memberID := range members {
-					if memberID == msg.From {
-						continue // Skip sender
-					}
-
 					if client, ok := h.Clients[memberID]; ok {
-						msg.To = memberID
-						msgBytes, err := json.Marshal(msg)
+						msgCopy := msg
+						msgCopy.To = memberID
+						msgBytesToSend, err := json.Marshal(msgCopy)
 						if err != nil {
-							fmt.Println("❌ Failed to marshal message:", err)
+							fmt.Println("❌ Failed to marshal message for member:", err)
 							continue
 						}
-						select {
-						case client.Send <- msgBytes:
-							fmt.Println("nothing", string(msgBytes))
-							// Message sent successfully
-						default:
-							// Handle full channel or disconnected client
-							close(client.Send)
-							delete(h.Clients, client.ID)
-						}
+						h.safeSend(client, msgBytesToSend)
+					} else {
+						fmt.Printf("⚠️ User %d not connected\n", memberID)
 					}
 				}
-				fmt.Printf("✅ Group message broadcast to %d members of group %d\n", len(members)-1, msg.GroupID)
+				fmt.Printf("✅ Group message broadcast to %d members of group %d\n", len(members), msg.GroupID)
 
 			default:
 				fmt.Printf("❌ Unknown message type: %s\n", msg.Type)
@@ -152,7 +165,7 @@ func (h *Hub) SendNotification(notification models.Notification, toID int) {
 	msgBytes, _ := json.Marshal(notification)
 	fmt.Println("message that will be sent :", string(msgBytes))
 	if recipient, ok := h.Clients[toID]; ok {
-		recipient.Send <- msgBytes
+		h.safeSend(recipient, msgBytes)
 	}
 }
 
@@ -164,20 +177,41 @@ func (h *Hub) SendMessageToUser(userID int, message models.Message) {
 	}
 
 	if client, ok := h.Clients[userID]; ok {
-		select {
-		case client.Send <- msgBytes:
-			fmt.Printf("✅ Message sent to user %d\n", userID)
-		default:
-			// Canal plein, client déconnecté ou occupé
-			fmt.Printf("⚠️ Failed to send message to user %d (channel full or client disconnected)\n", userID)
-		}
+		h.safeSend(client, msgBytes)
 	} else {
 		fmt.Printf("⚠️ User %d not connected\n", userID)
 	}
 }
 
+// safeSend envoie des bytes sur le channel du client de façon sûre,
+// récupère d'un panic si le channel a été fermé simultanément et nettoie l'état.
+func (h *Hub) safeSend(client *Client, data []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("❌ Recovered panic sending to client %d: %v\n", client.ID, r)
+			// Ensure channel closed and remove client
+			select {
+			default:
+				// best-effort close
+				close(client.Send)
+			}
+			delete(h.Clients, client.ID)
+		}
+	}()
+
+	select {
+	case client.Send <- data:
+		fmt.Printf("✅ Message sent to user %d\n", client.ID)
+	default:
+		fmt.Printf("⚠️ Failed to send to user %d (channel full)\n", client.ID)
+		// best-effort cleanup
+		close(client.Send)
+		delete(h.Clients, client.ID)
+	}
+}
+
 func (h *Hub) WarmGroupMembersCache(groupID int) error {
-	members, err := h.services.GetGroupMembers(groupID)
+	members, err := h.messageService.GetGroupMembers(groupID)
 	if err != nil {
 		return err
 	}
@@ -192,4 +226,12 @@ func (h *Hub) WarmGroupMembersCache(groupID int) error {
 
 	h.groupMembersCache[groupID] = userIDs
 	return nil
+}
+
+func (h *Hub) InvalidateGroupMembersCache(groupID int) {
+	h.cacheMutex.Lock()
+	defer h.cacheMutex.Unlock()
+	
+	delete(h.groupMembersCache, groupID)
+	fmt.Printf("🔄 Cache invalidated for group %d\n", groupID)
 }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../../../contexts/AuthContext'
-import { useSharedWorker } from '../../../../contexts/SharedWorkerContext'
+import { useWorker } from '../../../../contexts/WorkerContext'
 import EmojiPicker from '../../../home/components/Emoji'
 import styles from './GroupChat.module.css'
 
@@ -8,48 +8,195 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
   const [groupChatInput, setGroupChatInput] = useState('')
   const [groupChatMessages, setGroupChatMessages] = useState([])
   const [onlineUsers, setOnlineUsers] = useState([])
+  const [groupMembers, setGroupMembers] = useState({}) // Map of userID -> member info
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { user } = useAuth()
-  const { worker, sendWorkerMessage } = useSharedWorker()
+  const { worker } = useWorker()
   const inputRef = useRef()
 
+  // Normaliser le group ID
+  const groupId = group?.id ? parseInt(group.id) : null;
+
   useEffect(() => {
-    if (showGroupChat && group?.id) {
+    if (showGroupChat && groupId) {
       fetchMessages()
+      fetchGroupMembers()
     }
-  }, [showGroupChat, group?.id])
+  }, [showGroupChat, groupId])
+
+  const fetchGroupMembers = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/members`, {
+        credentials: 'include'
+      })
+      if (res.ok) {
+        const members = await res.json()
+        // Créer un map pour un accès rapide par ID
+        const membersMap = {}
+        if (Array.isArray(members)) {
+          members.forEach(member => {
+            membersMap[member.id] = member
+          })
+        }
+        console.log("👥 Loaded group members:", membersMap);
+        setGroupMembers(membersMap)
+      }
+    } catch (err) {
+      console.error("Error loading group members:", err)
+    }
+  }
+
+  // Stable callback for handling Worker messages - CRITICAL: Avoid re-registration
+  const handleMessage = useCallback((event) => {
+    const { type, data, message } = event.data;
+    const messageData = data || message;
+
+    if (type === 'group_message') {
+      // Le backend envoie groupId (camelCase) via le WebSocket
+      const messageGroupID = messageData?.groupId || messageData?.groupID;
+
+      console.log("🔔 Worker received group_message:", {
+        messageGroupID,
+        expectedGroupID: groupId,
+        match: messageGroupID === groupId,
+        messageData
+      });
+
+      // Vérifier que le message est pour ce groupe
+      if (messageGroupID !== groupId) {
+        console.log("⏭️ Message ignored - wrong group ID");
+        return;
+      }
+
+      // Normaliser les noms de champs (WebSocket vs API REST peuvent avoir des noms différents)
+      const normalizedMessage = {
+        from: messageData.from,
+        groupId: messageGroupID,
+        content: messageData.content,
+        timestamp: messageData.timestamp,
+        type: messageData.type,
+        sender_nickname: messageData.sender_nickname || messageData.senderNickname
+      };
+
+      // Ajouter TOUS les messages du groupe, même ceux du sender
+      // (le sender reçoit une confirmation de livraison du serveur)
+      const isCurrentUser = normalizedMessage.from === user?.ID;
+
+      // Obtenir le nom du sender depuis les membres du groupe
+      const senderInfo = groupMembers[normalizedMessage.from];
+      const senderDisplayName = isCurrentUser
+        ? 'You'
+        : (senderInfo?.username || normalizedMessage.sender_nickname || 'User');
+
+      console.log("📨 Adding group message:", {
+        from: normalizedMessage.from,
+        currentUserID: user?.ID,
+        isCurrentUser,
+        senderDisplayName,
+        content: normalizedMessage.content.substring(0, 50)
+      });
+
+      setGroupChatMessages(prev => {
+        // Si c'est mon message, remplacer le message local par le confirmé du serveur
+        if (isCurrentUser) {
+          // Supprimer le message local (marqué local: true)
+          const withoutLocal = prev.filter(msg => !msg.local || msg.from !== normalizedMessage.from);
+
+          // Vérifier si le message serveur existe déjà
+          const messageExists = withoutLocal.some(msg =>
+            msg.from === normalizedMessage.from &&
+            msg.timestamp === normalizedMessage.timestamp &&
+            msg.content === normalizedMessage.content
+          );
+
+          if (messageExists) {
+            console.log("⚠️ Server message already exists, skipping");
+            return withoutLocal;
+          }
+
+          // Ajouter le message confirmé du serveur
+          return [...withoutLocal, {
+            ...normalizedMessage,
+            sender_name: 'You',
+            isCurrentUser: true,
+            isOnline: true
+          }];
+        }
+
+        // Pour les messages des autres users
+        const messageExists = prev.some(msg =>
+          msg.from === normalizedMessage.from &&
+          msg.timestamp === normalizedMessage.timestamp &&
+          msg.content === normalizedMessage.content
+        );
+
+        if (messageExists) {
+          console.log("⚠️ Duplicate message detected, skipping");
+          return prev;
+        }
+
+        return [...prev, {
+          ...normalizedMessage,
+          sender_name: senderDisplayName,
+          isCurrentUser: false,
+          isOnline: onlineUsers.includes(normalizedMessage.from)
+        }];
+      });
+    } else if (type === 'user_online' && messageData?.groupID === groupId) {
+      setOnlineUsers(prev => [...prev, messageData.from])
+    }
+  }, [groupId, user?.ID, groupMembers, onlineUsers]);
 
   useEffect(() => {
-    if (worker) {
-      worker.port.onmessage = (event) => {
-        console.log("rah dkhel");
+    if (!worker) return;
 
-        const message = event.data.data;
-        if (event.type === 'user_online' && message.groupId === parseInt(group?.id)) {
-          setOnlineUsers(prev => [...prev, message.from])
-        } else if (message.type === 'group' && message.groupId === parseInt(group?.id)) {
-          console.log("dkhel tra hna ");
+    // Use addEventListener with stable callback
+    worker.addEventListener('message', handleMessage);
 
-          setGroupChatMessages(prev => [...prev, message])
-        }
-      }
-    }
-  }, [worker, group?.id])
+    return () => {
+      worker.removeEventListener('message', handleMessage);
+    };
+  }, [worker, handleMessage])
 
   const fetchMessages = async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/groups/${group.id}/chat`, {
+      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/chat`, {
         credentials: 'include'
       })
       if (!res.ok) throw new Error('Failed to fetch messages')
       const data = await res.json()
-      setGroupChatMessages(data || [])
+
+      // Formater les messages avec les noms d'expéditeur
+      // Assurer que data est un array, sinon utiliser un array vide
+      const messages = Array.isArray(data) ? data : [];
+      const formattedMessages = messages.map(msg => {
+        const isCurrentUser = msg.sender_id === user?.ID;
+        const displayName = isCurrentUser
+          ? 'You'
+          : (msg.sender_nickname || 'User');
+
+        return {
+          from: msg.sender_id,
+          groupId: msg.group_id,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          type: 'group_message',
+          sender_nickname: msg.sender_nickname,
+          sender_name: displayName,
+          isCurrentUser: isCurrentUser,
+          isOnline: onlineUsers.includes(msg.sender_id)
+        }
+      })
+
+      console.log("📥 Fetched messages:", formattedMessages.length);
+      setGroupChatMessages(formattedMessages)
     } catch (err) {
       setError(err.message)
+      setGroupChatMessages([])
     } finally {
       setLoading(false)
     }
@@ -59,23 +206,40 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
     if (!groupChatInput.trim() || !user?.ID) return
 
     const message = {
-      type: "group",
-      groupId: parseInt(group.id),
+      type: "group_message",
+      groupID: groupId,
       from: user.ID,
       content: groupChatInput.trim(),
       timestamp: new Date().toISOString()
     }
 
-    // Optimistically update UI
-    setGroupChatMessages(prev => [...prev, {
-      ...message,
+    console.log("🚀 Sending message:", message);
+
+    // ✨ NOUVEAU : Ajouter le message localement immédiatement
+    const localMessage = {
+      from: user.ID,
+      groupId: groupId,
+      content: message.content,
+      timestamp: message.timestamp,
+      type: 'group_message',
       sender_name: 'You',
-      isCurrentUser: true
-    }])
+      isCurrentUser: true,
+      isOnline: true,
+      local: true // Marque pour identifier les messages locaux
+    };
+
+    // Ajouter immédiatement à l'interface
+    setGroupChatMessages(prev => [...prev, localMessage]);
+
+    // Clear input immediately for better UX
     setGroupChatInput('')
     setShowEmojiPicker(false)
 
-    sendWorkerMessage(message)
+    // Send group message via Worker
+    // Le serveur va broadcaster à tous (y compris sender)
+    if (worker) {
+      worker.postMessage({ type: 'SEND', message })
+    }
   }
 
   const handleChatKeyPress = (e) => {
@@ -87,17 +251,17 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
 
   const handleEmojiSelect = (emoji) => {
     if (!inputRef.current) return
-    
+
     const cursorPos = inputRef.current.selectionStart || groupChatInput.length
     const newText = groupChatInput.substring(0, cursorPos) + emoji + groupChatInput.substring(cursorPos)
-    
+
     setGroupChatInput(newText)
-    
+
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus()
         inputRef.current.setSelectionRange(
-          cursorPos + emoji.length, 
+          cursorPos + emoji.length,
           cursorPos + emoji.length
         )
       }
@@ -124,7 +288,12 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
           </button>
         </div>
 
-        <ChatMessages messages={groupChatMessages} user={user} loading={loading} error={error} onlineUsers={onlineUsers} />
+        <ChatMessages
+          messages={groupChatMessages}
+          user={user}
+          loading={loading}
+          error={error}
+        />
         <ChatInput
           ref={inputRef}
           value={groupChatInput}
@@ -141,7 +310,7 @@ export default function GroupChat({ showGroupChat, setShowGroupChat, group }) {
   )
 }
 
-function ChatMessages({ messages, user, loading, error, onlineUsers }) {
+function ChatMessages({ messages, user, loading, error }) {
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -163,7 +332,7 @@ function ChatMessages({ messages, user, loading, error, onlineUsers }) {
         </p>
       ) : (
         messages.map((msg, index) => (
-          <ChatMessage key={index} message={{ ...msg, isCurrentUser: msg.from === user?.ID, isOnline: onlineUsers.includes(msg.from) }} />
+          <ChatMessage key={index} message={msg} />
         ))
       )}
       <div ref={messagesEndRef} />
@@ -182,13 +351,13 @@ function ChatMessage({ message }) {
     message.isCurrentUser ? styles.currentUser : styles.otherUser
   ].join(' ')
 
-  // Function to render message content with clickable links (same as ChatBox)
+  // Function to render message content with clickable links
   const renderMessageContent = (content) => {
     if (!content) return null
-    
+
     const urlRegex = /(https?:\/\/[^\s]+)/g
-    return content.split(urlRegex).map((part, i) => 
-      part.match(urlRegex) 
+    return content.split(urlRegex).map((part, i) =>
+      part.match(urlRegex)
         ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={styles.link}>{part}</a>
         : part
     )
@@ -199,7 +368,8 @@ function ChatMessage({ message }) {
       <div className={messageBubbleClasses}>
         <p className={styles.messageContent}>{renderMessageContent(message.content)}</p>
         <p className={styles.messageInfo}>
-          {message.isCurrentUser ? 'You' : message.sender_name || 'User'}
+          {/* Afficher le nom du sender depuis sender_name (qui contient le username du groupe) */}
+          {message.sender_name || (message.isCurrentUser ? 'You' : (message.sender_nickname || 'User'))}
           {message.isOnline && <span className={styles.onlineIndicator}></span>}
           • {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
@@ -208,15 +378,15 @@ function ChatMessage({ message }) {
   )
 }
 
-const ChatInput = React.forwardRef(({ 
-  value, 
-  onChange, 
-  onKeyPress, 
-  onSend, 
-  disabled, 
-  showEmojiPicker, 
-  setShowEmojiPicker, 
-  onEmojiSelect 
+const ChatInput = React.forwardRef(({
+  value,
+  onChange,
+  onKeyPress,
+  onSend,
+  disabled,
+  showEmojiPicker,
+  setShowEmojiPicker,
+  onEmojiSelect
 }, ref) => {
   return (
     <div className={styles.chatInputContainer}>
@@ -232,7 +402,7 @@ const ChatInput = React.forwardRef(({
           className={styles.chatInput}
           aria-label="Message input"
         />
-        
+
         {!disabled && (
           <button
             type="button"
