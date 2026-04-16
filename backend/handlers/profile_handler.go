@@ -27,7 +27,7 @@ func (h *ProfileHandler) ProfileHandler(w http.ResponseWriter, r *http.Request) 
 	userID, ok := utils.GetUserIDFromContext(r.Context())
 	if !ok {
 		http.SetCookie(w, &http.Cookie{
-			Name:     "session_token",
+			Name:     "session_id",
 			Value:    "",
 			Path:     "/",
 			MaxAge:   -1,

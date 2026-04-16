@@ -1,9 +1,11 @@
 package hub
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 
 	"social/models"
 	"social/services"
@@ -25,12 +27,45 @@ func NewHandler(service *services.AuthService, session *services.SessionService,
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // allow all origins for now
+		return isOriginAllowed(r.Header.Get("Origin"))
 	},
+}
+
+func isOriginAllowed(origin string) bool {
+	if origin == "" {
+		return false
+	}
+
+	parsedOrigin, err := url.Parse(origin)
+	if err != nil || parsedOrigin.Scheme == "" || parsedOrigin.Host == "" {
+		return false
+	}
+
+	allowedOriginsRaw := os.Getenv("WS_ALLOWED_ORIGINS")
+	if strings.TrimSpace(allowedOriginsRaw) == "" {
+		allowedOriginsRaw = "http://localhost:3000,http://127.0.0.1:3000"
+	}
+
+	for _, allowed := range strings.Split(allowedOriginsRaw, ",") {
+		if strings.EqualFold(strings.TrimSpace(allowed), origin) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h *Handler) ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	log.Printf("🌐 WebSocket request received from %s - Headers: %v\n", r.RemoteAddr, r.Header.Get("Origin"))
+
+	// Require valid session cookie authentication before upgrading to WebSocket.
+	userID, err := h.session.GetUserIDFromSession(r)
+	if err != nil || userID == 0 {
+		log.Printf("❌ WebSocket auth failed: %v\n", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	log.Printf("✅ Authentication via session cookie - userID: %d\n", userID)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -40,34 +75,6 @@ func (h *Handler) ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("✅ WebSocket connection upgraded successfully")
-
-	// Try to get userID from session cookie first
-	userID, err := h.session.GetUserIDFromSession(r)
-
-	// If session not found or error, try to get from query parameter
-	if err != nil || userID == 0 {
-		userIDStr := r.URL.Query().Get("userId")
-		if userIDStr == "" {
-			log.Println("❌ Authentication required: No session and no userId parameter")
-			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Authentication required"))
-			conn.Close()
-			return
-		}
-
-		// Parse userID from query parameter
-		var parsedID int
-		_, err := fmt.Sscanf(userIDStr, "%d", &parsedID)
-		if err != nil || parsedID <= 0 {
-			log.Printf("❌ Invalid userId parameter: %s\n", userIDStr)
-			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Invalid userId"))
-			conn.Close()
-			return
-		}
-		userID = parsedID
-		log.Printf("✅ Authentication via query parameter - userID: %d\n", userID)
-	} else {
-		log.Printf("✅ Authentication via session cookie - userID: %d\n", userID)
-	}
 
 	client := &Client{
 		ID:   userID,

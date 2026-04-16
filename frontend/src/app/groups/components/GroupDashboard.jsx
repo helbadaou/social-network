@@ -6,6 +6,9 @@ import PostForm from '@/app/home/components/PostForm';
 import Navbar from '@/app/home/components/Navbar';
 import MessageSidebar from '@/app/messages/components/MessageSidebar';
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+
 export default function GroupDashboard({ group, onClose, isCreator, nonMembers, inviteUser, currentUser }) {
   // States
   const [activeTab, setActiveTab] = useState('posts');
@@ -42,7 +45,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:8080/api/groups/${group.id}/posts`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${group.id}/posts`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -58,7 +61,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:8080/api/groups/${group.id}/events`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${group.id}/events`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -73,7 +76,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   // Fetch group members
   const fetchChatUsers = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/groups/${group.id}/members`);
+      const res = await fetch(`${API_BASE_URL}/api/groups/${group.id}/members`);
       const data = await res.json();
       setChatUsers(data);
     } catch (err) {
@@ -92,7 +95,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch(`http://localhost:8080/api/groups/${group.id}/posts`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${group.id}/posts`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -119,7 +122,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
   useEffect(() => {
     if (!group?.id || !currentUser?.ID) return;
 
-    const socket = new WebSocket('ws://localhost:8080/ws');
+    const socket = new WebSocket(WS_URL);
 
     socket.onopen = () => {
       ws.current = socket;
@@ -142,7 +145,7 @@ export default function GroupDashboard({ group, onClose, isCreator, nonMembers, 
     // Load message history
     const loadMessages = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/groups/${group.id}/messages`);
+        const res = await fetch(`${API_BASE_URL}/api/groups/${group.id}/messages`);
         const data = await res.json();
         setGroupMessages(data || []);
       } catch (err) {

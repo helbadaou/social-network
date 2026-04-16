@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useWorker } from '../contexts/WorkerContext'
 import { useNavbar } from '../contexts/NavBarContext'
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+
 // Ce composant initialise le Worker global une seule fois
 export function WorkerInitializer() {
   const { user } = useAuth()
@@ -37,7 +39,7 @@ export function WorkerInitializer() {
         if (type === 'notification' || type === 'follow_request' || type === 'group_join_request' || type === 'group_invitation' || type === 'group_event_created') {
           try {
             // fetch latest notifications from server to keep accurate state
-            const res = await fetch('http://localhost:8080/api/notifications', { credentials: 'include' })
+            const res = await fetch(`${API_BASE_URL}/api/notifications`, { credentials: 'include' })
             if (!res.ok) {
               console.warn('WorkerInitializer: failed to fetch notifications', res.status)
               return
