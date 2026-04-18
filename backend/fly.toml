@@ -1,0 +1,25 @@
+app = "social-network-backend-helbadao"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  DB_PATH = "/data/social.db"
+  # Update this to your frontend Fly URL after creating frontend app
+  CORS_ALLOWED_ORIGINS = "https://social-network-frontend-helbadao.fly.dev,https://social-network.houssam-elbadaoui.tech,http://localhost:3000,http://127.0.0.1:3000"
+  # Update this to your frontend Fly URL after creating frontend app
+  WS_ALLOWED_ORIGINS = "https://social-network-frontend-helbadao.fly.dev,https://social-network.houssam-elbadaoui.tech,http://localhost:3000,http://127.0.0.1:3000"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "social_data"
+  destination = "/data"

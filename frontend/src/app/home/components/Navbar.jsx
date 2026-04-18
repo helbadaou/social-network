@@ -12,6 +12,16 @@ import { useNavbar } from '../../../contexts/NavBarContext';
 import Image from 'next/image';
 import styles from './Navbar.module.css';
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+
+const toApiUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+const toMediaUrl = (path) => {
+  if (!path) return '/avatar.png';
+  if (path.startsWith('http')) return path;
+  return `${API_BASE_URL}/${path.replace(/^\/+/, '')}`;
+};
+
 export function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
@@ -53,7 +63,7 @@ export function Navbar() {
 
     if (value.length > 1) {
       try {
-        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
+        const res = await fetch(toApiUrl(`/api/search?query=${encodeURIComponent(value)}`), {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to search users");
@@ -91,7 +101,7 @@ export function Navbar() {
         formData.append("recipient_ids", id);
       });
 
-      const res = await fetch("http://localhost:8080/api/posts", {
+      const res = await fetch(toApiUrl('/api/posts'), {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -110,7 +120,7 @@ export function Navbar() {
       }
 
       // Rafraîchir les posts en appelant l'API pour récupérer le nouveau post
-      await fetch("http://localhost:8080/api/posts", {
+      await fetch(toApiUrl('/api/posts'), {
         credentials: "include"
       })
         .then(res => res.json())
@@ -140,7 +150,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:8080/api/logout', {
+      await fetch(toApiUrl('/api/logout'), {
         credentials: 'include',
         method: 'POST'
       })
@@ -154,7 +164,7 @@ export function Navbar() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/notifications", { credentials: 'include' });
+      const res = await fetch(toApiUrl('/api/notifications'), { credentials: 'include' });
       const data = await res.json();
 
       const uniqueNotifs = [];
@@ -188,7 +198,7 @@ export function Navbar() {
 
     if (newState) {
       await fetchNotifications();
-      await fetch('http://localhost:8080/api/notifications/seen', {
+      await fetch(toApiUrl('/api/notifications/seen'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),
@@ -201,21 +211,21 @@ export function Navbar() {
 
   const handleAccept = async (notifId, senderId) => {
     try {
-      await fetch('http://localhost:8080/api/follow/accept', {
+      await fetch(toApiUrl('/api/follow/accept'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender_id: senderId }),
         credentials: 'include',
       });
 
-      await fetch('http://localhost:8080/api/notifications/seen', {
+      await fetch(toApiUrl('/api/notifications/seen'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
         credentials: 'include',
       });
 
-      await fetch('http://localhost:8080/api/notifications/delete', {
+      await fetch(toApiUrl('/api/notifications/delete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
@@ -230,19 +240,19 @@ export function Navbar() {
   const handleReject = async (notifId, senderId) => {
     try {
       const [rejectRes, seenRes, deleteRes] = await Promise.all([
-        fetch('http://localhost:8080/api/follow/reject', {
+        fetch(toApiUrl('/api/follow/reject'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sender_id: senderId }),
           credentials: 'include',
         }),
-        fetch('http://localhost:8080/api/notifications/seen', {
+        fetch(toApiUrl('/api/notifications/seen'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         }),
-        fetch('http://localhost:8080/api/notifications/delete', {
+        fetch(toApiUrl('/api/notifications/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -262,7 +272,7 @@ export function Navbar() {
 
   const handleApprove = async (notifId, userId, groupId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/approve`, {
+      const res = await fetch(toApiUrl(`/api/groups/${groupId}/membership/approve`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
@@ -270,14 +280,14 @@ export function Navbar() {
       })
 
       if (res.ok) {
-        await fetch('http://localhost:8080/api/notifications/seen', {
+        await fetch(toApiUrl('/api/notifications/seen'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('http://localhost:8080/api/notifications/delete', {
+        await fetch(toApiUrl('/api/notifications/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -292,21 +302,21 @@ export function Navbar() {
 
   const handleDecline = async (notifId, userId, groupId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/decline`, {
+      const res = await fetch(toApiUrl(`/api/groups/${groupId}/membership/decline`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
         credentials: 'include'
       })
       if (res.ok) {
-        await fetch('http://localhost:8080/api/notifications/seen', {
+        await fetch(toApiUrl('/api/notifications/seen'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('http://localhost:8080/api/notifications/delete', {
+        await fetch(toApiUrl('/api/notifications/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -322,7 +332,7 @@ export function Navbar() {
   const handleVote = async (eventId, groupId, response, notifId) => {
 
     try {
-      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/events/${eventId}/vote`, {
+      const res = await fetch(toApiUrl(`/api/groups/${groupId}/events/${eventId}/vote`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -332,14 +342,14 @@ export function Navbar() {
       });
 
       if (!res.ok) throw new Error('Failed to submit response');
-      await fetch('http://localhost:8080/api/notifications/seen', {
+      await fetch(toApiUrl('/api/notifications/seen'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
         credentials: 'include',
       });
 
-      await fetch('http://localhost:8080/api/notifications/delete', {
+      await fetch(toApiUrl('/api/notifications/delete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_id: notifId }),
@@ -354,21 +364,21 @@ export function Navbar() {
   const handleInviteAccept = async (groupId, notifId) => {
     try {
       // First accept the invitation (this will update the membership status to 'accepted')
-      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/accept`, {
+      const res = await fetch(toApiUrl(`/api/groups/${groupId}/membership/accept`), {
         method: 'POST',
         credentials: 'include',
       });
 
       if (res.ok) {
         // Mark notification as seen and delete it
-        await fetch('http://localhost:8080/api/notifications/seen', {
+        await fetch(toApiUrl('/api/notifications/seen'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('http://localhost:8080/api/notifications/delete', {
+        await fetch(toApiUrl('/api/notifications/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -388,21 +398,21 @@ export function Navbar() {
   const handleInviteDecline = async (groupId, notifId) => {
     try {
       // First decline the invitation (this will remove the membership record)
-      const res = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/refuse`, {
+      const res = await fetch(toApiUrl(`/api/groups/${groupId}/membership/refuse`), {
         method: 'POST',
         credentials: 'include'
       });
 
       if (res.ok) {
         // Mark notification as seen and delete it
-        await fetch('http://localhost:8080/api/notifications/seen', {
+        await fetch(toApiUrl('/api/notifications/seen'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
           credentials: 'include',
         });
 
-        await fetch('http://localhost:8080/api/notifications/delete', {
+        await fetch(toApiUrl('/api/notifications/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notification_id: notifId }),
@@ -422,7 +432,7 @@ export function Navbar() {
 
   const togglePrivacy = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/user/toggle-privacy', {
+      const res = await fetch(toApiUrl('/api/user/toggle-privacy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_private: !isPrivate }),
@@ -657,7 +667,7 @@ export function Navbar() {
                     user.Avatar
                       ? user.Avatar.startsWith('http')
                         ? user.Avatar
-                        : `http://localhost:8080/${user?.Avatar}`
+                        : toMediaUrl(user?.Avatar)
                       : '/avatar.png'
                   }
                   alt="Avatar"

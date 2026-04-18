@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 
 const AuthContext = createContext()
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -11,7 +12,7 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/profile', { 
+        const res = await fetch(`${API_BASE_URL}/api/profile`, {
           credentials: 'include' 
         })
         if (res.ok) {

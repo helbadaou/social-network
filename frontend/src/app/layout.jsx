@@ -10,7 +10,46 @@ import MessageSidebar from "./messages/components/MessageSidebar";
 import ChatBoxContainer from "./messages/components/ChatBoxContainer";
 import { WorkerInitializer } from "../components/WorkerInitializer";
 import { ChatInitializer } from "../components/ChatInitializer";
+import { EndpointRuntimePatch } from "../components/EndpointRuntimePatch";
 import "./globals.css";
+
+const endpointPatchScript = `(function () {
+  if (typeof window === 'undefined' || window.__endpointRuntimePatchedEarly) return;
+
+  var API_BASE_URL = (window.__NEXT_PUBLIC_API_URL || 'https://social-network-backend-helbadao.fly.dev').replace(/\\/+$/, '');
+  var WS_URL = window.__NEXT_PUBLIC_WS_URL || 'wss://social-network-backend-helbadao.fly.dev/ws';
+
+  function rewriteUrl(rawUrl) {
+    if (typeof rawUrl !== 'string') return rawUrl;
+    if (rawUrl.indexOf('http://localhost:8080') === 0) return rawUrl.replace('http://localhost:8080', API_BASE_URL);
+    if (rawUrl.indexOf('ws://localhost:8080/ws') === 0) return rawUrl.replace('ws://localhost:8080/ws', WS_URL);
+    return rawUrl;
+  }
+
+  var originalFetch = window.fetch ? window.fetch.bind(window) : null;
+  if (originalFetch) {
+    window.fetch = function (input, init) {
+      if (typeof input === 'string') return originalFetch(rewriteUrl(input), init);
+      if (input instanceof Request) {
+        var nextUrl = rewriteUrl(input.url);
+        if (nextUrl !== input.url) return originalFetch(new Request(nextUrl, input), init);
+      }
+      return originalFetch(input, init);
+    };
+  }
+
+  if (window.WebSocket) {
+    var OriginalWebSocket = window.WebSocket;
+    window.WebSocket = function (url, protocols) {
+      var nextUrl = rewriteUrl(typeof url === 'string' ? url : String(url));
+      if (protocols !== undefined) return new OriginalWebSocket(nextUrl, protocols);
+      return new OriginalWebSocket(nextUrl);
+    };
+    window.WebSocket.prototype = OriginalWebSocket.prototype;
+  }
+
+  window.__endpointRuntimePatchedEarly = true;
+})();`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,11 +70,13 @@ export default function RootLayout({ children }) {
   return (
     <html>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <script dangerouslySetInnerHTML={{ __html: endpointPatchScript }} />
         <AuthProvider>
           <WorkerProvider>
             <ChatProvider>
               <NavbarProvider>
                 <MessageSidebarProvider>
+                  <EndpointRuntimePatch />
                   <WorkerInitializer />
                   <ChatInitializer />
                   <Navbar />

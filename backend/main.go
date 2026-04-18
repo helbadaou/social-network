@@ -139,8 +139,14 @@ func main() {
 	})
 
 	// 9. Start Server
-	fmt.Println("✅ Server started on :8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	addr := ":" + port
+	fmt.Printf("✅ Server started on %s\n", addr)
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		fmt.Printf("❌ Server error: %v\n", err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -16,8 +17,16 @@ var DB *sql.DB
 
 func InitDB() {
 	var err error
-	os.MkdirAll("./data", 0755)
-	DB, err = sql.Open("sqlite3", "./data/social.db?charset=utf8")
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "./data/social.db"
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		log.Fatal("Failed to create DB directory:", err)
+	}
+
+	DB, err = sql.Open("sqlite3", dbPath+"?charset=utf8")
 	if err != nil {
 		log.Fatal("Failed to open DB:", err)
 	}
