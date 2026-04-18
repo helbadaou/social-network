@@ -1,0 +1,133 @@
+.main {
+  min-height: calc(100vh - 5.5rem);
+  padding: 2rem 1.25rem 2.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.loading {
+  min-height: calc(100vh - 5.5rem);
+  display: grid;
+  place-items: center;
+  color: #c5d5ea;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #2b4568;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.2), transparent 38%),
+    linear-gradient(160deg, rgba(15, 27, 45, 0.95), rgba(10, 18, 30, 0.92));
+  padding: 2.5rem 1.4rem;
+  box-shadow: 0 22px 44px rgba(3, 9, 20, 0.42);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(103, 232, 249, 0.4);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: #a5f3fc;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  background: rgba(8, 29, 53, 0.45);
+}
+
+.title {
+  font-size: clamp(1.8rem, 5vw, 3.1rem);
+  line-height: 1.08;
+  color: #f4f9ff;
+  max-width: 16ch;
+  margin-bottom: 0.85rem;
+}
+
+.subtitle {
+  color: #b3c4dd;
+  max-width: 54ch;
+  line-height: 1.6;
+  margin-bottom: 1.4rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.primaryAction,
+.secondaryAction {
+  padding: 0.72rem 1.1rem;
+  border-radius: 0.68rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.16s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.primaryAction {
+  background: linear-gradient(135deg, #14b8a6, #0ea5a5);
+  color: #f8fffe;
+  border: 1px solid rgba(94, 234, 212, 0.32);
+}
+
+.primaryAction:hover {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  box-shadow: 0 12px 20px rgba(6, 68, 66, 0.38);
+}
+
+.secondaryAction {
+  color: #d9e7fb;
+  border: 1px solid #2b4568;
+  background: rgba(17, 34, 55, 0.65);
+}
+
+.secondaryAction:hover {
+  background: rgba(28, 50, 78, 0.85);
+}
+
+.features {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.9rem;
+}
+
+.featureCard {
+  border: 1px solid #254062;
+  border-radius: 1rem;
+  background: linear-gradient(160deg, rgba(15, 27, 45, 0.94), rgba(11, 20, 34, 0.9));
+  padding: 1rem;
+  box-shadow: 0 12px 22px rgba(4, 11, 21, 0.3);
+}
+
+.featureCard h2 {
+  margin: 0 0 0.4rem;
+  color: #e8f4ff;
+  font-size: 1rem;
+}
+
+.featureCard p {
+  margin: 0;
+  color: #a7bbd6;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: 2.2rem 1.4rem 3rem;
+  }
+
+  .hero {
+    padding: 3rem 2.2rem;
+  }
+
+  .features {
+    margin-top: 1.2rem;
+    gap: 1rem;
+  }
+}

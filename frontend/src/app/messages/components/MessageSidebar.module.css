@@ -4,8 +4,8 @@
   left: 0;
   height: 100%;
   width: 25rem;
-  background-color: #111827; /* bg-gray-900 */
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  background: linear-gradient(180deg, #0f1b2d, #0b1524);
+  box-shadow: 0 20px 40px rgba(3, 9, 20, 0.45);
   transform: translateX(-100%);
   transition: transform 0.3s ease;
   z-index: 40;
@@ -24,7 +24,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border-bottom: 1px solid #374151; /* border-gray-700 */
+  border-bottom: 1px solid #254062;
 }
 
 .headerTitle {
@@ -34,7 +34,7 @@
 }
 
 .closeBtn {
-  color: #9ca3af; /* text-gray-400 */
+  color: #9fb0cc;
   background: none;
   border: none;
   cursor: pointer;
@@ -56,7 +56,7 @@
 .sectionTitle {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #34d399; /* text-green-400 */
+  color: #5eead4;
   margin-bottom: 0.75rem;
 }
 
@@ -67,12 +67,12 @@
   margin-bottom: 0.75rem;
   cursor: pointer;
   padding: 0.5rem;
-  border-left: 2px solid #10b981; /* border-green-500 */
-  border-radius: 0.375rem;
+  border-left: 2px solid #14b8a6;
+  border-radius: 0.6rem;
   transition: background-color 0.2s ease;
 }
 .userItem:hover {
-  background-color: #1f2937; /* hover:bg-gray-800 */
+  background-color: #1a2e49;
 }
 
 .avatar {
@@ -89,7 +89,7 @@
 
 .userStatus {
   font-size: 0.75rem;
-  color: #34d399;
+  color: #5eead4;
 }
 
 .emptyState {
@@ -99,17 +99,17 @@
 
 .emptyText {
   font-size: 0.875rem;
-  color: #9ca3af; /* text-gray-400 */
+  color: #9fb0cc;
 }
 
 .refreshBtn {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: #60a5fa; /* text-blue-400 */
+  color: #67e8f9;
   background: none;
   border: none;
   cursor: pointer;
 }
 .refreshBtn:hover {
-  color: #93c5fd; /* text-blue-300 */
+  color: #a5f3fc;
 }

@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #08111f;
+  --background-elevated: #0f1b2d;
+  --background-soft: #16243a;
+  --foreground: #f3f7ff;
+  --muted-foreground: #9fb0cc;
+  --border: #254062;
+  --accent: #2dd4bf;
+  --accent-strong: #14b8a6;
+  --danger: #fb7185;
+  --shadow-lg: 0 14px 30px rgba(3, 9, 20, 0.45);
+  --shadow-sm: 0 6px 16px rgba(8, 18, 35, 0.35);
 }
 
 @theme inline {
@@ -12,15 +21,100 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background:
+    radial-gradient(circle at 8% 5%, rgba(45, 212, 191, 0.14), transparent 36%),
+    radial-gradient(circle at 90% 0%, rgba(56, 189, 248, 0.1), transparent 30%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+  text-rendering: geometricPrecision;
+  min-height: 100vh;
 }
 
-body {
-  background: var(--background);
+* {
+  border-color: var(--border);
+}
+
+a {
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #67e8f9;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+input,
+textarea,
+select {
+  background-color: var(--background-soft);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  border: 1px solid var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18);
+}
+
+::selection {
+  background: rgba(45, 212, 191, 0.3);
+  color: #f8fafc;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1a2d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #244266;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #31557f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

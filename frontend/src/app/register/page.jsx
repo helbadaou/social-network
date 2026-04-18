@@ -3,26 +3,22 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './RegisterPage.module.css'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('http://localhost:8080/api/profile', {
-          credentials: 'include',
-        })
-        if (res.ok) {
-          router.push('/home')
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err)
-      }
+    if (loading) {
+      return
     }
-    checkAuth()
-  }, [router])
+
+    if (user?.ID) {
+      router.push('/home')
+    }
+  }, [loading, user, router])
 
   const [form, setForm] = useState({
     email: '',

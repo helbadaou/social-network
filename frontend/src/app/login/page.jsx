@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -11,24 +12,17 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('http://localhost:8080/api/profile', {
-          credentials: 'include',
-        })
-
-        if (res.ok) {
-          router.push('/') // Use router.push instead of redirect
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err)
-      }
+    if (loading) {
+      return
     }
 
-    checkAuth()
-  }, [router]) // Add router to dependencies
+    if (user?.ID) {
+      router.push('/')
+    }
+  }, [loading, user, router])
 
   const handleLogin = async (e) => {
     e.preventDefault()
