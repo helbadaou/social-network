@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { apiUrl, assetUrl } from '@/lib/api'
 import styles from './PublicProfilePage.module.css'
 
 export default function PublicProfilePage() {
@@ -22,7 +23,7 @@ export default function PublicProfilePage() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/profile", {
+      const res = await fetch(apiUrl('/api/profile'), {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Unauthorized");
@@ -35,7 +36,7 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     if (!id) return
-    fetch(`http://localhost:8080/api/users/${id}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/users/${id}`), { credentials: 'include' })
       .then(res => res.ok ? res.json() : Promise.reject(res))
       .then(data => {
         setProfile(data)
@@ -50,7 +51,7 @@ export default function PublicProfilePage() {
 
   const loadPosts = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/user-posts/${id}`, {
+      const res = await fetch(apiUrl(`/api/user-posts/${id}`), {
         credentials: 'include',
       })
       const text = await res.text()
@@ -63,7 +64,7 @@ export default function PublicProfilePage() {
 
   const loadFollowers = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/users-followers/${id}`, { credentials: 'include' });
+      const res = await fetch(apiUrl(`/api/users-followers/${id}`), { credentials: 'include' });
       const text = await res.text();
       if (!res.ok) throw new Error(text);
       setFollowers(JSON.parse(text));
@@ -72,7 +73,7 @@ export default function PublicProfilePage() {
 
   const loadFollowing = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/users-following/${id}`, { credentials: 'include' });
+      const res = await fetch(apiUrl(`/api/users-following/${id}`), { credentials: 'include' });
       const text = await res.text();
       if (!res.ok) throw new Error(text);
       setFollowing(JSON.parse(text));
@@ -101,7 +102,7 @@ export default function PublicProfilePage() {
               profile.avatar
                 ? profile.avatar.startsWith('http')
                   ? profile.avatar
-                  : `http://localhost:8080/${profile.avatar}`
+                    : assetUrl(profile.avatar)
                 : '/avatar.png'
             }
             alt="Avatar"
@@ -164,7 +165,7 @@ export default function PublicProfilePage() {
                   <p className={styles.postContent}>{post.content}</p>
                   {post.image_url && (
                     <img
-                      src={post.image_url.startsWith('http') ? post.image_url : `http://localhost:8080${post.image_url}`}
+                      src={post.image_url.startsWith('http') ? post.image_url : assetUrl(post.image_url)}
                       alt="Post"
                       className={styles.postImage}
                     />
@@ -187,7 +188,7 @@ export default function PublicProfilePage() {
                   onClick={() => router.push(`/profile/${user.ID}`)}
                 >
                   <img
-                    src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
+                    src={user.Avatar ? assetUrl(user.Avatar) : '/avatar.png'}
                     className={styles.userAvatar}
                     alt="avatar"
                   />
@@ -213,7 +214,7 @@ export default function PublicProfilePage() {
                   onClick={() => router.push(`/profile/${user.ID}`)}
                 >
                   <img
-                    src={user.Avatar ? `http://localhost:8080/${user.Avatar}` : '/avatar.png'}
+                    src={user.Avatar ? assetUrl(user.Avatar) : '/avatar.png'}
                     className={styles.userAvatar}
                     alt="avatar"
                   />
@@ -238,7 +239,7 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
     if (!currentUser?.ID || isLoading) return;
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/follow', {
+      const res = await fetch(apiUrl('/api/follow'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -259,7 +260,7 @@ function FollowButton({ profile, currentUser, onFollowChange }) {
     if (!currentUser?.ID || isLoading) return;
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/unfollow', {
+      const res = await fetch(apiUrl('/api/unfollow'), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"social/models"
+	"social/utils"
 	"time"
 )
 
@@ -25,7 +26,6 @@ func (r *GroupRepository) GetGroupDetailsByID(groupID, userID int) (*models.Grou
 	FROM groups g
 	WHERE g.id = ?
 `
-
 
 	var resp models.GroupResponse
 	err := r.db.QueryRow(query, userID, userID, userID, groupID).Scan(
@@ -50,37 +50,37 @@ func (r *GroupRepository) GetGroupDetailsByID(groupID, userID int) (*models.Grou
 	return &resp, nil
 }
 func (h *GroupRepository) getGroupMembers(groupID int) ([]models.User, error) {
-    query := `
+	query := `
         SELECT u.id, u.first_name, u.last_name, u.email, u.avatar
         FROM users u
         INNER JOIN group_members gm ON u.id = gm.user_id
         WHERE gm.group_id = ? AND gm.status = 'accepted'
         ORDER BY u.first_name, u.last_name
     `
-    
-    rows, err := h.db.Query(query, groupID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
 
-    var members []models.User
-    for rows.Next() {
-        var member models.User
-        err := rows.Scan(
-            &member.ID,
-            &member.FirstName,
-            &member.LastName,
-            &member.Email,
-            &member.Avatar,
-        )
-        if err != nil {
-            return nil, err
-        }
-        members = append(members, member)
-    }
+	rows, err := h.db.Query(query, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    return members, rows.Err()
+	var members []models.User
+	for rows.Next() {
+		var member models.User
+		err := rows.Scan(
+			&member.ID,
+			&member.FirstName,
+			&member.LastName,
+			&member.Email,
+			&member.Avatar,
+		)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, member)
+	}
+
+	return members, rows.Err()
 }
 
 func (r *GroupRepository) GetGroupCreatorID(groupID int) (int, error) {
@@ -281,7 +281,7 @@ func (r *GroupRepository) GetGroupPosts(groupID, userID int) ([]models.GroupPost
 		}
 
 		if post.AuthorAvatar != "" {
-			post.AuthorAvatar = "http://localhost:8080/" + post.AuthorAvatar
+			post.AuthorAvatar = utils.PrepareAvatarURL(post.AuthorAvatar)
 		}
 
 		posts = append(posts, post)
@@ -335,7 +335,7 @@ func (r *GroupRepository) CreateGroupPost(post models.GroupPost) (*models.GroupP
 
 	// Prepend avatar URL if exists
 	if fullPost.AuthorAvatar != "" {
-		fullPost.AuthorAvatar = "http://localhost:8080/" + fullPost.AuthorAvatar
+		fullPost.AuthorAvatar = utils.PrepareAvatarURL(fullPost.AuthorAvatar)
 	}
 
 	return &fullPost, nil
@@ -388,7 +388,7 @@ func (r *GroupRepository) GetGroupPostComments(postID, userID int) ([]models.Gro
 		}
 
 		if comment.AuthorAvatar != "" {
-			comment.AuthorAvatar = "http://localhost:8080/" + comment.AuthorAvatar
+			comment.AuthorAvatar = utils.PrepareAvatarURL(comment.AuthorAvatar)
 		}
 
 		comments = append(comments, comment)
@@ -433,7 +433,7 @@ func (r *GroupRepository) GetGroupPostCommentByID(commentID int) (models.GroupPo
 	}
 
 	if comment.AuthorAvatar != "" {
-		comment.AuthorAvatar = "http://localhost:8080/" + comment.AuthorAvatar
+		comment.AuthorAvatar = utils.PrepareAvatarURL(comment.AuthorAvatar)
 	}
 
 	return comment, nil
@@ -687,7 +687,7 @@ func (r *GroupRepository) GetGroupMembers(groupID int) ([]models.GroupMember, er
 
 		member.JoinedAt = joinedAt.Format(time.RFC3339)
 		if member.Avatar != "" {
-			member.Avatar = "http://localhost:8080/" + member.Avatar
+			member.Avatar = utils.PrepareAvatarURL(member.Avatar)
 		}
 
 		members = append(members, member)
@@ -749,7 +749,7 @@ func (r *GroupRepository) GetGroupChatHistory(groupID int, limit int) ([]models.
 
 		msg.Timestamp = timestamp
 		if msg.SenderAvatar != "" {
-			msg.SenderAvatar = "http://localhost:8080/" + msg.SenderAvatar
+			msg.SenderAvatar = utils.PrepareAvatarURL(msg.SenderAvatar)
 		}
 
 		messages = append(messages, msg)

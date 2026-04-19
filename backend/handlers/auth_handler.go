@@ -55,7 +55,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer file.Close()
 
-		avatarPath := "uploads/avatars/" + header.Filename
+		avatarPath := utils.UploadPath("avatars", header.Filename)
 		out, err := os.Create(avatarPath)
 		if err != nil {
 			http.Error(w, "Unable to save avatar", http.StatusInternalServerError)
@@ -116,7 +116,8 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires:  expiration,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: utils.CookieSameSite(),
+		Secure:   utils.CookieSecure(r),
 	})
 
 	user.Avatar = utils.PrepareAvatarURL(user.Avatar)
@@ -148,8 +149,8 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode, // Pour s'assurer que les cookies sont bien envoyés au frontend
-		Secure:   false,
+		SameSite: utils.CookieSameSite(),
+		Secure:   utils.CookieSecure(r),
 	})
 
 	w.Write([]byte("✅ Logged out successfully"))

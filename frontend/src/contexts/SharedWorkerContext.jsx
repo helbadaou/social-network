@@ -4,12 +4,14 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react'
 
 const SharedWorkerContext = createContext()
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+
 export function SharedWorkerProvider({ children }) {
   const workerRef = useRef(null)
   const [workerMessages, setWorkerMessages] = useState([])
 
   useEffect(() => {
-    workerRef.current = new SharedWorker('/sharedWorker.jsx')
+    workerRef.current = new SharedWorker(`/sharedWorker.jsx?apiBase=${encodeURIComponent(apiBaseUrl)}`)
     const { port } = workerRef.current
     port.start()
 

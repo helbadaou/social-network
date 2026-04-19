@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { apiUrl } from '@/lib/api'
 import styles from './CreatePostForm.module.css'
 
 export default function CreatePostForm({ onPostCreated }) {
@@ -11,7 +12,7 @@ export default function CreatePostForm({ onPostCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    const res = await fetch('http://localhost:8080/api/posts', {
+    const res = await fetch(apiUrl('/api/posts'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

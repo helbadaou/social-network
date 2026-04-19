@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { apiUrl, assetUrl } from '@/lib/api'
 import styles from './CommentSection.module.css'
 
 export default function CommentSection({ postId }) {
@@ -10,7 +11,7 @@ export default function CommentSection({ postId }) {
 
     const fetchComments = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/api/comments/post?id=${postId}`, {
+            const res = await fetch(apiUrl(`/api/comments/post?id=${postId}`), {
                 credentials: 'include',
             })
             if (res.ok) {
@@ -39,7 +40,7 @@ export default function CommentSection({ postId }) {
         }
 
         try {
-            const res = await fetch(`http://localhost:8080/api/comments`, {
+            const res = await fetch(apiUrl('/api/comments'), {
                 method: 'POST',
                 credentials: 'include',
                 body: formData,
@@ -90,7 +91,7 @@ export default function CommentSection({ postId }) {
                                         comment.author.avatar
                                             ? comment.author.avatar.startsWith('http')
                                                 ? comment.author.avatar
-                                                : `http://localhost:8080/${comment.author.avatar}`
+                                                : assetUrl(comment.author.avatar)
                                             : '/avatar.png'
                                     }
                                     alt="Avatar"
@@ -108,7 +109,7 @@ export default function CommentSection({ postId }) {
                             <p className={styles.commentContent}>{comment.content}</p>
                             {comment.image_url && (
                                 <img
-                                    src={`http://localhost:8080${comment.image_url}`}
+                                    src={assetUrl(comment.image_url)}
                                     alt="Image commentaire"
                                     className={styles.commentImage}
                                 />

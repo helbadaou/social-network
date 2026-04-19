@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../../contexts/AuthContext'
+import { apiUrl } from '@/lib/api'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -30,7 +31,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8080/api/login', {
+      const res = await fetch(apiUrl('/api/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Important for cookies

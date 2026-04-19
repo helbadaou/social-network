@@ -1,6 +1,7 @@
 // src/contexts/AuthContext.jsx
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 
 const AuthContext = createContext()
 
@@ -11,7 +12,7 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/profile', { 
+        const res = await fetch(apiUrl('/api/profile'), { 
           credentials: 'include' 
         })
         if (res.ok) {

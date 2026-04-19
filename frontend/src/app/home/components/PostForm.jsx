@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState, forwardRef } from 'react'
+import { apiUrl } from '@/lib/api'
 import styles from './PostForm.module.css'
 
 const PostForm = forwardRef(function PostForm(
@@ -15,7 +16,7 @@ const PostForm = forwardRef(function PostForm(
   // Charger les abonnés quand privacy devient "custom"
   useEffect(() => {
     if (privacy === 'custom') {
-      fetch('http://localhost:8080/api/recipients', {
+      fetch(apiUrl('/api/recipients'), {
         credentials: 'include',
       })
         .then(async (res) => {

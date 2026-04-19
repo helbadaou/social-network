@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import CommentSection from './CommentSection'
+import { assetUrl } from '@/lib/api'
 import styles from './Post.module.css'
 
 export default function Post({ post, fetchUserById }) {
@@ -25,7 +26,7 @@ export default function Post({ post, fetchUserById }) {
             post.author_avatar
               ? post.author_avatar.startsWith('http')
                 ? post.author_avatar
-                : `http://localhost:8080/${post?.author_avatar}`
+                : assetUrl(post?.author_avatar)
               : '/avatar.png'
           }
           alt="Avatar"
@@ -46,13 +47,13 @@ export default function Post({ post, fetchUserById }) {
       <p className={styles.postContent}>{post.content}</p>
 
       {/* Image */}
-      {post.image_url && (
-        <img
-          src={`http://localhost:8080${post.image_url}`}
-          alt="Post"
-          className={styles.postImage}
-        />
-      )}
+        {post.image_url && (
+          <img
+            src={assetUrl(post.image_url)}
+            alt="Post"
+            className={styles.postImage}
+          />
+        )}
 
       {/* Icône/commentaire toggle */}
       <div className={styles.actionsContainer}>

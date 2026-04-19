@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -81,7 +80,6 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 	privacy := r.FormValue("privacy")
 	recipientIDsStr := r.Form["recipient_ids"]
 
-
 	if content == "" || privacy == "" {
 		http.Error(w, "Missing content or privacy", http.StatusBadRequest)
 		return
@@ -92,7 +90,7 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 	if err == nil && header != nil {
 		defer file.Close()
 		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), header.Filename)
-		dst := fmt.Sprintf("uploads/%s", filename)
+		dst := utils.UploadPath(filename)
 		outFile, err := os.Create(dst)
 		if err != nil {
 			http.Error(w, "Could not save image", http.StatusInternalServerError)
@@ -104,7 +102,7 @@ func (h *PostHandler) CreatePostHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Could not write image", http.StatusInternalServerError)
 			return
 		}
-		imageURL = "/uploads/" + filename
+		imageURL = utils.UploadURL(filename)
 	}
 
 	var recipientIDs []int
@@ -184,7 +182,7 @@ func (h *PostHandler) CreateCommentHandler(w http.ResponseWriter, r *http.Reques
 
 		// Save image file (you can move this logic to a helper if you want)
 		filename := utils.GenerateFilename(fileHeader.Filename)
-		dstPath := filepath.Join("uploads", filename)
+		dstPath := utils.UploadPath(filename)
 		dst, err := os.Create(dstPath)
 		if err != nil {
 			http.Error(w, "Erreur serveur", http.StatusInternalServerError)
@@ -198,7 +196,7 @@ func (h *PostHandler) CreateCommentHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		image = "/uploads/" + filename
+		image = utils.UploadURL(filename)
 	}
 
 	if content == "" && image == "" {

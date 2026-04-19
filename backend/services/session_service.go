@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"social/db/sqlite"
 	"social/repositories"
+	"social/utils"
 	"time"
 )
 
@@ -25,8 +26,8 @@ func (s *SessionService) GetUserIDFromSession(w http.ResponseWriter, r *http.Req
 			Value:    fmt.Sprintf("%v", "expired"),
 			Path:     "/",
 			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   false, // use true if using https
+			SameSite: utils.CookieSameSite(),
+			Secure:   utils.CookieSecure(r),
 		})
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return 0, false

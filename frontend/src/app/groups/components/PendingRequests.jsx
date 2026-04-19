@@ -1,6 +1,7 @@
 // src/app/groups/components/PendingRequests.jsx
 'use client'
 import { useEffect, useState } from 'react'
+import { assetUrl } from '@/lib/api'
 import styles from './PendingRequests.module.css'
 
 export default function PendingRequests({ groupId }) {
@@ -79,20 +80,12 @@ export default function PendingRequests({ groupId }) {
       ) : (
         <ul className={styles.list}>
           {requests.map(request => {
-            // Construct proper avatar URL
-            let avatarUrl = '/avatar.png'
-            if (request.avatar) {
-              avatarUrl = request.avatar.startsWith('http') 
-                ? request.avatar 
-                : `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/${request.avatar.replace(/^\/+/, '')}`
-            }
-
             return (
               <li key={request.request_id} className={styles.listItem}>
                 <div className={styles.flexBetween}>
                   <div className={styles.flexCenter}>
                     <img
-                      src={request.avatar ? `http://localhost:8080/${request.avatar}` : '/avatar.png'}
+                      src={request.avatar ? assetUrl(request.avatar) : '/avatar.png'}
                       alt={request.username}
                       width={40}
                       height={40}

@@ -8,6 +8,7 @@ import ChatBox from "../messages/components/ChatBox";
 import Post from './components/Post'
 import styles from './HomePage.module.css'
 import { useMessageSidebar } from "../../contexts/MessageSideBarContext";
+import { apiUrl } from '@/lib/api'
 
 export default function HomePage() {
   // States for posts, user, UI, etc.
@@ -321,7 +322,7 @@ export default function HomePage() {
 
   const fetchChatUsers = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/chat-users", {
+      const res = await fetch(apiUrl('/api/chat-users'), {
         credentials: "include",
       });
        if (!res.ok) {
@@ -337,7 +338,7 @@ export default function HomePage() {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/profile", {
+      const res = await fetch(apiUrl('/api/profile'), {
         credentials: "include",
       });
 
@@ -356,7 +357,7 @@ export default function HomePage() {
 
   const fetchPosts = () => {
     setLoading(true);
-    fetch("http://localhost:8080/api/posts", { credentials: "include" })
+    fetch(apiUrl('/api/posts'), { credentials: "include" })
       .then((res) => res.json())
       .then((data) => setPosts(data))
       .catch((err) => console.error("Error fetching posts:", err))
@@ -386,7 +387,7 @@ export default function HomePage() {
       if (privacy === "custom") {
         finalRecipientIds = selectedRecipientIds;
       } else if (privacy === "followers" || privacy === "private") {
-        const res = await fetch("http://localhost:8080/api/recipients", {
+        const res = await fetch(apiUrl('/api/recipients'), {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Impossible de récupérer les destinataires");
@@ -398,7 +399,7 @@ export default function HomePage() {
         formData.append("recipient_ids", id);
       });
 
-      const res = await fetch("http://localhost:8080/api/posts", {
+      const res = await fetch(apiUrl('/api/posts'), {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -429,7 +430,7 @@ export default function HomePage() {
 
     if (value.length > 1) {
       try {
-        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
+        const res = await fetch(apiUrl(`/api/search?query=${value}`), {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to search users");
@@ -450,7 +451,7 @@ export default function HomePage() {
         workerRef.current = null;
       }
 
-      const res = await fetch("http://localhost:8080/api/logout", {
+      const res = await fetch(apiUrl('/api/logout'), {
         method: "POST",
         credentials: "include",
       });

@@ -1,0 +1,26 @@
+app = "social-network-backend"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  BACKEND_PUBLIC_URL = "https://social-network-backend.fly.dev"
+  FRONTEND_ORIGIN = "https://social-network-frontend.fly.dev"
+  FRONTEND_ORIGINS = "https://social-network-frontend.fly.dev,https://social-network.houssam-elbadaoui.tech,http://localhost:3000"
+  UPLOADS_DIR = "/data/uploads"
+  DB_PATH = "/data/social.db?charset=utf8"
+  COOKIE_SAMESITE = "none"
+  COOKIE_SECURE = "true"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "social_network_data"
+  destination = "/data"

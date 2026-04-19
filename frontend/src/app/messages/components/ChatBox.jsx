@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import EmojiPicker from '../../home/components/Emoji'
+import { apiUrl } from '@/lib/api'
 import styles from './ChatBox.module.css'
 
 export default function ChatBox({ currentUser, recipient, onSendMessage, messages = [], input, setInput, onClose }) {
@@ -40,7 +41,7 @@ export default function ChatBox({ currentUser, recipient, onSendMessage, message
       setIsLoading(true)
       
       try {
-        const res = await fetch(`http://localhost:8080/api/chat/history?with=${recipientId}`, {
+        const res = await fetch(apiUrl(`/api/chat/history?with=${recipientId}`), {
           credentials: 'include'
         })
 

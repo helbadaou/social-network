@@ -7,6 +7,10 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
 let reconnectInterval = null; // Add this line for interval tracking
 
+const searchParams = new URL(self.location.href).searchParams;
+const apiBaseUrl = searchParams.get("apiBase") || "http://localhost:8080";
+const wsBaseUrl = apiBaseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/+$/, "");
+
 function connectWebSocket() {
   // Clear any existing interval
   if (reconnectInterval) {
@@ -14,7 +18,7 @@ function connectWebSocket() {
     reconnectInterval = null;
   }
 
-  socket = new WebSocket(`ws://localhost:8080/ws?userId=${encodeURIComponent(userId)}`);
+  socket = new WebSocket(`${wsBaseUrl}/ws?userId=${encodeURIComponent(userId)}`);
 
   socket.onopen = () => {
     reconnectAttempts = 0;

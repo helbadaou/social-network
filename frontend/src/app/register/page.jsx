@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../../contexts/AuthContext'
+import { apiUrl } from '@/lib/api'
 import styles from './RegisterPage.module.css'
 
 export default function RegisterPage() {
@@ -49,7 +50,7 @@ export default function RegisterPage() {
     })
 
     try {
-      const res = await fetch('http://localhost:8080/api/register', {
+      const res = await fetch(apiUrl('/api/register'), {
         method: 'POST',
         body: formData,
       })

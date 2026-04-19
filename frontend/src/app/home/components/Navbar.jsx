@@ -9,6 +9,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import PostForm from '../../../app/home/components/PostForm';
 import { useMessageSidebar } from '../../../contexts/MessageSideBarContext';
 import Image from 'next/image';
+import { apiUrl, assetUrl } from '@/lib/api';
 import styles from './Navbar.module.css';
 
 export function Navbar() {
@@ -62,7 +63,7 @@ export function Navbar() {
 
     if (value.length > 1) {
       try {
-        const res = await fetch(`http://localhost:8080/api/search?query=${value}`, {
+        const res = await fetch(apiUrl(`/api/search?query=${value}`), {
           credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to search users");
@@ -100,7 +101,7 @@ export function Navbar() {
         formData.append("recipient_ids", id);
       });
 
-      const res = await fetch("http://localhost:8080/api/posts", {
+      const res = await fetch(apiUrl('/api/posts'), {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -186,7 +187,7 @@ export function Navbar() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/notifications", { credentials: 'include' });
+      const res = await fetch(apiUrl('/api/notifications'), { credentials: 'include' });
       const data = await res.json();
 
       const uniqueNotifs = [];
@@ -214,7 +215,7 @@ export function Navbar() {
 
     if (newState) {
       await fetchNotifications();
-      await fetch('http://localhost:8080/api/notifications/seen', {
+      await fetch(apiUrl('/api/notifications/seen'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),
@@ -694,7 +695,7 @@ export function Navbar() {
                     user.Avatar
                       ? user.Avatar.startsWith('http')
                         ? user.Avatar
-                        : `http://localhost:8080/${user?.Avatar}`
+                        : assetUrl(user?.Avatar)
                       : '/avatar.png'
                   }
                   alt="Avatar"

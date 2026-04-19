@@ -1,5 +1,6 @@
 // src/hooks/useNotifications.js
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { apiUrl } from '@/lib/api'
 
 export function useNotifications(user, sendMessage) {
   const [showNotifications, setShowNotifications] = useState(false)
@@ -10,7 +11,7 @@ export function useNotifications(user, sendMessage) {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/notifications", { credentials: 'include' })
+      const res = await fetch(apiUrl('/api/notifications'), { credentials: 'include' })
       const data = await res.json()
 
       const uniqueNotifs = []
@@ -38,7 +39,7 @@ export function useNotifications(user, sendMessage) {
 
     if (newState) {
       await fetchNotifications()
-      await fetch('http://localhost:8080/api/notifications/seen', {
+      await fetch(apiUrl('/api/notifications/seen'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),

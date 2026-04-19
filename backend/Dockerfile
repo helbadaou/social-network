@@ -1,11 +1,11 @@
-FROM golang:1.23.0-alpine AS builder
+FROM golang:1.23.10-alpine AS builder
 
 ENV CGO_ENABLED=1
 RUN apk add --no-cache gcc musl-dev sqlite-dev
 
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod tidy
+RUN go mod download
 
 COPY . .
 RUN go build -o main .

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { apiUrl, assetUrl } from '@/lib/api'
 import styles from './styles/UserProfilePopup.module.css'
 
 export default function UserProfilePopup({
@@ -65,7 +66,7 @@ export default function UserProfilePopup({
     if (!selectedUser?.id || selectedUser.id === currentUser?.ID) return;
 
     try {
-      const res = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
+      const res = await fetch(apiUrl(`/api/follow/status/${selectedUser.id}`), {
         credentials: 'include'
       });
       if (res.ok) {
@@ -86,7 +87,7 @@ export default function UserProfilePopup({
       if (!selectedUser?.id || selectedUser.id === currentUser?.ID) return
 
       try {
-        const res = await fetch(`http://localhost:8080/api/follow/status/${selectedUser.id}`, {
+        const res = await fetch(apiUrl(`/api/follow/status/${selectedUser.id}`), {
           credentials: 'include'
         })
         if (res.ok) {
@@ -111,7 +112,7 @@ export default function UserProfilePopup({
     try {
       if (followStatus === 'accepted' || followStatus === 'pending') {
         // UNFOLLOW / CANCEL REQUEST
-        const res = await fetch('http://localhost:8080/api/unfollow', {
+        const res = await fetch(apiUrl('/api/unfollow'), {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -158,7 +159,7 @@ export default function UserProfilePopup({
         }
       } else {
         // FOLLOW
-        const res = await fetch('http://localhost:8080/api/follow', {
+        const res = await fetch(apiUrl('/api/follow'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -205,7 +206,7 @@ export default function UserProfilePopup({
                 selectedUser.avatar || selectedUser.author_avatar
                   ? (selectedUser.avatar || selectedUser.author_avatar).startsWith('http')
                     ? (selectedUser.avatar || selectedUser.author_avatar)
-                    : `http://localhost:8080/${selectedUser.avatar || selectedUser.author_avatar}`
+                    : assetUrl(selectedUser.avatar || selectedUser.author_avatar)
                   : '/avatar.png'
               }
               alt="Avatar"
@@ -262,7 +263,7 @@ export default function UserProfilePopup({
               selectedUser.author_avatar            
                 ? selectedUser.author_avatar.startsWith('http')
                   ? selectedUser.author_avatar
-                  : `http://localhost:8080/${selectedUser.author_avatar}`
+                  : assetUrl(selectedUser.author_avatar)
                 : '/avatar.png'
             }
             alt="Avatar"

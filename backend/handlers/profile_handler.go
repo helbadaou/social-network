@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"social/hub"
-	"social/services"
 	"social/models"
+	"social/services"
+	"social/utils"
 	"strconv"
 	"strings"
 )
@@ -29,13 +30,13 @@ func (h *ProfileHandler) ProfileHandler(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		// Clear the session cookie
 		http.SetCookie(w, &http.Cookie{
-			Name:     "session_token",
+			Name:     "session_id",
 			Value:    "",
 			Path:     "/",
 			MaxAge:   -1, // Expire immediately
 			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   false,
+			SameSite: utils.CookieSameSite(),
+			Secure:   utils.CookieSecure(r),
 		})
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -130,7 +131,7 @@ func (h *ProfileHandler) TogglePrivacy(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request){
+func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userId, ok := h.sessionService.GetUserIDFromSession(w, r)
 	if !ok {
 		http.Error(w, "Utilisateur non authentifié", http.StatusUnauthorized)
@@ -138,10 +139,10 @@ func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request){
 	}
 
 	response := map[string]interface{}{
-        "id": userId,
+		"id": userId,
 	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(response)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 
 }

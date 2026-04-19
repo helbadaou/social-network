@@ -634,7 +634,7 @@ func (h *GroupHandler) CreateGroupPostHandler(w http.ResponseWriter, r *http.Req
 	if err == nil {
 		defer file.Close()
 
-		imagePath = "uploads/group_posts/" + header.Filename
+		imagePath = utils.UploadPath("group_posts", header.Filename)
 		out, err := os.Create(imagePath)
 		if err != nil {
 			http.Error(w, "Unable to save file", http.StatusInternalServerError)
@@ -647,7 +647,7 @@ func (h *GroupHandler) CreateGroupPostHandler(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Failed to write file", http.StatusInternalServerError)
 			return
 		}
-		imagePath = "http://localhost:8080/uploads/group_posts/" + header.Filename
+		imagePath = utils.UploadURL("group_posts", header.Filename)
 	}
 	post := models.GroupPost{
 		GroupID:  groupID,

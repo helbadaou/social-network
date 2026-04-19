@@ -18,8 +18,8 @@ func main() {
 	sqlite.InitDB()
 	db := sqlite.GetDB()
 	folderName := []string{
-		"uploads/avatars",
-		"uploads/group_posts",
+		utils.UploadPath("avatars"),
+		utils.UploadPath("group_posts"),
 	}
 
 	for _, folder := range folderName {
@@ -121,7 +121,7 @@ func main() {
 	})
 
 	// Static files route
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(utils.UploadsDir()))))
 
 	// 7. Setup Middleware
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,8 +135,12 @@ func main() {
 	})
 
 	// 8. Start Server
-	fmt.Println("✅ Server started on :8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Printf("✅ Server started on :%s\n", port)
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		fmt.Printf("❌ Server error: %v\n", err)
 	}
 }

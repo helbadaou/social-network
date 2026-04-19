@@ -1,5 +1,6 @@
 // src/app/home/hooks/usePosts.js
 import { useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 
 export function usePosts() {
   const [posts, setPosts] = useState([])
@@ -9,7 +10,7 @@ export function usePosts() {
     const fetchPosts = async () => {
       setLoading(true)
       try {
-        const res = await fetch('http://localhost:8080/api/posts', { credentials: 'include' })
+        const res = await fetch(apiUrl('/api/posts'), { credentials: 'include' })
         if (!res.ok) throw new Error('Error fetching posts')
         const data = await res.json()
         console.log('Posts fetched:', data) // Assure-toi que les données sont correctes

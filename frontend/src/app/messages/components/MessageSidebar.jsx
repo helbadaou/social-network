@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { assetUrl } from '@/lib/api'
 import styles from './MessageSidebar.module.css'
 
 export default function MessageSidebar({
@@ -76,7 +77,7 @@ export default function MessageSidebar({
                     u.avatar
                       ? u.avatar.startsWith('http')
                         ? u.avatar
-                        : `http://localhost:8080/${u.avatar}`
+                        : assetUrl(u.avatar)
                       : '/avatar.png'
                   }
                   className={styles.avatar}
